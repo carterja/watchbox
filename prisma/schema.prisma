@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Media {
+  id          String   @id @default(cuid())
+  tmdbId      Int      // TMDB movie or TV ID
+  type        String   // "movie" | "tv"
+  title       String
+  overview    String?
+  posterPath  String?
+  releaseDate String?
+  status      String   // "yet_to_start" | "in_progress" | "finished"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  // For TV: optional progress (e.g. "Season 2, Episode 5")
+  progressNote   String?
+  // For TV: total season count (from TMDB or set manually)
+  totalSeasons   Int?
+  // For TV: per-season status. JSON array: [{ "season": 1, "status": "completed" }, ...]
+  seasonProgress Json?
+  // Streaming service: "Apple TV", "Netflix", "Plex", "HBO", "Prime", "Comedy Specials", etc.
+  streamingService String?
+  // Viewer: "wife" | "both" | "me"
+  viewer String?
+
+  @@index([tmdbId, type])
+  @@index([status])
+  @@index([type])
+  @@index([updatedAt])
+  @@index([streamingService])
+  @@index([viewer])
+}

@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
+  --color-shelf-bg: #0f0f0f;
+  --color-shelf-sidebar: #1a1a1e;
+  --color-shelf-card: #1e1e24;
+  --color-shelf-border: #2a2a32;
+  --color-shelf-accent: #8b5cf6;
+  --color-shelf-accent-hover: #7c3aed;
+  --color-shelf-muted: #71717a;
+}
+
+body {
+  background: var(--color-shelf-bg);
+  color: #e4e4e7;
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}

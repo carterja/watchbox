@@ -1,0 +1,8 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run tests before commit
+npm test -- --run --reporter=verbose
+
+# Run linter
+npm run lint
