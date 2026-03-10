@@ -54,4 +54,4 @@ ENV HOSTNAME="0.0.0.0"
 ENV DATABASE_URL="file:/app/data/watchbox.db"
 
 # Run database migrations on startup
-CMD npx prisma db push --skip-generate && node server.js
+CMD npx prisma db push && node server.js
