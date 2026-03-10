@@ -8,7 +8,8 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-shelf-bg">
       <Sidebar />
-      <main className="pl-56 min-h-screen">
+      {/* Desktop: left padding for sidebar, Mobile: top/bottom padding for header/nav */}
+      <main className="min-h-screen pt-14 pb-20 md:pt-0 md:pb-0 md:pl-56">
         {children}
       </main>
     </div>

@@ -47,9 +47,9 @@ RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 
 USER nextjs
 
-EXPOSE 3000
+EXPOSE 9516
 
-ENV PORT=3000
+ENV PORT=9516
 ENV HOSTNAME="0.0.0.0"
 ENV DATABASE_URL="file:/app/data/watchbox.db"
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,15 +17,27 @@ export const metadata: Metadata = {
   description: "Your personal media tracker. Finished, in progress, yet to start.",
 };
 
+const themeScript = `
+(function(){
+  var t=localStorage.getItem('watchbox-theme');
+  if(t&&['default','one-dark','dracula','monokai','github-dark','solarized'].indexOf(t)!==-1){
+    document.documentElement.setAttribute('data-theme',t);
+  }
+})();
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="antialiased">
+    <html lang="en" className="antialiased" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} font-sans`}>
-        {children}
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

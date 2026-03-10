@@ -3,20 +3,148 @@
 @theme {
   --font-sans: var(--font-geist-sans), system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), monospace;
-  --color-shelf-bg: #0f0f0f;
-  --color-shelf-sidebar: #1a1a1e;
-  --color-shelf-card: #1e1e24;
-  --color-shelf-border: #2a2a32;
+  
+  /* Elegant Premium Theme - Softer Purple */
+  --color-shelf-bg: #0a0e1a;
+  --color-shelf-sidebar: #111827;
+  --color-shelf-card: #1a2332;
+  --color-shelf-border: #2d3748;
   --color-shelf-accent: #8b5cf6;
-  --color-shelf-accent-hover: #7c3aed;
-  --color-shelf-muted: #71717a;
+  --color-shelf-accent-hover: #a78bfa;
+  --color-shelf-muted: #9ca3af;
+  
+  /* Neon glow colors for viewer tags */
+  --color-neon-purple: #8b5cf6;
+  --color-neon-red: #ef4444;
+  --color-neon-blue: #3b82f6;
+  --color-neon-wife: #ef4444;
+  --color-neon-both: #8b5cf6;
+  --color-neon-me: #3b82f6;
 }
 
 body {
   background: var(--color-shelf-bg);
-  color: #e4e4e7;
+  color: #f3f4f6;
+  font-family: var(--font-sans);
 }
 
 @utility text-balance {
   text-wrap: balance;
+}
+
+/* Neon glow animation for logo */
+@keyframes neon-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px var(--color-neon-purple)) 
+            drop-shadow(0 0 5px var(--color-neon-purple))
+            drop-shadow(0 0 10px var(--color-neon-purple));
+  }
+  50% {
+    filter: drop-shadow(0 0 5px var(--color-neon-purple)) 
+            drop-shadow(0 0 15px var(--color-neon-purple))
+            drop-shadow(0 0 25px var(--color-neon-purple));
+  }
+}
+
+.neon-glow {
+  animation: neon-glow 2s ease-in-out infinite;
+}
+
+/* Viewer-specific neon glows for cards */
+.neon-glow-wife {
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4),
+              0 0 16px rgba(239, 68, 68, 0.2),
+              inset 0 0 8px rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.neon-glow-both {
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.4),
+              0 0 16px rgba(139, 92, 246, 0.2),
+              inset 0 0 8px rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.5) !important;
+}
+
+.neon-glow-me {
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4),
+              0 0 16px rgba(59, 130, 246, 0.2),
+              inset 0 0 8px rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.5) !important;
+}
+
+/* Pulsing animation for active states */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.8);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: color, background-color, border-color, box-shadow;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Theme overrides (IDE-style) */
+[data-theme="one-dark"] {
+  --color-shelf-bg: #282c34;
+  --color-shelf-sidebar: #21252b;
+  --color-shelf-card: #2c323c;
+  --color-shelf-border: #3e4451;
+  --color-shelf-accent: #61afef;
+  --color-shelf-accent-hover: #89bcf7;
+  --color-shelf-muted: #abb2bf;
+  --color-neon-purple: #61afef;
+}
+
+[data-theme="dracula"] {
+  --color-shelf-bg: #282a36;
+  --color-shelf-sidebar: #21222c;
+  --color-shelf-card: #343746;
+  --color-shelf-border: #44475a;
+  --color-shelf-accent: #bd93f9;
+  --color-shelf-accent-hover: #d4b3ff;
+  --color-shelf-muted: #f8f8f2;
+  --color-neon-purple: #bd93f9;
+}
+
+[data-theme="monokai"] {
+  --color-shelf-bg: #272822;
+  --color-shelf-sidebar: #1e1f1c;
+  --color-shelf-card: #3e3d32;
+  --color-shelf-border: #49483e;
+  --color-shelf-accent: #fd971f;
+  --color-shelf-accent-hover: #ffb347;
+  --color-shelf-muted: #a6e22e;
+  --color-neon-purple: #fd971f;
+}
+
+[data-theme="github-dark"] {
+  --color-shelf-bg: #0d1117;
+  --color-shelf-sidebar: #161b22;
+  --color-shelf-card: #21262d;
+  --color-shelf-border: #30363d;
+  --color-shelf-accent: #58a6ff;
+  --color-shelf-accent-hover: #79b8ff;
+  --color-shelf-muted: #8b949e;
+  --color-neon-purple: #58a6ff;
+}
+
+[data-theme="solarized"] {
+  --color-shelf-bg: #002b36;
+  --color-shelf-sidebar: #073642;
+  --color-shelf-card: #094d5c;
+  --color-shelf-border: #586e75;
+  --color-shelf-accent: #b58900;
+  --color-shelf-accent-hover: #cb9910;
+  --color-shelf-muted: #839496;
+  --color-neon-purple: #b58900;
 }

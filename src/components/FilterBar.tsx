@@ -27,47 +27,47 @@ function FilterBarComponent({
   availableServices,
 }: FilterBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-4">
-      {/* Streaming Service Pills */}
+    <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 md:gap-4">
+      {/* Streaming Service Pills - icons only */}
       {availableServices.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
           <button
             type="button"
             onClick={() => onStreamingServiceChange(null)}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+            title="All services"
+            className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition ${
               streamingService === null
                 ? "bg-shelf-accent text-white"
-                : "bg-shelf-card text-shelf-muted hover:bg-shelf-border hover:text-white border border-shelf-border"
+                : "bg-shelf-border/60 text-white/90 hover:bg-shelf-border hover:text-white border border-shelf-border"
             }`}
           >
-            <Tv2 size={14} />
-            All Services
+            <Tv2 size={16} className="md:w-[18px] md:h-[18px]" />
           </button>
           {availableServices.map((service) => (
             <button
               key={service}
               type="button"
               onClick={() => onStreamingServiceChange(service)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+              title={service}
+              className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition ${
                 streamingService === service
                   ? "bg-shelf-accent text-white"
-                  : "bg-shelf-card text-shelf-muted hover:bg-shelf-border hover:text-white border border-shelf-border"
+                  : "bg-shelf-border/60 text-white/90 hover:bg-shelf-border hover:text-white border border-shelf-border"
               }`}
             >
-              <StreamingIcon service={service} className="w-4 h-4" />
-              {service}
+              <StreamingIcon service={service} className="w-4 h-4 md:w-5 md:h-5" />
             </button>
           ))}
         </div>
       )}
 
-      {/* Divider */}
+      {/* Divider - hidden on mobile */}
       {availableServices.length > 0 && (
-        <div className="h-6 w-px bg-shelf-border" />
+        <div className="hidden md:block h-6 w-px bg-shelf-border" />
       )}
 
       {/* Viewer Pills */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
         {VIEWER_OPTIONS.map(({ value, label }) => {
           const isActive = viewer === value;
           let colorClass = "";
@@ -91,7 +91,8 @@ function FilterBarComponent({
               key={label}
               type="button"
               onClick={() => onViewerChange(value)}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition border ${
+              title={value === null ? "All viewers" : label}
+              className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition border aspect-square size-9 md:size-10 shrink-0 ${
                 value === null
                   ? isActive
                     ? "bg-shelf-accent text-white border-shelf-accent"
@@ -102,7 +103,7 @@ function FilterBarComponent({
               }`}
             >
               {icon}
-              {label}
+              <span className="sr-only">{label}</span>
             </button>
           );
         })}

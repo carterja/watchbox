@@ -29,10 +29,11 @@ export const CreateMediaSchema = z.object({
 export const UpdateMediaSchema = z.object({
   status: MediaStatusSchema.optional(),
   progressNote: z.string().max(1000).optional(),
-  totalSeasons: z.number().int().positive().max(100).optional(),
+  totalSeasons: z.number().int().min(0).max(100).optional(),
   seasonProgress: z.array(SeasonProgressSchema).optional(),
   streamingService: z.string().max(100).nullable().optional(),
   viewer: ViewerSchema.nullable().optional(),
+  posterPath: z.string().max(500).nullable().optional(),
 });
 
 // TMDB search validation

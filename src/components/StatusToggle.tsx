@@ -16,13 +16,13 @@ type Props = {
 
 function StatusToggleComponent({ value, onChange }: Props) {
   return (
-    <div className="flex rounded-lg border border-shelf-border bg-shelf-card p-0.5 w-fit">
+    <div className="flex rounded-lg border border-shelf-border bg-shelf-card p-0.5 w-full md:w-fit overflow-x-auto">
       {OPTIONS.map((opt) => (
         <button
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`rounded-md px-4 py-2 text-sm font-medium transition ${
+          className={`flex-1 md:flex-none whitespace-nowrap rounded-md px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium transition ${
             value === opt.value
               ? "bg-shelf-accent text-white"
               : "text-shelf-muted hover:text-white hover:bg-shelf-card"

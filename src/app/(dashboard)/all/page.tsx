@@ -1,17 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { AddMediaModal } from "@/components/AddMediaModal";
+import Link from "next/link";
 import { MediaCard } from "@/components/MediaCard";
 import { StatusToggle } from "@/components/StatusToggle";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { FilterBar } from "@/components/FilterBar";
 import type { Media, MediaStatus, SeasonProgressItem } from "@/types/media";
 
-export default function SeriesPage() {
+export default function AllPage() {
   const [list, setList] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<MediaStatus>("in_progress");
   const [streamingServiceFilter, setStreamingServiceFilter] = useState<string | null>(null);
   const [viewerFilter, setViewerFilter] = useState<string | null>(null);
@@ -34,9 +33,9 @@ export default function SeriesPage() {
 
   const handleUpdate = async (
     id: string,
-    patch: { 
-      progressNote?: string; 
-      totalSeasons?: number; 
+    patch: {
+      progressNote?: string;
+      totalSeasons?: number;
       seasonProgress?: SeasonProgressItem[];
       streamingService?: string | null;
       viewer?: import("@/types/media").Viewer | null;
@@ -44,58 +43,45 @@ export default function SeriesPage() {
       status?: MediaStatus;
     }
   ) => {
-    console.log("SeriesPage handleUpdate - id:", id, "patch:", JSON.stringify(patch, null, 2));
     const res = await fetch(`/api/media/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     });
-    console.log("SeriesPage handleUpdate - response status:", res.status);
-    if (res.ok) {
-      const data = await res.json();
-      console.log("SeriesPage handleUpdate - response data:", JSON.stringify(data, null, 2));
-      await fetchList();
-    } else {
-      const error = await res.json();
-      console.error("SeriesPage handleUpdate - error:", error);
-    }
+    if (res.ok) await fetchList();
   };
 
-  const series = useMemo(() => list.filter((m) => m.type === "tv"), [list]);
-  
-  // Only show streamer filters that have at least one item assigned (hide HBO etc. when none)
+  // Only show streamer filters that have at least one item assigned (hide when none)
   const availableServices = useMemo(() => {
     const services = new Set(
-      series
+      list
         .filter((m) => m.streamingService)
         .map((m) => m.streamingService as string)
     );
     return Array.from(services).sort();
-  }, [series]);
-  
-  // Apply filters
+  }, [list]);
+
   const filtered = useMemo(() => {
-    return series.filter((m) => {
+    return list.filter((m) => {
       if (m.status !== statusFilter) return false;
       if (streamingServiceFilter && m.streamingService !== streamingServiceFilter) return false;
       if (viewerFilter && m.viewer !== viewerFilter) return false;
       return true;
     });
-  }, [series, statusFilter, streamingServiceFilter, viewerFilter]);
+  }, [list, statusFilter, streamingServiceFilter, viewerFilter]);
 
   return (
     <div className="min-h-screen">
       <header className="sticky top-14 md:top-0 z-20 border-b border-shelf-border bg-shelf-bg/95 backdrop-blur">
         <div className="px-4 md:px-6 py-3 md:py-4 flex flex-col gap-3 md:gap-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl md:text-2xl font-semibold text-shelf-accent">Series</h1>
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
+            <h1 className="text-xl md:text-2xl font-semibold text-shelf-accent">All</h1>
+            <Link
+              href="/discover"
               className="rounded-lg bg-shelf-accent px-3 md:px-4 py-1.5 md:py-2 text-sm md:text-base text-white font-medium hover:bg-shelf-accent-hover transition"
             >
-              Add series
-            </button>
+              Add from Discover
+            </Link>
           </div>
           <StatusToggle value={statusFilter} onChange={setStatusFilter} />
           <FilterBar
@@ -124,22 +110,13 @@ export default function SeriesPage() {
                   media={m}
                   onDelete={handleDelete}
                   onUpdate={handleUpdate}
-                  showTypeTag={false}
+                  showTypeTag={true}
                 />
               ))
             )}
           </div>
         )}
       </div>
-
-      {modalOpen && (
-        <AddMediaModal
-          onClose={() => setModalOpen(false)}
-          onAdded={() => { fetchList(); setModalOpen(false); }}
-          defaultStatus="in_progress"
-          typeFilter="tv"
-        />
-      )}
     </div>
   );
 }

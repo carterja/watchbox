@@ -1,0 +1,512 @@
+"use client";
+
+import { useState, useEffect, memo } from "react";
+import Image from "next/image";
+import { X, Film, Tv, Save, Search, Check, Trash2 } from "lucide-react";
+import type { Media, MediaStatus, SeasonProgressItem, Viewer } from "@/types/media";
+import { posterUrl } from "@/lib/tmdb";
+
+type Props = {
+  media: Media;
+  onClose: () => void;
+  onUpdate: (patch: {
+    status?: MediaStatus;
+    streamingService?: string | null;
+    viewer?: Viewer | null;
+    posterPath?: string | null;
+    totalSeasons?: number;
+    seasonProgress?: SeasonProgressItem[];
+    progressNote?: string;
+  }) => Promise<void>;
+  onDelete?: () => void;
+};
+
+type PosterSearchResult = {
+  file_path: string;
+  width: number;
+  height: number;
+  vote_average: number;
+};
+
+const STATUS_OPTIONS: { value: MediaStatus; label: string }[] = [
+  { value: "yet_to_start", label: "Yet to start" },
+  { value: "in_progress", label: "In progress" },
+  { value: "finished", label: "Finished" },
+];
+
+const STREAMING_SERVICES = [
+  "Apple TV",
+  "Netflix",
+  "Plex",
+  "HBO",
+  "Prime",
+  "Disney+",
+  "Hulu",
+  "Peacock",
+  "Paramount+",
+  "Max",
+  "Comedy Specials",
+];
+
+const VIEWER_OPTIONS: { value: Viewer; label: string; icon: string }[] = [
+  { value: "wife", label: "Wife", icon: "❤️" },
+  { value: "both", label: "Both", icon: "💜" },
+  { value: "me", label: "Me", icon: "⭐" },
+];
+
+function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props) {
+  const [status, setStatus] = useState<MediaStatus>(media.status);
+  const [streamingService, setStreamingService] = useState<string | null>(media.streamingService);
+  const [viewer, setViewer] = useState<Viewer | null>(media.viewer);
+  const [totalSeasons, setTotalSeasons] = useState(media.totalSeasons || 0);
+  const [seasonProgress, setSeasonProgress] = useState<SeasonProgressItem[]>(
+    media.seasonProgress || []
+  );
+  const [progressNote, setProgressNote] = useState(media.progressNote || "");
+  const [selectedPoster, setSelectedPoster] = useState(media.posterPath);
+  const [posterSearch, setPosterSearch] = useState(false);
+  const [posterResults, setPosterResults] = useState<PosterSearchResult[]>([]);
+  const [loadingPosters, setLoadingPosters] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const isSeries = media.type === "tv";
+
+  // Handle ESC key to close
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [onClose]);
+
+  // Load poster options from TMDB
+  const searchPosters = async () => {
+    setLoadingPosters(true);
+    try {
+      const res = await fetch(`/api/tmdb/posters/${media.tmdbId}?type=${media.type}`);
+      const data = await res.json();
+      setPosterResults(data.posters || []);
+    } catch (error) {
+      console.error("Failed to load posters:", error);
+    } finally {
+      setLoadingPosters(false);
+    }
+  };
+
+  const handleSeasonStatusChange = (season: number, newStatus: string) => {
+    const existing = seasonProgress.find((s) => s.season === season);
+    if (existing) {
+      setSeasonProgress(
+        seasonProgress.map((s) =>
+          s.season === season ? { ...s, status: newStatus as SeasonProgressItem["status"] } : s
+        )
+      );
+    } else {
+      setSeasonProgress([
+        ...seasonProgress,
+        { season, status: newStatus as SeasonProgressItem["status"] },
+      ]);
+    }
+  };
+
+  const getSeasonStatus = (season: number) => {
+    return seasonProgress.find((s) => s.season === season)?.status || "not_started";
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const updateData = {
+        status,
+        streamingService,
+        viewer,
+        posterPath: selectedPoster,
+        ...(isSeries && totalSeasons > 0 && {
+          totalSeasons,
+          seasonProgress,
+        }),
+        progressNote: progressNote.trim() || undefined,
+      };
+      console.log("MediaDetailModal - Saving with data:", JSON.stringify(updateData, null, 2));
+      await onUpdate(updateData);
+      onClose();
+    } catch (error) {
+      console.error("Failed to save:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div 
+        className="relative w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] rounded-t-2xl md:rounded-2xl border-t md:border border-shelf-border bg-shelf-sidebar shadow-2xl overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-shelf-border bg-gradient-to-r from-shelf-sidebar to-shelf-card">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
+            <div className="p-1.5 md:p-2 rounded-lg bg-[#8b5cf6]/10 shrink-0">
+              {isSeries ? (
+                <Tv className="text-[#8b5cf6]" size={20} />
+              ) : (
+                <Film className="text-[#8b5cf6]" size={20} />
+              )}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-base md:text-xl font-bold text-white truncate">{media.title}</h2>
+              <p className="text-xs md:text-sm text-shelf-muted">
+                {media.releaseDate?.slice(0, 4)} • {isSeries ? "TV Series" : "Movie"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-shelf-card text-shelf-muted hover:text-white transition shrink-0"
+          >
+            <X size={18} className="md:w-5 md:h-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6">
+          {/* Mobile: Horizontal poster card + details */}
+          <div className="lg:hidden mb-4">
+            <div className="flex gap-3 mb-4">
+              {/* Compact poster */}
+              <div className="relative w-24 h-36 rounded-lg overflow-hidden border border-shelf-border bg-shelf-card shrink-0">
+                {selectedPoster ? (
+                  <Image
+                    src={posterUrl(selectedPoster)!}
+                    alt={media.title}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-shelf-muted">
+                    {isSeries ? <Tv size={24} /> : <Film size={24} />}
+                  </div>
+                )}
+              </div>
+              
+              {/* Quick info + poster change button */}
+              <div className="flex-1 min-w-0 flex flex-col justify-between">
+                <div className="space-y-1">
+                  {media.overview && (
+                    <p className="text-xs text-shelf-muted line-clamp-4 leading-relaxed">
+                      {media.overview}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setPosterSearch(!posterSearch);
+                    if (!posterSearch && posterResults.length === 0) searchPosters();
+                  }}
+                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-shelf-card hover:bg-[#8b5cf6]/20 border border-shelf-border hover:border-[#8b5cf6]/50 text-white transition text-xs"
+                >
+                  <Search size={14} />
+                  {posterSearch ? "Hide" : "Change"}
+                </button>
+              </div>
+            </div>
+
+            {/* Poster search results - mobile */}
+            {posterSearch && (
+              <div className="mb-4 space-y-2 max-h-48 overflow-y-auto">
+                <p className="text-xs text-shelf-muted">Select a poster:</p>
+                {loadingPosters ? (
+                  <div className="text-center py-4 text-shelf-muted text-sm">Loading...</div>
+                ) : (
+                  <div className="grid grid-cols-4 gap-2">
+                    {posterResults.slice(0, 8).map((poster) => (
+                      <button
+                        key={poster.file_path}
+                        onClick={() => {
+                          setSelectedPoster(poster.file_path);
+                          setPosterSearch(false);
+                        }}
+                        className={`relative aspect-[2/3] rounded-lg overflow-hidden border-2 transition ${
+                          selectedPoster === poster.file_path
+                            ? "border-[#8b5cf6]"
+                            : "border-shelf-border hover:border-[#8b5cf6]/50"
+                        }`}
+                      >
+                        <Image
+                          src={posterUrl(poster.file_path, "w92")!}
+                          alt="Poster"
+                          fill
+                          className="object-cover"
+                        />
+                        {selectedPoster === poster.file_path && (
+                          <div className="absolute top-0.5 right-0.5 rounded-full bg-[#8b5cf6] p-0.5">
+                            <Check size={10} className="text-white" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Desktop: Original 3-column layout */}
+          <div className="hidden lg:grid lg:grid-cols-3 gap-6">
+            {/* Left column - Poster */}
+            <div className="space-y-4">
+              <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-shelf-border bg-shelf-card">
+                {selectedPoster ? (
+                  <Image
+                    src={posterUrl(selectedPoster)!}
+                    alt={media.title}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-shelf-muted">
+                    {isSeries ? <Tv size={48} /> : <Film size={48} />}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setPosterSearch(!posterSearch);
+                  if (!posterSearch && posterResults.length === 0) searchPosters();
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-shelf-card hover:bg-[#8b5cf6]/20 border border-shelf-border hover:border-[#8b5cf6]/50 text-white transition"
+              >
+                <Search size={16} />
+                {posterSearch ? "Hide Posters" : "Change Poster"}
+              </button>
+
+              {posterSearch && (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  <p className="text-xs text-shelf-muted px-1">Select a poster:</p>
+                  {loadingPosters ? (
+                    <div className="text-center py-4 text-shelf-muted text-sm">Loading...</div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {posterResults.slice(0, 10).map((poster) => (
+                        <button
+                          key={poster.file_path}
+                          onClick={() => {
+                            setSelectedPoster(poster.file_path);
+                            setPosterSearch(false);
+                          }}
+                          className={`relative aspect-[2/3] rounded-lg overflow-hidden border-2 transition ${
+                            selectedPoster === poster.file_path
+                              ? "border-[#8b5cf6]"
+                              : "border-shelf-border hover:border-[#8b5cf6]/50"
+                          }`}
+                        >
+                          <Image
+                            src={posterUrl(poster.file_path, "w185")!}
+                            alt="Poster option"
+                            fill
+                            className="object-cover"
+                          />
+                          {selectedPoster === poster.file_path && (
+                            <div className="absolute top-1 right-1 rounded-full bg-[#8b5cf6] p-1">
+                              <Check size={12} className="text-white" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right columns - Details */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* All form fields for desktop */}
+              <FormFields />
+            </div>
+          </div>
+
+          {/* Form fields - Mobile version */}
+          <div className="lg:hidden space-y-4">
+            <FormFields />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-3 p-4 md:p-6 border-t border-shelf-border bg-shelf-card">
+          <div className="flex items-center gap-2">
+            {onDelete && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm("Remove this from your list?")) {
+                    onDelete();
+                    onClose();
+                  }
+                }}
+                className="px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/20 hover:text-red-300 transition text-sm md:text-base inline-flex items-center gap-1.5"
+              >
+                <Trash2 size={14} className="md:w-4 md:h-4" />
+                Remove
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 rounded-lg text-white hover:bg-shelf-sidebar transition text-sm md:text-base"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-4 md:px-6 py-2 rounded-lg bg-[#8b5cf6] text-white text-sm md:text-base font-medium hover:bg-[#a78bfa] disabled:opacity-50 transition inline-flex items-center gap-2"
+            >
+              <Save size={14} className="md:w-4 md:h-4" />
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  function FormFields() {
+    return (
+      <>
+              {/* Status */}
+              <div>
+                <label className="block text-xs md:text-sm font-medium text-white mb-2">Status</label>
+                <div className="flex gap-1.5 md:gap-2">
+                  {STATUS_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setStatus(option.value)}
+                      className={`flex-1 px-2 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
+                        status === option.value
+                          ? "bg-[#8b5cf6] text-white"
+                          : "bg-shelf-card text-shelf-muted hover:text-white border border-shelf-border"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Streaming Service */}
+              <div>
+                <label className="block text-xs md:text-sm font-medium text-white mb-2">
+                  Streaming Service
+                </label>
+                <select
+                  value={streamingService || ""}
+                  onChange={(e) => setStreamingService(e.target.value || null)}
+                  className="w-full px-3 md:px-4 py-2 rounded-lg bg-shelf-card border border-shelf-border text-sm md:text-base text-white focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]"
+                >
+                  <option value="">None</option>
+                  {STREAMING_SERVICES.map((service) => (
+                    <option key={service} value={service}>
+                      {service}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Viewer */}
+              <div>
+                <label className="block text-xs md:text-sm font-medium text-white mb-2">Viewer</label>
+                <div className="flex gap-1.5 md:gap-2">
+                  {VIEWER_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setViewer(option.value)}
+                      className={`flex-1 px-2 md:px-4 py-2 md:py-2 rounded-lg text-xs md:text-sm font-medium transition inline-flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 ${
+                        viewer === option.value
+                          ? option.value === "wife"
+                            ? "bg-red-500/20 border-red-500/50 text-red-300 border-2"
+                            : option.value === "both"
+                            ? "bg-purple-500/20 border-purple-500/50 text-purple-300 border-2"
+                            : "bg-sky-500/20 border-sky-500/50 text-sky-300 border-2"
+                          : "bg-shelf-card text-shelf-muted hover:text-white border border-shelf-border"
+                      }`}
+                    >
+                      <span className="text-sm md:text-base">{option.icon}</span>
+                      <span className="text-[10px] md:text-sm">{option.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Season Progress (TV only) */}
+              {isSeries && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs md:text-sm font-medium text-white">Seasons</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={totalSeasons || ""}
+                      onChange={(e) => setTotalSeasons(parseInt(e.target.value) || 0)}
+                      className="w-16 md:w-20 px-2 md:px-3 py-1 rounded-lg bg-shelf-card border border-shelf-border text-white text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]"
+                      placeholder="0"
+                    />
+                  </div>
+                  {totalSeasons > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-1.5 md:gap-2 max-h-48 md:max-h-64 overflow-y-auto p-2 rounded-lg bg-shelf-card/50 border border-shelf-border">
+                      {Array.from({ length: totalSeasons }, (_, i) => i + 1).map((season) => {
+                        const seasonStatus = getSeasonStatus(season);
+                        return (
+                          <button
+                            key={season}
+                            onClick={() => {
+                              const nextStatus =
+                                seasonStatus === "not_started"
+                                  ? "in_progress"
+                                  : seasonStatus === "in_progress"
+                                  ? "completed"
+                                  : "not_started";
+                              handleSeasonStatusChange(season, nextStatus);
+                            }}
+                            className={`px-2 md:px-3 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-medium transition ${
+                              seasonStatus === "completed"
+                                ? "bg-green-500/20 border-green-500/50 text-green-300 border"
+                                : seasonStatus === "in_progress"
+                                ? "bg-[#8b5cf6]/20 border-[#8b5cf6]/50 text-[#a78bfa] border"
+                                : "bg-shelf-card text-shelf-muted border border-shelf-border"
+                            }`}
+                          >
+                            S{season}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Progress Note */}
+              <div>
+                <label className="block text-xs md:text-sm font-medium text-white mb-2">Notes</label>
+                <textarea
+                  value={progressNote}
+                  onChange={(e) => setProgressNote(e.target.value)}
+                  placeholder="Add any notes about your progress..."
+                  rows={3}
+                  className="w-full px-3 md:px-4 py-2 rounded-lg bg-shelf-card border border-shelf-border text-sm md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] resize-none"
+                />
+              </div>
+      </>
+    );
+  }
+}
+
+export const MediaDetailModal = memo(MediaDetailModalComponent);

@@ -6,6 +6,7 @@ import { Search, Film, Tv, Loader2, Check } from "lucide-react";
 import { posterUrl } from "@/lib/tmdb";
 import { DiscoverCard } from "@/components/DiscoverCard";
 import { TabButton } from "@/components/TabButton";
+import { QuickSetupModal } from "@/components/QuickSetupModal";
 import type { Media } from "@/types/media";
 
 type TmdbSearchItem =
@@ -37,6 +38,8 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [tmdbError, setTmdbError] = useState<string | null>(null);
+  const [showQuickSetup, setShowQuickSetup] = useState(false);
+  const [quickSetupItem, setQuickSetupItem] = useState<TmdbSearchItem | null>(null);
 
   const fetchMyMedia = useCallback(async () => {
     const res = await fetch("/api/media");
@@ -95,7 +98,14 @@ export default function DiscoverPage() {
     return myMedia.some((m) => m.type === type && m.tmdbId === tmdbId);
   };
 
-  const addToLibrary = async (item: TmdbSearchItem) => {
+  const addToLibrary = async (
+    item: TmdbSearchItem,
+    setupData: {
+      streamingService: string | null;
+      viewer: import("@/types/media").Viewer | null;
+      status: import("@/types/media").MediaStatus;
+    }
+  ) => {
     const key = item.type === "movie" ? `movie-${item.data.id}` : `tv-${item.data.id}`;
     if (isInCollection(item.type, item.data.id)) return;
     setAddingId(key);
@@ -117,7 +127,9 @@ export default function DiscoverPage() {
               overview: item.data.overview,
               posterPath: item.data.poster_path,
               releaseDate: item.data.release_date,
-              status: "yet_to_start" as const,
+              status: setupData.status,
+              streamingService: setupData.streamingService,
+              viewer: setupData.viewer,
             }
           : {
               tmdbId: item.data.id,
@@ -126,7 +138,9 @@ export default function DiscoverPage() {
               overview: item.data.overview,
               posterPath: item.data.poster_path,
               releaseDate: item.data.first_air_date,
-              status: "yet_to_start" as const,
+              status: setupData.status,
+              streamingService: setupData.streamingService,
+              viewer: setupData.viewer,
               ...(totalSeasons != null && { totalSeasons }),
             };
       const res = await fetch("/api/media", {
@@ -150,11 +164,29 @@ export default function DiscoverPage() {
     }
   };
 
-  const addMovieFromBrowse = (m: { id: number; title: string; overview: string | null; poster_path: string | null; release_date: string | null }) =>
-    addToLibrary({ type: "movie", data: m });
-  const addTvFromBrowse = (t: { id: number; name: string; overview: string | null; poster_path: string | null; first_air_date: string | null }) =>
-    addToLibrary({ type: "tv", data: t });
-  const addTrendingItem = (item: TmdbLists["trending"][0]) => {
+  const addMovieFromBrowse = (m: { id: number; title: string; overview: string | null; poster_path: string | null; release_date: string | null }) => (
+    setupData: {
+      streamingService: string | null;
+      viewer: import("@/types/media").Viewer | null;
+      status: import("@/types/media").MediaStatus;
+    }
+  ) => addToLibrary({ type: "movie", data: m }, setupData);
+  
+  const addTvFromBrowse = (t: { id: number; name: string; overview: string | null; poster_path: string | null; first_air_date: string | null }) => (
+    setupData: {
+      streamingService: string | null;
+      viewer: import("@/types/media").Viewer | null;
+      status: import("@/types/media").MediaStatus;
+    }
+  ) => addToLibrary({ type: "tv", data: t }, setupData);
+  
+  const addTrendingItem = (item: TmdbLists["trending"][0]) => (
+    setupData: {
+      streamingService: string | null;
+      viewer: import("@/types/media").Viewer | null;
+      status: import("@/types/media").MediaStatus;
+    }
+  ) => {
     if (item.type === "movie" && item.data.title) {
       addToLibrary({
         type: "movie",
@@ -165,7 +197,7 @@ export default function DiscoverPage() {
           poster_path: item.data.poster_path,
           release_date: item.data.release_date ?? null,
         },
-      });
+      }, setupData);
     } else if (item.type === "tv" && item.data.name) {
       addToLibrary({
         type: "tv",
@@ -176,17 +208,17 @@ export default function DiscoverPage() {
           poster_path: item.data.poster_path,
           first_air_date: item.data.first_air_date ?? null,
         },
-      });
+      }, setupData);
     }
   };
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-shelf-border bg-shelf-bg/95 backdrop-blur">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-semibold text-shelf-accent">Discover</h1>
-            <div className="flex gap-2">
+      <header className="sticky top-14 md:top-0 z-20 border-b border-shelf-border bg-shelf-bg/95 backdrop-blur">
+        <div className="px-4 md:px-6 py-3 md:py-4">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <h1 className="text-xl md:text-2xl font-semibold text-shelf-accent">Discover</h1>
+            <div className="flex gap-1.5 md:gap-2">
               <TabButton active={tab === "browse"} onClick={() => setTab("browse")}>
                 Browse
               </TabButton>
@@ -204,7 +236,7 @@ export default function DiscoverPage() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && runSearch()}
                 placeholder="Search movies & TV shows..."
-                className="flex-1 rounded-lg border border-shelf-border bg-shelf-card px-4 py-2.5 text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
+                className="flex-1 rounded-lg border border-shelf-border bg-shelf-card px-3 md:px-4 py-2 md:py-2.5 text-sm md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
                 autoFocus
               />
               <button
@@ -238,9 +270,9 @@ export default function DiscoverPage() {
         </div>
       </header>
 
-      <div className="p-6">
+      <div className="p-4 md:p-6">
         {tmdbError && (
-          <div className="mb-4 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 text-sm">
+          <div className="mb-4 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 px-3 md:px-4 py-2 md:py-3 text-sm">
             {tmdbError}
           </div>
         )}
@@ -297,7 +329,10 @@ export default function DiscoverPage() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => addToLibrary(item)}
+                      onClick={() => {
+                        setQuickSetupItem(item);
+                        setShowQuickSetup(true);
+                      }}
                       disabled={adding}
                       className="rounded-lg bg-shelf-accent px-4 py-2 text-white text-sm font-medium hover:bg-shelf-accent-hover disabled:opacity-50 shrink-0"
                     >
@@ -479,6 +514,22 @@ export default function DiscoverPage() {
           This product uses the TMDB API but is not endorsed or certified by TMDB.
         </p>
       </div>
+
+      {showQuickSetup && quickSetupItem && (
+        <QuickSetupModal
+          mediaTitle={quickSetupItem.type === "movie" ? quickSetupItem.data.title : quickSetupItem.data.name}
+          mediaType={quickSetupItem.type}
+          onClose={() => {
+            setShowQuickSetup(false);
+            setQuickSetupItem(null);
+          }}
+          onSave={(setupData) => {
+            setShowQuickSetup(false);
+            addToLibrary(quickSetupItem, setupData);
+            setQuickSetupItem(null);
+          }}
+        />
+      )}
     </div>
   );
 }
