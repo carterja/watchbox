@@ -1,4 +1,4 @@
-export type MediaStatus = "yet_to_start" | "in_progress" | "finished";
+export type MediaStatus = "yet_to_start" | "in_progress" | "finished" | "rewatch";
 
 export type SeasonStatus = "not_started" | "in_progress" | "completed";
 

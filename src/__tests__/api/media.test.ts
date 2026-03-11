@@ -16,17 +16,19 @@ describe('API route: /api/media POST', () => {
   });
 
   it('should normalize status values', () => {
-    const statuses = ['yet_to_start', 'in_progress', 'finished', 'unknown'];
+    const statuses = ['yet_to_start', 'in_progress', 'finished', 'rewatch', 'unknown'];
     
     const normalize = (status: string) => {
       if (status === 'in_progress') return 'in_progress';
       if (status === 'finished') return 'finished';
+      if (status === 'rewatch') return 'rewatch';
       return 'yet_to_start';
     };
 
     expect(normalize('yet_to_start')).toBe('yet_to_start');
     expect(normalize('in_progress')).toBe('in_progress');
     expect(normalize('finished')).toBe('finished');
+    expect(normalize('rewatch')).toBe('rewatch');
     expect(normalize('unknown')).toBe('yet_to_start');
   });
 

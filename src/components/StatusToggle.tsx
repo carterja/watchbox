@@ -7,6 +7,7 @@ const OPTIONS: { value: MediaStatus; label: string }[] = [
   { value: "yet_to_start", label: "Yet to start" },
   { value: "in_progress", label: "In progress" },
   { value: "finished", label: "Finished" },
+  { value: "rewatch", label: "Rewatch" },
 ];
 
 type Props = {

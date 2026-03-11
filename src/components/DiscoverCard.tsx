@@ -1,11 +1,14 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 import Image from "next/image";
 import { Film, Tv, Check, Plus, Loader2 } from "lucide-react";
 import { posterUrl } from "@/lib/tmdb";
 import { QuickSetupModal } from "./QuickSetupModal";
+import { StreamingIcon } from "./StreamingIcon";
 import type { MediaStatus, Viewer } from "@/types/media";
+
+const watchProvidersCache = new Map<string, string[]>();
 
 type Props = {
   id: number;
@@ -35,8 +38,33 @@ function DiscoverCardComponent({
   onAdd,
 }: Props) {
   const [showQuickSetup, setShowQuickSetup] = useState(false);
+  const [watchProviders, setWatchProviders] = useState<string[] | null>(null);
   const imgSrc = posterUrl(posterPath, "w185");
   const year = releaseDate?.slice(0, 4) || (type === "movie" ? "Movie" : "TV");
+
+  useEffect(() => {
+    const key = `${type}-${id}`;
+    const cached = watchProvidersCache.get(key);
+    if (cached !== undefined) {
+      setWatchProviders(cached);
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/tmdb/watch-providers?type=${type}&id=${id}`)
+      .then((res) => (res.ok ? res.json() : { providers: [] }))
+      .then((data: { providers?: string[] }) => {
+        if (cancelled) return;
+        const list = Array.isArray(data?.providers) ? data.providers : [];
+        watchProvidersCache.set(key, list);
+        setWatchProviders(list);
+      })
+      .catch(() => {
+        if (!cancelled) setWatchProviders([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [type, id]);
 
   const handleClick = () => {
     if (!inCollection && !adding) {
@@ -75,6 +103,17 @@ function DiscoverCardComponent({
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-shelf-muted">
               {type === "movie" ? <Film size={32} /> : <Tv size={32} />}
+            </div>
+          )}
+
+          {/* Streamers strip at bottom - always visible when loaded */}
+          {watchProviders != null && watchProviders.length > 0 && (
+            <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center justify-center gap-1 px-1.5 py-1.5 bg-black/70 backdrop-blur-sm z-10">
+              {watchProviders.slice(0, 5).map((service) => (
+                <span key={service} className="inline-flex rounded bg-white/20 p-0.5" title={service}>
+                  <StreamingIcon service={service} className="w-3.5 h-3.5 text-white" />
+                </span>
+              ))}
             </div>
           )}
 

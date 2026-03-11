@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Media type validation
 export const MediaTypeSchema = z.enum(["movie", "tv"]);
-export const MediaStatusSchema = z.enum(["yet_to_start", "in_progress", "finished"]);
+export const MediaStatusSchema = z.enum(["yet_to_start", "in_progress", "finished", "rewatch"]);
 export const ViewerSchema = z.enum(["wife", "both", "me"]);
 
 // Season progress validation

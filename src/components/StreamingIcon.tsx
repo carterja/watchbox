@@ -54,30 +54,22 @@ function StreamingIconComponent({ service, className = "w-5 h-5" }: StreamingIco
       );
     case "Disney+":
       return (
-        <svg {...svgProps} className={cls}>
-          <path d="M8.2 6.2c0 .3.2.5.5.5h1.2v6.8c0 .3.2.5.5.5s.5-.2.5-.5V6.7h1.2c.3 0 .5-.2.5-.5s-.2-.5-.5-.5H8.7c-.3 0-.5.2-.5.5zm7.1 0c-.2 0-.4.1-.5.3l-2.5 6.8c-.1.2 0 .5.2.6.1 0 .2 0 .3-.1l.8-2.2h2.8l.8 2.2c.1.2.3.2.5.2.2-.1.3-.3.2-.6l-2.5-6.8c-.1-.2-.3-.3-.5-.3zm.2 2l1 2.8h-2l1-2.8z" />
-          <path d="M4.2 10.2c0-.3.2-.5.5-.5h.8c.3 0 .5.2.5.5s-.2.5-.5.5h-.8c-.3 0-.5-.2-.5-.5zm12.2 0c0-.3.2-.5.5-.5h.8c.3 0 .5.2.5.5s-.2.5-.5.5h-.8c-.3 0-.5-.2-.5-.5z" />
-        </svg>
+        <img src="/disney-plus-logo.svg" alt="" className={cls} width={24} height={24} />
       );
     case "Hulu":
       return (
-        <svg {...svgProps} className={cls}>
-          <path d="M6.5 6h2.2c.7 0 1.3.6 1.3 1.3v9.4c0 .7-.6 1.3-1.3 1.3H6.5c-.7 0-1.3-.6-1.3-1.3V7.3c0-.7.6-1.3 1.3-1.3zm8 0h2.2c.7 0 1.3.6 1.3 1.3v2.4c0 .7-.6 1.3-1.3 1.3h-2.2c-.7 0-1.3-.6-1.3-1.3V7.3c0-.7.6-1.3 1.3-1.3z" />
+        <svg {...svgProps} className={cls} style={{ color: "#1CE783" }}>
+          {/* Hulu wordmark shape (Material Design Icons) */}
+          <path d="M19.5 12.8V22H14.7V13.9C14.7 13.2 14.1 12.6 13.4 12.6H10.5C9.8 12.6 9.2 13.2 9.2 13.9V22H4.5V2H9.3V8.4C9.6 8.3 9.9 8.2 10.2 8.2H15C17.5 8.2 19.5 10.3 19.5 12.8Z" />
         </svg>
       );
     case "Peacock":
       return (
-        <svg {...svgProps} className={cls}>
-          <path d="M12 4.5c-4.1 0-7.5 3.4-7.5 7.5s3.4 7.5 7.5 7.5 7.5-3.4 7.5-7.5-3.4-7.5-7.5-7.5zm0 12.5c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z" />
-          <circle cx="12" cy="12" r="2.8" />
-        </svg>
+        <img src="/peacock-logo.svg" alt="" className={cls} width={24} height={24} />
       );
     case "Paramount+":
       return (
-        <svg {...svgProps} className={cls}>
-          <path d="M12 3L6 18h3l3-9 3 9h3L12 3z" />
-          <circle cx="12" cy="9" r="2.5" />
-        </svg>
+        <img src="/paramount-plus-logo.svg" alt="" className={cls} width={24} height={24} />
       );
     case "Comedy Specials":
       return (
@@ -85,6 +77,17 @@ function StreamingIconComponent({ service, className = "w-5 h-5" }: StreamingIco
           <circle cx="9" cy="10" r="1.8" />
           <circle cx="15" cy="10" r="1.8" />
           <path d="M8 15.5c.5 1.5 2 2.5 4 2.5s3.5-1 4-2.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        </svg>
+      );
+    case "Theater":
+      return (
+        <svg {...svgProps} className={cls}>
+          {/* Clapperboard / film strip */}
+          <path d="M4 6h16l-1.5 10H5.5L4 6z" fill="currentColor" opacity={0.9} />
+          <path d="M4 6l3-2h3l-3 2H4zm6 0l3-2h3l-3 2h-3zm6 0l3-2h1l-2 2h-2z" fill="currentColor" />
+          <rect x="6" y="9" width="2" height="1.5" rx="0.3" fill="currentColor" opacity={0.3} />
+          <rect x="10" y="9" width="2" height="1.5" rx="0.3" fill="currentColor" opacity={0.3} />
+          <rect x="14" y="9" width="2" height="1.5" rx="0.3" fill="currentColor" opacity={0.3} />
         </svg>
       );
     default:

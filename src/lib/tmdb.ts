@@ -124,10 +124,53 @@ export async function getTmdbNowPlaying(): Promise<TmdbMovie[]> {
   return (json.results || []).slice(0, 100);
 }
 
+export async function getTmdbAiringToday(): Promise<TmdbTv[]> {
+  const key = getApiKey();
+  const res = await fetch(`${TMDB_BASE}/tv/airing_today?api_key=${key}&page=1`);
+  const json = await res.json();
+  checkTmdbError(json);
+  return (json.results || []).slice(0, 100);
+}
+
 export async function getTmdbTvDetails(tvId: number): Promise<TmdbTvDetails | null> {
   const key = getApiKey();
   const res = await fetch(`${TMDB_BASE}/tv/${tvId}?api_key=${key}`);
   const json = await res.json();
   if (json.status_code) return null;
   return json as TmdbTvDetails;
+}
+
+/** TMDB provider_id -> our app streaming service name (only services we show in UI) */
+const TMDB_PROVIDER_TO_OUR_NAME: Record<number, string> = {
+  8: "Netflix",
+  9: "Prime",       // Amazon Prime Video
+  15: "Hulu",
+  337: "Disney+",
+  386: "Peacock",
+  531: "Paramount+",
+  283: "Max",       // HBO Max
+  384: "HBO",
+  350: "Apple TV",  // Apple TV+
+  2: "Apple TV",    // Apple TV (legacy)
+};
+
+/** Get flatrate (subscription) watch provider names we recognize for a movie or TV show. Region defaults to US. */
+export async function getTmdbWatchProviders(
+  type: "movie" | "tv",
+  id: number,
+  region = "US"
+): Promise<string[]> {
+  const key = getApiKey();
+  const path = type === "movie" ? "movie" : "tv";
+  const res = await fetch(`${TMDB_BASE}/${path}/${id}/watch/providers?api_key=${key}`);
+  const json = await res.json();
+  if (json.status_code) return [];
+  const regionData = json.results?.[region];
+  if (!regionData?.flatrate || !Array.isArray(regionData.flatrate)) return [];
+  const names = new Set<string>();
+  for (const p of regionData.flatrate as { provider_id?: number }[]) {
+    const ourName = p.provider_id != null ? TMDB_PROVIDER_TO_OUR_NAME[p.provider_id] : undefined;
+    if (ourName) names.add(ourName);
+  }
+  return Array.from(names);
 }

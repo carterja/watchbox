@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getTmdbPopularMovies, getTmdbPopularTv, getTmdbTrending, getTmdbNowPlaying, getTmdbTopMovies, getTmdbTopTv } from "@/lib/tmdb";
+import { getTmdbPopularMovies, getTmdbPopularTv, getTmdbTrending, getTmdbNowPlaying, getTmdbTopMovies, getTmdbTopTv, getTmdbAiringToday } from "@/lib/tmdb";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600; // Cache for 1 hour
@@ -9,13 +9,14 @@ export async function GET(request: NextRequest) {
     // Check if client sent cache headers
     const ifNoneMatch = request.headers.get('if-none-match');
     
-    const [topMovies, topTv, popularMovies, popularTv, trendingWeek, nowPlaying] = await Promise.all([
+    const [topMovies, topTv, popularMovies, popularTv, trendingWeek, nowPlaying, airingToday] = await Promise.all([
       getTmdbTopMovies(),
       getTmdbTopTv(),
       getTmdbPopularMovies(),
       getTmdbPopularTv(),
       getTmdbTrending("week"),
       getTmdbNowPlaying(),
+      getTmdbAiringToday(),
     ]);
 
     const data = {
@@ -23,6 +24,7 @@ export async function GET(request: NextRequest) {
       popular: { movies: popularMovies, tv: popularTv },
       trending: trendingWeek,
       nowPlaying,
+      airingToday,
     };
 
     // Generate ETag for cache validation

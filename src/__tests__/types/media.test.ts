@@ -3,9 +3,9 @@ import type { Media, MediaStatus, SeasonProgressItem } from '@/types/media';
 
 describe('Media types', () => {
   it('should accept valid MediaStatus values', () => {
-    const statuses: MediaStatus[] = ['yet_to_start', 'in_progress', 'finished'];
+    const statuses: MediaStatus[] = ['yet_to_start', 'in_progress', 'finished', 'rewatch'];
     statuses.forEach((status) => {
-      expect(['yet_to_start', 'in_progress', 'finished']).toContain(status);
+      expect(['yet_to_start', 'in_progress', 'finished', 'rewatch']).toContain(status);
     });
   });
 

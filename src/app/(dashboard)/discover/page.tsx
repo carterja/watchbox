@@ -24,6 +24,7 @@ type TmdbLists = {
   };
   trending: { type: "movie" | "tv"; data: { id: number; title?: string; name?: string; overview: string | null; poster_path: string | null; release_date?: string | null; first_air_date?: string | null } }[];
   nowPlaying: { id: number; title: string; overview: string | null; poster_path: string | null; release_date: string | null }[];
+  airingToday?: { id: number; name: string; overview: string | null; poster_path: string | null; first_air_date: string | null }[];
 };
 
 type Category = "top" | "popular" | "trending" | "nowPlaying";
@@ -358,7 +359,7 @@ export default function DiscoverPage() {
                     <section>
                       <h2 className="text-lg font-semibold text-white mb-4">Popular movies</h2>
                       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                        {lists.popular.movies.map((m) => {
+                        {(lists.popular?.movies ?? []).map((m) => {
                           const key = `movie-${m.id}`;
                           return (
                             <DiscoverCard
@@ -380,7 +381,7 @@ export default function DiscoverPage() {
                     <section>
                       <h2 className="text-lg font-semibold text-white mb-4">Popular TV shows</h2>
                       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                        {lists.popular.tv.map((t) => {
+                        {(lists.popular?.tv ?? []).map((t) => {
                           const key = `tv-${t.id}`;
                           return (
                             <DiscoverCard
@@ -406,7 +407,7 @@ export default function DiscoverPage() {
                   <section>
                     <h2 className="text-lg font-semibold text-white mb-4">Trending this week</h2>
                     <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                      {lists.trending.map((item) => {
+                      {(lists.trending ?? []).map((item) => {
                         const title = item.type === "movie" ? item.data.title : item.data.name;
                         if (!title) return null;
                         const key = `${item.type}-${item.data.id}`;
@@ -437,7 +438,7 @@ export default function DiscoverPage() {
                     <section>
                       <h2 className="text-lg font-semibold text-white mb-4">Top rated movies</h2>
                       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                        {lists.top.movies.map((m) => {
+                        {(lists.top?.movies ?? []).map((m) => {
                           const key = `movie-${m.id}`;
                           return (
                             <DiscoverCard
@@ -459,7 +460,7 @@ export default function DiscoverPage() {
                     <section>
                       <h2 className="text-lg font-semibold text-white mb-4">Top rated TV shows</h2>
                       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                        {lists.top.tv.map((t) => {
+                        {(lists.top?.tv ?? []).map((t) => {
                           const key = `tv-${t.id}`;
                           return (
                             <DiscoverCard
@@ -482,28 +483,52 @@ export default function DiscoverPage() {
                 )}
 
                 {category === "nowPlaying" && (
-                  <section>
-                    <h2 className="text-lg font-semibold text-white mb-4">Now playing in theaters</h2>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
-                      {lists.nowPlaying.map((m) => {
-                        const key = `movie-${m.id}`;
-                        return (
-                          <DiscoverCard
-                            key={key}
-                            id={m.id}
-                            type="movie"
-                            title={m.title}
-                            overview={m.overview}
-                            posterPath={m.poster_path}
-                            releaseDate={m.release_date}
-                            inCollection={isInCollection("movie", m.id)}
-                            adding={addingId === key}
-                            onAdd={() => addMovieFromBrowse(m)}
-                          />
-                        );
-                      })}
-                    </div>
-                  </section>
+                  <>
+                    <section>
+                      <h2 className="text-lg font-semibold text-white mb-4">Now playing in theaters</h2>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                        {(lists.nowPlaying ?? []).map((m) => {
+                          const key = `movie-${m.id}`;
+                          return (
+                            <DiscoverCard
+                              key={key}
+                              id={m.id}
+                              type="movie"
+                              title={m.title}
+                              overview={m.overview}
+                              posterPath={m.poster_path}
+                              releaseDate={m.release_date}
+                              inCollection={isInCollection("movie", m.id)}
+                              adding={addingId === key}
+                              onAdd={() => addMovieFromBrowse(m)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </section>
+                    <section>
+                      <h2 className="text-lg font-semibold text-white mb-4">Airing today (TV)</h2>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                        {(lists.airingToday ?? []).map((t) => {
+                          const key = `tv-${t.id}`;
+                          return (
+                            <DiscoverCard
+                              key={key}
+                              id={t.id}
+                              type="tv"
+                              title={t.name}
+                              overview={t.overview}
+                              posterPath={t.poster_path}
+                              releaseDate={t.first_air_date}
+                              inCollection={isInCollection("tv", t.id)}
+                              adding={addingId === key}
+                              onAdd={() => addTvFromBrowse(t)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </section>
+                  </>
                 )}
               </div>
             ) : null}

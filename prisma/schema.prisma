@@ -15,7 +15,7 @@ model Media {
   overview    String?
   posterPath  String?
   releaseDate String?
-  status      String   // "yet_to_start" | "in_progress" | "finished"
+  status      String   // "yet_to_start" | "in_progress" | "finished" | "rewatch"
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   // For TV: optional progress (e.g. "Season 2, Episode 5")
