@@ -70,15 +70,15 @@ function QuickSetupModalComponent({ mediaTitle, mediaType, onClose, onSave }: Pr
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-stretch md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm"
       onClick={onClose}
     >
       <div 
-        className="relative w-full max-w-md max-h-[90vh] rounded-t-2xl md:rounded-2xl border-t md:border border-shelf-border bg-shelf-sidebar shadow-2xl overflow-hidden"
+        className="relative flex flex-col w-full max-w-md h-full md:h-auto md:max-h-[90vh] rounded-none md:rounded-2xl border-0 md:border border-shelf-border bg-shelf-sidebar shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 md:p-6 border-b border-shelf-border bg-gradient-to-r from-shelf-sidebar to-shelf-card">
+        <div className="shrink-0 p-4 md:p-6 border-b border-shelf-border bg-gradient-to-r from-shelf-sidebar to-shelf-card">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-base md:text-lg font-bold text-white">Quick Setup</h2>
@@ -93,8 +93,8 @@ function QuickSetupModalComponent({ mediaTitle, mediaType, onClose, onSave }: Pr
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-4 md:p-6 space-y-4 md:space-y-6 max-h-[calc(90vh-180px)] overflow-y-auto">
+        {/* Content - scrollable so footer always visible */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6">
           {/* Streaming Service */}
           <div>
             <label className="block text-xs md:text-sm font-medium text-white mb-2 md:mb-3">
@@ -164,8 +164,8 @@ function QuickSetupModalComponent({ mediaTitle, mediaType, onClose, onSave }: Pr
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-2 md:gap-3 p-4 md:p-6 border-t border-shelf-border bg-shelf-card">
+        {/* Footer - always visible, safe area on mobile */}
+        <div className="shrink-0 flex items-center justify-between gap-2 md:gap-3 p-4 md:p-6 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-shelf-border bg-shelf-card">
           <button
             onClick={handleSkip}
             className="px-3 md:px-4 py-2 rounded-lg text-shelf-muted hover:text-white transition text-xs md:text-sm"
