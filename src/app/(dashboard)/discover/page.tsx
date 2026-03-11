@@ -372,7 +372,7 @@ export default function DiscoverPage() {
                               releaseDate={m.release_date}
                               inCollection={isInCollection("movie", m.id)}
                               adding={addingId === key}
-                              onAdd={() => addMovieFromBrowse(m)}
+                              onAdd={addMovieFromBrowse(m)}
                             />
                           );
                         })}
@@ -394,7 +394,7 @@ export default function DiscoverPage() {
                               releaseDate={t.first_air_date}
                               inCollection={isInCollection("tv", t.id)}
                               adding={addingId === key}
-                              onAdd={() => addTvFromBrowse(t)}
+                              onAdd={addTvFromBrowse(t)}
                             />
                           );
                         })}
@@ -425,7 +425,7 @@ export default function DiscoverPage() {
                             releaseDate={releaseDate}
                             inCollection={isInCollection(item.type, item.data.id)}
                             adding={addingId === key}
-                            onAdd={() => addTrendingItem(item)}
+                            onAdd={addTrendingItem(item)}
                           />
                         );
                       })}
@@ -451,7 +451,7 @@ export default function DiscoverPage() {
                               releaseDate={m.release_date}
                               inCollection={isInCollection("movie", m.id)}
                               adding={addingId === key}
-                              onAdd={() => addMovieFromBrowse(m)}
+                              onAdd={addMovieFromBrowse(m)}
                             />
                           );
                         })}
@@ -473,7 +473,7 @@ export default function DiscoverPage() {
                               releaseDate={t.first_air_date}
                               inCollection={isInCollection("tv", t.id)}
                               adding={addingId === key}
-                              onAdd={() => addTvFromBrowse(t)}
+                              onAdd={addTvFromBrowse(t)}
                             />
                           );
                         })}
@@ -500,7 +500,7 @@ export default function DiscoverPage() {
                               releaseDate={m.release_date}
                               inCollection={isInCollection("movie", m.id)}
                               adding={addingId === key}
-                              onAdd={() => addMovieFromBrowse(m)}
+                              onAdd={addMovieFromBrowse(m)}
                             />
                           );
                         })}
@@ -522,7 +522,7 @@ export default function DiscoverPage() {
                               releaseDate={t.first_air_date}
                               inCollection={isInCollection("tv", t.id)}
                               adding={addingId === key}
-                              onAdd={() => addTvFromBrowse(t)}
+                              onAdd={addTvFromBrowse(t)}
                             />
                           );
                         })}
