@@ -46,7 +46,11 @@ COPY --from=builder /app/node_modules ./node_modules
 # Create data directory for SQLite; create .next/cache so Next.js can write at runtime
 RUN mkdir -p /app/data /app/.next/cache && chown -R nextjs:nodejs /app
 
-USER nextjs
+# su-exec so we can fix volume permissions then drop to nextjs
+RUN apk add --no-cache su-exec
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 9516
 
@@ -54,5 +58,7 @@ ENV PORT=9516
 ENV HOSTNAME="0.0.0.0"
 ENV DATABASE_URL="file:/app/data/watchbox.db"
 
+# Entrypoint: ensure /app/data is writable by nextjs when volume is mounted, then run CMD as nextjs
+ENTRYPOINT ["/entrypoint.sh"]
 # Run database migrations on startup (use bundled Prisma 6 CLI; npx can resolve to 7.x)
-CMD node node_modules/prisma/build/index.js db push && node server.js
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push && node server.js"]
