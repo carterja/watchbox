@@ -39,7 +39,7 @@ function StreamingIconComponent({ service, className = "w-5 h-5" }: StreamingIco
     case "Prime":
       return (
         <img
-          src="https://cdn.simpleicons.org/amazon/ffffff"
+          src="/prime-video.png"
           alt=""
           className={cls}
           width={24}

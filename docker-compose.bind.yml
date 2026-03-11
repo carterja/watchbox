@@ -1,0 +1,16 @@
+# Optional: use this when running from ~/docker/watchbox so the DB file
+# lives on the host at ./data/watchbox.db (easy to copy your dev.db there).
+#
+# Usage on server:
+#   mkdir -p ~/docker/watchbox/data
+#   cd ~/docker/watchbox   # and have docker-compose.yml + Dockerfile here (clone repo or copy files)
+#   cp /path/to/your/dev.db data/watchbox.db
+#   docker compose -f docker-compose.yml -f docker-compose.bind.yml up -d
+#
+# Or symlink/copy this file to docker-compose.override.yml and run: docker compose up -d
+
+# Override: use host ./data for DB so the file lives at ~/docker/watchbox/data/watchbox.db
+services:
+  app:
+    volumes:
+      - ./data:/app/data

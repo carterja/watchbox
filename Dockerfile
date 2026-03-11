@@ -43,8 +43,8 @@ COPY --from=builder /app/prisma ./prisma
 # Full node_modules so Prisma CLI has all deps (effect, empathic, fast-check, etc.) at runtime
 COPY --from=builder /app/node_modules ./node_modules
 
-# Create data directory for SQLite
-RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
+# Create data directory for SQLite; create .next/cache so Next.js can write at runtime
+RUN mkdir -p /app/data /app/.next/cache && chown -R nextjs:nodejs /app
 
 USER nextjs
 
