@@ -49,7 +49,6 @@ jobs:
   deploy-to-portainer:
     needs: build-and-push
     runs-on: ubuntu-latest
-    
     steps:
       - name: Deploy to Portainer
         env:
@@ -58,8 +57,12 @@ jobs:
           PORTAINER_STACK_ID: ${{ secrets.PORTAINER_STACK_ID }}
           PORTAINER_ENDPOINT_ID: ${{ secrets.PORTAINER_ENDPOINT_ID }}
         run: |
+          if [ -z "$PORTAINER_URL" ]; then
+            echo "PORTAINER_URL secret not set. Add it in Settings > Secrets and variables > Actions to enable deploy."
+            exit 0
+          fi
           # Pull the latest image in Portainer stack
-          curl -X PUT "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID?endpointId=$PORTAINER_ENDPOINT_ID" \
+          curl -sf -X PUT "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID?endpointId=$PORTAINER_ENDPOINT_ID" \
             -H "X-API-Key: $PORTAINER_ACCESS_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{
@@ -68,12 +71,12 @@ jobs:
             }'
           
           # Restart the stack
-          curl -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID/stop?endpointId=$PORTAINER_ENDPOINT_ID" \
+          curl -sf -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID/stop?endpointId=$PORTAINER_ENDPOINT_ID" \
             -H "X-API-Key: $PORTAINER_ACCESS_TOKEN"
           
           sleep 5
           
-          curl -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID/start?endpointId=$PORTAINER_ENDPOINT_ID" \
+          curl -sf -X POST "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID/start?endpointId=$PORTAINER_ENDPOINT_ID" \
             -H "X-API-Key: $PORTAINER_ACCESS_TOKEN"
 
       - name: Deployment notification
