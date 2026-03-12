@@ -17,6 +17,8 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# Ensure scripts dir exists so runner COPY never fails (e.g. if scripts not in build context)
+RUN mkdir -p /app/scripts
 
 # Generate Prisma Client
 RUN npx prisma generate
