@@ -41,33 +41,37 @@ export function posterUrl(path: string | null, size: "w92" | "w154" | "w185" | "
   return `${IMAGE_BASE}/${size}${path}`;
 }
 
-export async function searchTmdb(query: string): Promise<TmdbSearchResult[]> {
+export type SearchTypeFilter = "movie" | "tv" | "all";
+
+export async function searchTmdb(query: string, typeFilter: SearchTypeFilter = "all"): Promise<TmdbSearchResult[]> {
   const key = getApiKey();
+  const searchMovie = typeFilter === "all" || typeFilter === "movie";
+  const searchTv = typeFilter === "all" || typeFilter === "tv";
+
   const [moviesRes, tvRes] = await Promise.all([
-    fetch(`${TMDB_BASE}/search/movie?api_key=${key}&query=${encodeURIComponent(query)}`),
-    fetch(`${TMDB_BASE}/search/tv?api_key=${key}&query=${encodeURIComponent(query)}`),
+    searchMovie ? fetch(`${TMDB_BASE}/search/movie?api_key=${key}&query=${encodeURIComponent(query)}`) : Promise.resolve(null),
+    searchTv ? fetch(`${TMDB_BASE}/search/tv?api_key=${key}&query=${encodeURIComponent(query)}`) : Promise.resolve(null),
   ]);
-  const [moviesJson, tvJson] = await Promise.all([moviesRes.json(), tvRes.json()]);
-  checkTmdbError(moviesJson);
-  checkTmdbError(tvJson);
-  
-  // Map and combine with popularity scores for sorting
-  const movies: TmdbSearchResult[] = (moviesJson.results || []).slice(0, 20).map((m: TmdbMovie & { popularity?: number }) => ({ 
-    type: "movie", 
+  const [moviesJson, tvJson] = await Promise.all([
+    moviesRes ? moviesRes.json() : Promise.resolve({ results: [] }),
+    tvRes ? tvRes.json() : Promise.resolve({ results: [] }),
+  ]);
+  if (searchMovie) checkTmdbError(moviesJson);
+  if (searchTv) checkTmdbError(tvJson);
+
+  const movies: TmdbSearchResult[] = (moviesJson.results || []).slice(0, 20).map((m: TmdbMovie & { popularity?: number }) => ({
+    type: "movie",
     data: m,
-    popularity: m.popularity || 0
+    popularity: m.popularity || 0,
   }));
-  const tvs: TmdbSearchResult[] = (tvJson.results || []).slice(0, 20).map((t: TmdbTv & { popularity?: number }) => ({ 
-    type: "tv", 
+  const tvs: TmdbSearchResult[] = (tvJson.results || []).slice(0, 20).map((t: TmdbTv & { popularity?: number }) => ({
+    type: "tv",
     data: t,
-    popularity: t.popularity || 0
+    popularity: t.popularity || 0,
   }));
-  
-  // Combine and sort by popularity (TMDB's relevance score)
+
   const combined = [...movies, ...tvs] as (TmdbSearchResult & { popularity: number })[];
-  return combined
-    .sort((a, b) => b.popularity - a.popularity)
-    .slice(0, 20);
+  return combined.sort((a, b) => b.popularity - a.popularity).slice(0, 20);
 }
 
 export async function getTmdbTopMovies(): Promise<TmdbMovie[]> {

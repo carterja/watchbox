@@ -34,6 +34,7 @@ export default function DiscoverPage() {
   const [tab, setTab] = useState<"search" | "browse">("browse");
   const [category, setCategory] = useState<Category>("popular");
   const [query, setQuery] = useState("");
+  const [searchType, setSearchType] = useState<"all" | "movie" | "tv">("all");
   const [searchResults, setSearchResults] = useState<TmdbSearchItem[]>([]);
   const [lists, setLists] = useState<TmdbLists | null>(null);
   const [myMedia, setMyMedia] = useState<Media[]>([]);
@@ -58,7 +59,7 @@ export default function DiscoverPage() {
     setLoading(true);
     setTmdbError(null);
     try {
-      const res = await fetch(`/api/tmdb/search?q=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/tmdb/search?q=${encodeURIComponent(query.trim())}`);
       const data = await res.json();
       if (!res.ok) {
         setTmdbError(data.error || "Search failed");
@@ -70,6 +71,11 @@ export default function DiscoverPage() {
       setLoading(false);
     }
   }, [query]);
+
+  const filteredSearchResults =
+    searchType === "all"
+      ? searchResults
+      : searchResults.filter((item) => item.type === searchType);
 
   const loadLists = useCallback(async () => {
     setLoading(true);
@@ -232,25 +238,38 @@ export default function DiscoverPage() {
           </div>
 
           {tab === "search" && (
-            <div className="flex gap-2 max-w-xl">
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && runSearch()}
-                placeholder="Search movies & TV shows..."
-                className="flex-1 rounded-lg border border-shelf-border bg-shelf-card px-3 md:px-4 py-2 md:py-2.5 text-sm md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
-                autoFocus
-              />
-              <button
-                type="button"
-                onClick={runSearch}
-                disabled={loading}
-                className="rounded-lg bg-shelf-accent px-4 py-2.5 text-white font-medium hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-2 shrink-0"
-              >
-                {loading && tab === "search" ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-                Search
-              </button>
+            <div className="space-y-3">
+              <div className="flex gap-2 max-w-xl">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && runSearch()}
+                  placeholder="Search movies & TV shows..."
+                  className="flex-1 rounded-lg border border-shelf-border bg-shelf-card px-3 md:px-4 py-2 md:py-2.5 text-sm md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={runSearch}
+                  disabled={loading}
+                  className="rounded-lg bg-shelf-accent px-4 py-2.5 text-white font-medium hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-2 shrink-0"
+                >
+                  {loading && tab === "search" ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                  Search
+                </button>
+              </div>
+              <div className="flex gap-1.5 md:gap-2">
+                <TabButton active={searchType === "all"} onClick={() => setSearchType("all")}>
+                  All
+                </TabButton>
+                <TabButton active={searchType === "movie"} onClick={() => setSearchType("movie")}>
+                  Movies
+                </TabButton>
+                <TabButton active={searchType === "tv"} onClick={() => setSearchType("tv")}>
+                  TV
+                </TabButton>
+              </div>
             </div>
           )}
 
@@ -282,13 +301,18 @@ export default function DiscoverPage() {
 
         {tab === "search" && (
           <div className="space-y-3">
-            {searchResults.length === 0 && !loading && !query && (
+            {!loading && !query && (
               <p className="text-shelf-muted text-sm">Enter a search term above to find movies or TV shows.</p>
             )}
-            {searchResults.length === 0 && !loading && query && (
+            {!loading && query && searchResults.length === 0 && (
               <p className="text-shelf-muted text-sm">No results found for &ldquo;{query}&rdquo;</p>
             )}
-            {searchResults.map((item) => {
+            {!loading && query && searchResults.length > 0 && filteredSearchResults.length === 0 && (
+              <p className="text-shelf-muted text-sm">
+                No {searchType === "movie" ? "movies" : "TV shows"} in the results. Try &ldquo;All&rdquo; or a different search.
+              </p>
+            )}
+            {filteredSearchResults.map((item) => {
               const title = item.type === "movie" ? item.data.title : item.data.name;
               const date = item.type === "movie" ? item.data.release_date : item.data.first_air_date;
               const key = item.type === "movie" ? `movie-${item.data.id}` : `tv-${item.data.id}`;

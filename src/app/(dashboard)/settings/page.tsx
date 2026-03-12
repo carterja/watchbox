@@ -1,10 +1,35 @@
 "use client";
 
+import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Check } from "lucide-react";
+import { Check, Loader2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const { themeId, setThemeId } = useTheme();
+  const [syncingSeasons, setSyncingSeasons] = useState(false);
+  const syncSeasons = async () => {
+    setSyncingSeasons(true);
+    try {
+      const res = await fetch("/api/sync-seasons", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || "Sync failed");
+        return;
+      }
+      if (data.total === 0) {
+        toast.success("All series already have season counts.");
+      } else {
+        toast.success(
+          `Updated ${data.updated} series.${data.failed > 0 ? ` ${data.failed} failed.` : ""}`
+        );
+      }
+    } catch {
+      toast.error("Sync failed");
+    } finally {
+      setSyncingSeasons(false);
+    }
+  };
 
   return (
     <div className="min-h-screen">
@@ -56,6 +81,28 @@ export default function SettingsPage() {
               );
             })}
           </div>
+        </section>
+
+        <section className="mt-10">
+          <h2 className="text-sm font-medium text-shelf-muted uppercase tracking-wide mb-3">
+            Library
+          </h2>
+          <p className="text-sm text-shelf-muted mb-4">
+            Sync season counts from TMDB for TV series that are missing them. New series get this when added; use this to backfill older entries.
+          </p>
+          <button
+            type="button"
+            onClick={syncSeasons}
+            disabled={syncingSeasons}
+            className="inline-flex items-center gap-2 rounded-lg bg-shelf-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-50"
+          >
+            {syncingSeasons ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <RefreshCw size={18} />
+            )}
+            {syncingSeasons ? "Syncing…" : "Sync season counts from TMDB"}
+          </button>
         </section>
       </div>
     </div>
