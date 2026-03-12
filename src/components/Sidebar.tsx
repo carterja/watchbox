@@ -31,6 +31,7 @@ export function Sidebar() {
               <Link
                 key={href}
                 href={href}
+                prefetch={false}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
                   isActive
                     ? "bg-[#8b5cf6] text-white shadow-lg shadow-[#8b5cf6]/20"
@@ -68,6 +69,7 @@ export function Sidebar() {
               <Link
                 key={href}
                 href={href}
+                prefetch={false}
                 className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 transition ${
                   isActive
                     ? "bg-[#8b5cf6]/20 text-[#8b5cf6]"
