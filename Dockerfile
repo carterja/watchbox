@@ -49,8 +49,8 @@ COPY --from=builder /app/node_modules ./node_modules
 # Create data directory for SQLite; create .next/cache so Next.js can write at runtime
 RUN mkdir -p /app/data /app/.next/cache && chown -R nextjs:nodejs /app
 
-# su-exec so we can fix volume permissions then drop to nextjs
-RUN apk add --no-cache su-exec
+# su-exec + wget (healthcheck in docker-compose needs wget)
+RUN apk add --no-cache su-exec wget
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
