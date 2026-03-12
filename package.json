@@ -13,6 +13,7 @@
     "test:coverage": "vitest --coverage",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
+    "db:backfill-viewer": "node scripts/backfill-viewer.mjs",
     "db:studio": "prisma studio",
     "generate-icons": "node scripts/generate-icons.mjs"
   },

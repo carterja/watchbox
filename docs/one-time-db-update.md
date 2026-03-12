@@ -1,4 +1,16 @@
-# One-time: replace the live site DB
+# One-time DB updates
+
+## Viewer backfill (null/empty → both)
+
+Any media with no viewer set is updated to `viewer = 'both'`. This runs automatically on deploy. To run locally:
+
+```bash
+npm run db:backfill-viewer
+```
+
+---
+
+## One-time: replace the live site DB
 
 Keep the Portainer stack tied to Git (auto-updates on push). Just this once, replace the database inside the running container with your local `dev.db`.
 

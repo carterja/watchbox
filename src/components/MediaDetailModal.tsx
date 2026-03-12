@@ -2,7 +2,7 @@
 
 import { useState, useEffect, memo } from "react";
 import Image from "next/image";
-import { X, Film, Tv, Save, Search, Check, Trash2 } from "lucide-react";
+import { X, Film, Tv, Save, Search, Check, Trash2, Heart, UsersRound, User } from "lucide-react";
 import type { Media, MediaStatus, SeasonProgressItem, Viewer } from "@/types/media";
 import { posterUrl } from "@/lib/tmdb";
 
@@ -50,10 +50,10 @@ const STREAMING_SERVICES = [
   "Comedy Specials",
 ];
 
-const VIEWER_OPTIONS: { value: Viewer; label: string; icon: string }[] = [
-  { value: "wife", label: "Wife", icon: "❤️" },
-  { value: "both", label: "Both", icon: "💜" },
-  { value: "me", label: "Me", icon: "⭐" },
+const VIEWER_OPTIONS: { value: Viewer; label: string; Icon: typeof Heart }[] = [
+  { value: "wife", label: "Wife", Icon: Heart },
+  { value: "both", label: "Both", Icon: UsersRound },
+  { value: "me", label: "Me", Icon: User },
 ];
 
 function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props) {
@@ -440,7 +440,7 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
                           : "bg-shelf-card text-shelf-muted hover:text-white border border-shelf-border"
                       }`}
                     >
-                      <span className="text-sm md:text-base">{option.icon}</span>
+                      <option.Icon size={18} className="shrink-0 md:w-5 md:h-5" strokeWidth={2} />
                       <span className="text-[10px] md:text-sm">{option.label}</span>
                     </button>
                   ))}

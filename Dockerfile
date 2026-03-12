@@ -40,6 +40,7 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
 # Full node_modules so Prisma CLI has all deps (effect, empathic, fast-check, etc.) at runtime
 COPY --from=builder /app/node_modules ./node_modules
 
@@ -60,5 +61,5 @@ ENV DATABASE_URL="file:/app/data/watchbox.db"
 
 # Entrypoint: ensure /app/data is writable by nextjs when volume is mounted, then run CMD as nextjs
 ENTRYPOINT ["/entrypoint.sh"]
-# Run database migrations on startup (use bundled Prisma 6 CLI; npx can resolve to 7.x)
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push && node server.js"]
+# Run migrations, backfill viewer (null/empty -> both), then start app
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js db push && node scripts/backfill-viewer.mjs && node server.js"]

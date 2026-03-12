@@ -1,7 +1,7 @@
 "use client";
 
 import { memo } from "react";
-import { Tv2 } from "lucide-react";
+import { Tv2, Heart, UsersRound, User } from "lucide-react";
 import { StreamingIcon } from "./StreamingIcon";
 
 type FilterBarProps = {
@@ -12,12 +12,11 @@ type FilterBarProps = {
   availableServices: string[];
 };
 
-const VIEWER_OPTIONS = [
-  { value: null, label: "All" },
-  { value: "wife", label: "Wife" },
-  { value: "both", label: "Both" },
-  { value: "me", label: "Me" },
-] as const;
+const VIEWER_OPTIONS: { value: "wife" | "both" | "me"; label: string; Icon: typeof Heart }[] = [
+  { value: "wife", label: "Wife", Icon: Heart },
+  { value: "both", label: "Both", Icon: UsersRound },
+  { value: "me", label: "Me", Icon: User },
+];
 
 function FilterBarComponent({
   streamingService,
@@ -68,41 +67,27 @@ function FilterBarComponent({
 
       {/* Viewer Pills */}
       <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-        {VIEWER_OPTIONS.map(({ value, label }) => {
+        {VIEWER_OPTIONS.map(({ value, label, Icon }) => {
           const isActive = viewer === value;
           let colorClass = "";
-          let icon = <span className="text-sm">✨</span>;
-          
           if (value === "wife") {
             colorClass = isActive ? "bg-red-500/20 border-red-500/50 text-red-300" : "border-red-500/30 text-red-400/60";
-            icon = <span className="text-sm">❤️</span>;
           } else if (value === "both") {
             colorClass = isActive ? "bg-purple-500/20 border-purple-500/50 text-purple-300" : "border-purple-500/30 text-purple-400/60";
-            icon = <span className="text-sm">💜</span>;
-          } else if (value === "me") {
-            colorClass = isActive ? "bg-sky-500/20 border-sky-500/50 text-sky-300" : "border-sky-500/30 text-sky-400/60";
-            icon = <span className="text-sm">⭐</span>;
           } else {
-            colorClass = isActive ? "bg-shelf-accent text-white" : "text-shelf-muted hover:text-white";
+            colorClass = isActive ? "bg-sky-500/20 border-sky-500/50 text-sky-300" : "border-sky-500/30 text-sky-400/60";
           }
-          
           return (
             <button
-              key={label}
+              key={value}
               type="button"
-              onClick={() => onViewerChange(value)}
-              title={value === null ? "All viewers" : label}
+              onClick={() => onViewerChange(isActive ? null : value)}
+              title={label}
               className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition border aspect-square size-9 md:size-10 shrink-0 ${
-                value === null
-                  ? isActive
-                    ? "bg-shelf-accent text-white border-shelf-accent"
-                    : "bg-shelf-card border-shelf-border hover:bg-shelf-border hover:text-white"
-                  : isActive
-                  ? colorClass
-                  : `bg-shelf-card/50 border-shelf-border hover:bg-shelf-card ${colorClass}`
+                isActive ? colorClass : `bg-shelf-card/50 border-shelf-border hover:bg-shelf-card ${colorClass}`
               }`}
             >
-              {icon}
+              <Icon size={18} className="md:w-5 md:h-5 shrink-0" strokeWidth={2} />
               <span className="sr-only">{label}</span>
             </button>
           );

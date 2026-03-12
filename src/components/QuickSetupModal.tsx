@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, memo } from "react";
-import { X, Save } from "lucide-react";
+import { X, Save, Heart, UsersRound, User } from "lucide-react";
 import type { MediaStatus, Viewer } from "@/types/media";
 import { StreamingIcon } from "./StreamingIcon";
 
@@ -38,10 +38,10 @@ const STREAMING_SERVICES = [
   "Comedy Specials",
 ];
 
-const VIEWER_OPTIONS: { value: Viewer; label: string; icon: string }[] = [
-  { value: "wife", label: "Wife", icon: "❤️" },
-  { value: "both", label: "Both", icon: "💜" },
-  { value: "me", label: "Me", icon: "⭐" },
+const VIEWER_OPTIONS: { value: Viewer; label: string; Icon: typeof Heart }[] = [
+  { value: "wife", label: "Wife", Icon: Heart },
+  { value: "both", label: "Both", Icon: UsersRound },
+  { value: "me", label: "Me", Icon: User },
 ];
 
 function QuickSetupModalComponent({ mediaTitle, mediaType, onClose, onSave }: Props) {
@@ -136,7 +136,7 @@ function QuickSetupModalComponent({ mediaTitle, mediaType, onClose, onSave }: Pr
                       : "bg-shelf-card text-shelf-muted hover:text-white border border-shelf-border"
                   }`}
                 >
-                  <span className="text-xl">{option.icon}</span>
+                  <option.Icon size={22} className="shrink-0" strokeWidth={2} />
                   <span className="text-xs">{option.label}</span>
                 </button>
               ))}
