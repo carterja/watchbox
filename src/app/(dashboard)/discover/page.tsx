@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { Search, Film, Tv, Loader2, Check } from "lucide-react";
+import { toast } from "sonner";
 import { posterUrl } from "@/lib/tmdb";
 import { DiscoverCard } from "@/components/DiscoverCard";
 import { TabButton } from "@/components/TabButton";
@@ -151,13 +152,14 @@ export default function DiscoverPage() {
       });
       if (res.ok) {
         await fetchMyMedia();
+        toast.success("Added to your list");
       } else {
         const contentType = res.headers.get('content-type');
         if (contentType?.includes('application/json')) {
           const err = await res.json();
-          alert(err.error || "Failed to add");
+          toast.error(err.error || "Failed to add");
         } else {
-          alert("Failed to add: Server error");
+          toast.error("Failed to add: Server error");
         }
       }
     } finally {

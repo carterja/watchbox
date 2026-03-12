@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { Toaster } from "sonner";
 
 export const THEMES = [
   { id: "default", name: "WatchBox Purple", accent: "#8b5cf6" },
@@ -50,6 +51,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <ThemeContext.Provider value={{ themeId, setThemeId }}>
       {children}
+      <Toaster
+        position="bottom-center"
+        toastOptions={{
+          className: "!bg-shelf-card !border-shelf-border !text-white",
+          style: { background: "var(--color-shelf-card)", borderColor: "var(--color-shelf-border)" },
+        }}
+      />
     </ThemeContext.Provider>
   );
 }

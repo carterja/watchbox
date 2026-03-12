@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import Image from "next/image";
 import { X, Search, Film, Tv, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { posterUrl } from "@/lib/tmdb";
 import type { MediaStatus } from "@/types/media";
 
@@ -108,10 +109,17 @@ export function AddMediaModal({ onClose, onAdded, defaultStatus, typeFilter }: P
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (res.ok) onAdded();
-      else {
-        const err = await res.json();
-        alert(err.error || "Failed to add");
+      if (res.ok) {
+        onAdded();
+        toast.success("Added to your list");
+      } else {
+        const contentType = res.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          const err = await res.json();
+          toast.error(err.error || "Failed to add");
+        } else {
+          toast.error("Failed to add: Server error");
+        }
       }
     } finally {
       setAddingId(null);
