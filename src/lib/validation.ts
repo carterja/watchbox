@@ -27,6 +27,10 @@ export const CreateMediaSchema = z.object({
 
 // Update media validation
 export const UpdateMediaSchema = z.object({
+  tmdbId: z.number().int().positive().optional(),
+  title: z.string().min(1).max(500).optional(),
+  overview: z.string().max(5000).nullable().optional(),
+  releaseDate: z.string().nullable().optional(),
   status: MediaStatusSchema.optional(),
   progressNote: z.string().max(1000).optional(),
   totalSeasons: z.number().int().min(0).max(100).optional(),

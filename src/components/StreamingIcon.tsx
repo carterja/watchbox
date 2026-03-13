@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import Image from "next/image";
 
 type StreamingIconProps = {
   service: string;
@@ -16,6 +17,36 @@ const svgProps = {
 function StreamingIconComponent({ service, className = "w-5 h-5" }: StreamingIconProps) {
   const cls = `shrink-0 ${className}`;
 
+  // Preferred: use Flaticon-based image if present. This lets your custom
+  // icons automatically override the built-in SVGs.
+  const iconMap: Record<string, string> = {
+    "Apple TV": "appletv.png",
+    "Netflix": "netflix.png",
+    "HBO": "hbo.png",
+    "Max": "max.png",
+    "Prime": "prime.png",
+    "Plex": "plex.png",
+    "Disney+": "disney.svg",
+    "Hulu": "hulu.png",
+    "Peacock": "peacock.svg",
+    "Paramount+": "paramount.svg",
+  };
+
+  const iconFile = iconMap[service];
+  if (iconFile) {
+    return (
+      <Image
+        src={`/icons/streaming/${iconFile}`}
+        alt={service}
+        width={24}
+        height={24}
+        className={cls}
+      />
+    );
+  }
+
+  // Fallback: built‑in SVGs so things look good even before
+  // Flaticon assets are added.
   switch (service) {
     case "Apple TV":
       return (
@@ -38,13 +69,9 @@ function StreamingIconComponent({ service, className = "w-5 h-5" }: StreamingIco
       );
     case "Prime":
       return (
-        <img
-          src="/prime-video.png"
-          alt=""
-          className={cls}
-          width={24}
-          height={24}
-        />
+        <svg {...svgProps} className={cls}>
+          <path d="M21.6 15.2c-3.1 2.3-7.6 3.6-11.5 3.6-2.7 0-5.4-.5-7.6-1.6-.4-.2-.1-.8.3-.6 2.2 1.3 4.9 1.8 7.3 1.8 3.7 0 7.3-1.2 10-3.4.4-.3.8.2.5.6zM23 13.7c-.4-.5-2.5-.2-3.5-.1-.3 0-.3-.2-.1-.4.3-.2.8-.6 1.1-.8.2-.2.4-.4.3-.6-.1-.2-.5-.1-.7 0-1.9 1.1-3.1 3.2-3.2 3.3-.1.2 0 .3.2.3.2 0 3.4-.4 3.8-.3.4.1.6.2.9.3.1 0 .3.1.3-.1 0-.2-.2-.4-.4-.6zM9.5 16.9H7.3l1.4-8.5h2.2l-1.4 8.5zm-3.9-8.5L3.8 13 3.6 12c-.4-1.2-1.6-2.5-2.9-3.1l2.1 8h2.5l3.7-8h-2.4zM13.4 11c-.9 0-1.5.3-1.9.9l.3-1.7H9.8l-1 6.7h2.2l.4-2.7c.2-.9.8-1.5 1.3-1.5.7 0 .9.5.8 1.1l-.5 3.1h2.2l.5-3.3c.2-1.4-.6-2.6-2.3-2.6z" />
+        </svg>
       );
     case "Plex":
       return (
@@ -54,40 +81,58 @@ function StreamingIconComponent({ service, className = "w-5 h-5" }: StreamingIco
       );
     case "Disney+":
       return (
-        <img src="/disney-plus-logo.svg" alt="" className={cls} width={24} height={24} />
+        <svg {...svgProps} className={cls}>
+          <path d="M4.5 12.5c1.8-4 6.4-6.4 11.2-5.6-.2-.6-.4-1.1-.7-1.6C10.3 5 6.2 7.4 4.1 11.3c.1.4.3.8.4 1.2z" />
+        </svg>
       );
     case "Hulu":
       return (
         <svg {...svgProps} className={cls} style={{ color: "#1CE783" }}>
-          {/* Hulu wordmark shape (Material Design Icons) */}
           <path d="M19.5 12.8V22H14.7V13.9C14.7 13.2 14.1 12.6 13.4 12.6H10.5C9.8 12.6 9.2 13.2 9.2 13.9V22H4.5V2H9.3V8.4C9.6 8.3 9.9 8.2 10.2 8.2H15C17.5 8.2 19.5 10.3 19.5 12.8Z" />
         </svg>
       );
     case "Peacock":
       return (
-        <img src="/peacock-logo.svg" alt="" className={cls} width={24} height={24} />
+        <svg {...svgProps} className={cls}>
+          <circle cx="7" cy="12" r="1.5" />
+          <circle cx="10" cy="10" r="1.5" />
+          <circle cx="10" cy="14" r="1.5" />
+          <circle cx="13" cy="9" r="1.5" />
+          <circle cx="13" cy="15" r="1.5" />
+          <circle cx="16" cy="10" r="1.5" />
+          <circle cx="16" cy="14" r="1.5" />
+        </svg>
       );
     case "Paramount+":
       return (
-        <img src="/paramount-plus-logo.svg" alt="" className={cls} width={24} height={24} />
+        <svg {...svgProps} className={cls}>
+          <path d="M12 5 5 17h14L12 5z" opacity="0.9" />
+          <circle cx="16.5" cy="16.5" r="1" />
+          <rect x="14.5" y="15.5" width="4" height="1" rx="0.5" />
+        </svg>
       );
     case "Comedy Specials":
       return (
         <svg {...svgProps} className={cls}>
           <circle cx="9" cy="10" r="1.8" />
           <circle cx="15" cy="10" r="1.8" />
-          <path d="M8 15.5c.5 1.5 2 2.5 4 2.5s3.5-1 4-2.5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+          <path
+            d="M8 15.5c.5 1.5 2 2.5 4 2.5s3.5-1 4-2.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            fill="none"
+            strokeLinecap="round"
+          />
         </svg>
       );
     case "Theater":
       return (
         <svg {...svgProps} className={cls}>
-          {/* Clapperboard / film strip */}
           <path d="M4 6h16l-1.5 10H5.5L4 6z" fill="currentColor" opacity={0.9} />
           <path d="M4 6l3-2h3l-3 2H4zm6 0l3-2h3l-3 2h-3zm6 0l3-2h1l-2 2h-2z" fill="currentColor" />
-          <rect x="6" y="9" width="2" height="1.5" rx="0.3" fill="currentColor" opacity={0.3} />
-          <rect x="10" y="9" width="2" height="1.5" rx="0.3" fill="currentColor" opacity={0.3} />
-          <rect x="14" y="9" width="2" height="1.5" rx="0.3" fill="currentColor" opacity={0.3} />
+          <rect x="6" y="9" width="2" height="1.5" rx="0.3" fill="currentColor" opacity="0.3" />
+          <rect x="10" y="9" width="2" height="1.5" rx="0.3" fill="currentColor" opacity="0.3" />
+          <rect x="14" y="9" width="2" height="1.5" rx="0.3" fill="currentColor" opacity="0.3" />
         </svg>
       );
     default:

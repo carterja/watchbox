@@ -104,6 +104,23 @@ export default function SettingsPage() {
             {syncingSeasons ? "Syncing…" : "Sync season counts from TMDB"}
           </button>
         </section>
+
+        <section className="mt-10 pt-10 border-t border-shelf-border">
+          <h2 className="text-sm font-medium text-shelf-muted uppercase tracking-wide mb-3">
+            Attribution
+          </h2>
+          <p className="text-sm text-shelf-muted">
+            Streaming service icons made by{" "}
+            <a
+              href="https://www.flaticon.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-shelf-accent hover:underline"
+            >
+              Flaticon
+            </a>
+          </p>
+        </section>
       </div>
     </div>
   );

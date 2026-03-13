@@ -28,6 +28,28 @@ type PosterSearchResult = {
   vote_average: number;
 };
 
+type TmdbSearchItem =
+  | {
+      type: "movie";
+      data: {
+        id: number;
+        title: string;
+        overview: string | null;
+        poster_path: string | null;
+        release_date: string | null;
+      };
+    }
+  | {
+      type: "tv";
+      data: {
+        id: number;
+        name: string;
+        overview: string | null;
+        poster_path: string | null;
+        first_air_date: string | null;
+      };
+    };
+
 const STATUS_OPTIONS: { value: MediaStatus; label: string }[] = [
   { value: "yet_to_start", label: "Yet to start" },
   { value: "in_progress", label: "In progress" },
@@ -66,6 +88,17 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
   );
   const [progressNote, setProgressNote] = useState(media.progressNote || "");
   const [selectedPoster, setSelectedPoster] = useState(media.posterPath);
+
+  // TMDB rematch state
+  const [currentTmdbId, setCurrentTmdbId] = useState(media.tmdbId);
+  const [title, setTitle] = useState(media.title);
+  const [overview, setOverview] = useState(media.overview ?? "");
+  const [releaseDate, setReleaseDate] = useState<string | null>(media.releaseDate ?? null);
+
+  const [rematchOpen, setRematchOpen] = useState(false);
+  const [rematchQuery, setRematchQuery] = useState(media.title);
+  const [rematchResults, setRematchResults] = useState<TmdbSearchItem[]>([]);
+  const [rematchLoading, setRematchLoading] = useState(false);
   const [posterSearch, setPosterSearch] = useState(false);
   const [posterResults, setPosterResults] = useState<PosterSearchResult[]>([]);
   const [loadingPosters, setLoadingPosters] = useState(false);
@@ -98,6 +131,55 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
     }
   };
 
+  const runRematchSearch = async () => {
+    const q = rematchQuery.trim();
+    if (!q) return;
+    setRematchLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("q", q);
+      params.set("type", media.type);
+      const res = await fetch(`/api/tmdb/search?${params.toString()}`);
+      const data = await res.json();
+      setRematchResults(Array.isArray(data) ? (data as TmdbSearchItem[]) : []);
+    } catch (err) {
+      console.error("Failed to search TMDB for rematch:", err);
+      setRematchResults([]);
+    } finally {
+      setRematchLoading(false);
+    }
+  };
+
+  const applyRematch = async (item: TmdbSearchItem) => {
+    if (item.type === "movie") {
+      setCurrentTmdbId(item.data.id);
+      setTitle(item.data.title);
+      setOverview(item.data.overview ?? "");
+      setSelectedPoster(item.data.poster_path ?? null);
+      setReleaseDate(item.data.release_date ?? null);
+      setTotalSeasons(0);
+      setSeasonProgress([]);
+    } else {
+      try {
+        const res = await fetch(`/api/tmdb/tv/${item.data.id}`);
+        if (!res.ok) {
+          console.error("Failed to load TV details for rematch");
+        }
+        const details = await res.json();
+        setCurrentTmdbId(item.data.id);
+        setTitle(details.name ?? item.data.name);
+        setOverview((details.overview as string | null) ?? item.data.overview ?? "");
+        setSelectedPoster(details.poster_path ?? item.data.poster_path ?? null);
+        setReleaseDate(details.first_air_date ?? item.data.first_air_date ?? null);
+        const seasons = typeof details.number_of_seasons === "number" ? details.number_of_seasons : 0;
+        setTotalSeasons(seasons);
+        setSeasonProgress([]);
+      } catch (error) {
+        console.error("Failed to apply TV rematch:", error);
+      }
+    }
+  };
+
   const handleSeasonStatusChange = (season: number, newStatus: string) => {
     const existing = seasonProgress.find((s) => s.season === season);
     if (existing) {
@@ -122,6 +204,10 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
     setSaving(true);
     try {
       const updateData = {
+        tmdbId: currentTmdbId,
+        title,
+        overview,
+        releaseDate,
         status,
         streamingService,
         viewer,
@@ -162,9 +248,9 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
               )}
             </div>
             <div className="min-w-0">
-              <h2 className="text-base md:text-xl font-bold text-white truncate">{media.title}</h2>
+              <h2 className="text-base md:text-xl font-bold text-white truncate">{title}</h2>
               <p className="text-xs md:text-sm text-shelf-muted">
-                {media.releaseDate?.slice(0, 4)} • {isSeries ? "TV Series" : "Movie"}
+                {(releaseDate || media.releaseDate)?.slice(0, 4)} • {isSeries ? "TV Series" : "Movie"}
               </p>
             </div>
           </div>
@@ -178,7 +264,7 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6">
-          {/* Mobile: Horizontal poster card + details */}
+              {/* Mobile: Horizontal poster card + details */}
           <div className="lg:hidden mb-4">
             <div className="flex gap-3 mb-4">
               {/* Compact poster */}
@@ -186,7 +272,7 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
                 {selectedPoster ? (
                   <Image
                     src={posterUrl(selectedPoster)!}
-                    alt={media.title}
+                    alt={title}
                     fill
                     className="object-cover"
                   />
@@ -200,9 +286,9 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
               {/* Quick info + poster change button */}
               <div className="flex-1 min-w-0 flex flex-col justify-between">
                 <div className="space-y-1">
-                  {media.overview && (
+                  {overview && (
                     <p className="text-xs text-shelf-muted line-clamp-4 leading-relaxed">
-                      {media.overview}
+                      {overview}
                     </p>
                   )}
                 </div>
@@ -267,7 +353,7 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
                 {selectedPoster ? (
                   <Image
                     src={posterUrl(selectedPoster)!}
-                    alt={media.title}
+                    alt={title}
                     fill
                     className="object-cover"
                   />
@@ -329,6 +415,93 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
 
             {/* Right columns - Details */}
             <div className="lg:col-span-2 space-y-6">
+              {/* TMDB rematch */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs md:text-sm font-medium text-white">TMDB Match</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !rematchOpen;
+                      setRematchOpen(next);
+                      if (next && rematchResults.length === 0) {
+                        void runRematchSearch();
+                      }
+                    }}
+                    className="text-xs md:text-sm text-shelf-muted hover:text-white underline-offset-2 hover:underline"
+                  >
+                    {rematchOpen ? "Hide" : "Fix match"}
+                  </button>
+                </div>
+                {rematchOpen && (
+                  <div className="rounded-lg border border-shelf-border bg-shelf-card/40 p-3 space-y-3">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={rematchQuery}
+                        onChange={(e) => setRematchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            void runRematchSearch();
+                          }
+                        }}
+                        className="flex-1 rounded-lg border border-shelf-border bg-shelf-card px-3 py-1.5 text-xs md:text-sm text-white placeholder-shelf-muted focus:outline-none focus:ring-1 focus:ring-[#8b5cf6]"
+                        placeholder={`Search TMDB for ${isSeries ? "series" : "movie"}...`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void runRematchSearch()}
+                        disabled={rematchLoading}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-shelf-accent px-3 py-1.5 text-xs md:text-sm font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-50"
+                      >
+                        <Search size={14} />
+                        Search
+                      </button>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-1">
+                      {rematchLoading ? (
+                        <p className="text-xs text-shelf-muted py-2">Searching…</p>
+                      ) : rematchResults.length === 0 ? (
+                        <p className="text-xs text-shelf-muted py-2">No results yet.</p>
+                      ) : (
+                        rematchResults.slice(0, 10).map((item) => {
+                          const itemTitle =
+                            item.type === "movie" ? item.data.title : item.data.name;
+                          const itemDate =
+                            item.type === "movie"
+                              ? item.data.release_date
+                              : item.data.first_air_date;
+                          const isActive = item.data.id === currentTmdbId;
+                          return (
+                            <button
+                              key={`${item.type}-${item.data.id}`}
+                              type="button"
+                              onClick={() => void applyRematch(item)}
+                              className={`w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs md:text-sm transition ${
+                                isActive
+                                  ? "bg-[#8b5cf6]/20 border border-[#8b5cf6]/60"
+                                  : "hover:bg-shelf-card border border-transparent"
+                              }`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-white truncate">{itemTitle}</p>
+                                <p className="text-[10px] text-shelf-muted truncate">
+                                  {(itemDate || "").slice(0, 4)} •{" "}
+                                  {item.type === "movie" ? "Movie" : "TV"}
+                                </p>
+                              </div>
+                              {isActive && (
+                                <Check size={14} className="text-[#8b5cf6] shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* All form fields for desktop */}
               <FormFields />
             </div>
@@ -336,6 +509,93 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
 
           {/* Form fields - Mobile version */}
           <div className="lg:hidden space-y-4">
+            {/* TMDB rematch (mobile) */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-xs font-medium text-white">TMDB Match</h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !rematchOpen;
+                    setRematchOpen(next);
+                    if (next && rematchResults.length === 0) {
+                      void runRematchSearch();
+                    }
+                  }}
+                  className="text-[11px] text-shelf-muted hover:text-white underline-offset-2 hover:underline"
+                >
+                  {rematchOpen ? "Hide" : "Fix match"}
+                </button>
+              </div>
+              {rematchOpen && (
+                <div className="rounded-lg border border-shelf-border bg-shelf-card/40 p-3 space-y-2">
+                  <div className="flex gap-2 mb-1">
+                    <input
+                      type="text"
+                      value={rematchQuery}
+                      onChange={(e) => setRematchQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          void runRematchSearch();
+                        }
+                      }}
+                      className="flex-1 rounded-lg border border-shelf-border bg-shelf-card px-2 py-1.5 text-[11px] text-white placeholder-shelf-muted focus:outline-none focus:ring-1 focus:ring-[#8b5cf6]"
+                      placeholder={`Search TMDB for ${isSeries ? "series" : "movie"}...`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void runRematchSearch()}
+                      disabled={rematchLoading}
+                      className="inline-flex items-center gap-1 rounded-lg bg-shelf-accent px-2.5 py-1.5 text-[11px] font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-50"
+                    >
+                      <Search size={12} />
+                      Go
+                    </button>
+                  </div>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {rematchLoading ? (
+                      <p className="text-[11px] text-shelf-muted py-1.5">Searching…</p>
+                    ) : rematchResults.length === 0 ? (
+                      <p className="text-[11px] text-shelf-muted py-1.5">No results yet.</p>
+                    ) : (
+                      rematchResults.slice(0, 8).map((item) => {
+                        const itemTitle =
+                          item.type === "movie" ? item.data.title : item.data.name;
+                        const itemDate =
+                          item.type === "movie"
+                            ? item.data.release_date
+                            : item.data.first_air_date;
+                        const isActive = item.data.id === currentTmdbId;
+                        return (
+                          <button
+                            key={`${item.type}-${item.data.id}`}
+                            type="button"
+                            onClick={() => void applyRematch(item)}
+                            className={`w-full flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] transition ${
+                              isActive
+                                ? "bg-[#8b5cf6]/20 border border-[#8b5cf6]/60"
+                                : "hover:bg-shelf-card border border-transparent"
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-white truncate">{itemTitle}</p>
+                              <p className="text-[10px] text-shelf-muted truncate">
+                                {(itemDate || "").slice(0, 4)} •{" "}
+                                {item.type === "movie" ? "Movie" : "TV"}
+                              </p>
+                            </div>
+                            {isActive && (
+                              <Check size={12} className="text-[#8b5cf6] shrink-0" />
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <FormFields />
           </div>
         </div>

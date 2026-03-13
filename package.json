@@ -43,7 +43,6 @@
     "postcss": "^8",
     "prisma": "6.19.2",
     "sharp": "^0.34.5",
-    "simple-icons": "^16.11.0",
     "tailwindcss": "^4",
     "to-ico": "^1.1.5",
     "tsx": "^4.21.0",

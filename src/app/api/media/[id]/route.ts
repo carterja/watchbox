@@ -25,6 +25,10 @@ export async function PATCH(
     
     // Build update data
     const data: Prisma.MediaUpdateInput = {};
+    if (validated.tmdbId !== undefined) data.tmdbId = validated.tmdbId;
+    if (validated.title !== undefined) data.title = validated.title;
+    if (validated.overview !== undefined) data.overview = validated.overview ?? null;
+    if (validated.releaseDate !== undefined) data.releaseDate = validated.releaseDate ?? null;
     if (validated.status !== undefined) data.status = validated.status;
     if (validated.progressNote !== undefined) data.progressNote = validated.progressNote;
     if (validated.totalSeasons !== undefined) data.totalSeasons = validated.totalSeasons;
