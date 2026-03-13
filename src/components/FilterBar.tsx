@@ -3,6 +3,7 @@
 import { memo } from "react";
 import { Tv2, Heart, UsersRound, User } from "lucide-react";
 import { StreamingIcon } from "./StreamingIcon";
+import { Tooltip } from "./Tooltip";
 
 type FilterBarProps = {
   streamingService: string | null;
@@ -30,32 +31,33 @@ function FilterBarComponent({
       {/* Streaming Service Pills - icons only */}
       {availableServices.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-          <button
-            type="button"
-            onClick={() => onStreamingServiceChange(null)}
-            title="All services"
-            className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition cursor-pointer ${
-              streamingService === null
-                ? "bg-shelf-accent text-white"
-                : "bg-shelf-border/60 text-white/90 hover:bg-shelf-border hover:text-white border border-shelf-border"
-            }`}
-          >
-            <Tv2 size={16} className="md:w-[18px] md:h-[18px]" />
-          </button>
-          {availableServices.map((service) => (
+          <Tooltip content="All services">
             <button
-              key={service}
               type="button"
-              onClick={() => onStreamingServiceChange(service)}
-              title={service}
+              onClick={() => onStreamingServiceChange(null)}
               className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition cursor-pointer ${
-                streamingService === service
+                streamingService === null
                   ? "bg-shelf-accent text-white"
                   : "bg-shelf-border/60 text-white/90 hover:bg-shelf-border hover:text-white border border-shelf-border"
               }`}
             >
-              <StreamingIcon service={service} className="w-4 h-4 md:w-5 md:h-5" />
+              <Tv2 size={16} className="md:w-[18px] md:h-[18px]" />
             </button>
+          </Tooltip>
+          {availableServices.map((service) => (
+            <Tooltip key={service} content={service}>
+              <button
+                type="button"
+                onClick={() => onStreamingServiceChange(service)}
+                className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition cursor-pointer ${
+                  streamingService === service
+                    ? "bg-shelf-accent text-white"
+                    : "bg-shelf-border/60 text-white/90 hover:bg-shelf-border hover:text-white border border-shelf-border"
+                }`}
+              >
+                <StreamingIcon service={service} className="w-4 h-4 md:w-5 md:h-5" />
+              </button>
+            </Tooltip>
           ))}
         </div>
       )}
@@ -78,18 +80,18 @@ function FilterBarComponent({
             colorClass = isActive ? "bg-sky-500/20 border-sky-500/50 text-sky-300" : "border-sky-500/30 text-sky-400/60";
           }
           return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => onViewerChange(isActive ? null : value)}
-              title={label}
-              className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition border aspect-square size-9 md:size-10 shrink-0 cursor-pointer ${
-                isActive ? colorClass : `bg-shelf-card/50 border-shelf-border hover:bg-shelf-card ${colorClass}`
-              }`}
-            >
-              <Icon size={18} className="md:w-5 md:h-5 shrink-0" strokeWidth={2} />
-              <span className="sr-only">{label}</span>
-            </button>
+            <Tooltip key={value} content={label}>
+              <button
+                type="button"
+                onClick={() => onViewerChange(isActive ? null : value)}
+                className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition border aspect-square size-9 md:size-10 shrink-0 cursor-pointer ${
+                  isActive ? colorClass : `bg-shelf-card/50 border-shelf-border hover:bg-shelf-card ${colorClass}`
+                }`}
+              >
+                <Icon size={18} className="md:w-5 md:h-5 shrink-0" strokeWidth={2} />
+                <span className="sr-only">{label}</span>
+              </button>
+            </Tooltip>
           );
         })}
       </div>
