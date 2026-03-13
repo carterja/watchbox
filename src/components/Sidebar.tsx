@@ -72,9 +72,16 @@ export function Sidebar() {
         </div>
       </aside>
 
-      {/* Mobile Top Header */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 bg-shelf-sidebar border-b border-shelf-border flex items-center justify-between px-4">
-        <div className="flex items-center gap-3">
+      {/* Mobile Top Header: logo left, toggles center, burger right */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 bg-shelf-sidebar border-b border-shelf-border grid grid-cols-[1fr_auto_1fr] items-center px-4 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <WatchBoxLogo className="w-8 h-8 shrink-0" />
+          <span className="hidden min-[500px]:inline text-lg font-bold text-[#8b5cf6] truncate">WatchBox</span>
+        </div>
+        <div className="flex justify-center md:hidden">
+          <DisplayModeToggle />
+        </div>
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={toggle}
@@ -83,13 +90,6 @@ export function Sidebar() {
           >
             <Menu size={22} />
           </button>
-          <div className="flex items-center gap-2">
-            <WatchBoxLogo className="w-8 h-8" />
-            <span className="text-lg font-bold text-[#8b5cf6]">WatchBox</span>
-          </div>
-        </div>
-        <div className="md:hidden">
-          <DisplayModeToggle />
         </div>
       </header>
 
