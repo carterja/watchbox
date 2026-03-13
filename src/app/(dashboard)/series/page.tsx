@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { AddMediaModal } from "@/components/AddMediaModal";
 import { MediaCard } from "@/components/MediaCard";
 import { StatusToggle } from "@/components/StatusToggle";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -14,7 +13,6 @@ import type { Media, MediaStatus, SeasonProgressItem } from "@/types/media";
 export default function SeriesPage() {
   const [list, setList] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalOpen, setModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<MediaStatus>("in_progress");
   const [streamingServiceFilter, setStreamingServiceFilter] = useState<string | null>(null);
   const [viewerFilter, setViewerFilter] = useState<string | null>(null);
@@ -97,16 +95,6 @@ export default function SeriesPage() {
         </div>
         <MobileFiltersPanel>
           <div className="px-4 md:px-6 py-3 md:py-4 flex flex-col gap-3 md:gap-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl md:text-2xl font-semibold text-shelf-accent">Series</h1>
-              <button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                className="rounded-lg bg-shelf-accent px-3 md:px-4 py-1.5 md:py-2 text-sm md:text-base text-white font-medium hover:bg-shelf-accent-hover transition"
-              >
-                Add series
-              </button>
-            </div>
             <StatusToggle value={statusFilter} onChange={setStatusFilter} />
             <FilterBar
               streamingService={streamingServiceFilter}
@@ -147,15 +135,6 @@ export default function SeriesPage() {
           </div>
         )}
       </div>
-
-      {modalOpen && (
-        <AddMediaModal
-          onClose={() => setModalOpen(false)}
-          onAdded={() => { fetchList(); setModalOpen(false); }}
-          defaultStatus="in_progress"
-          typeFilter="tv"
-        />
-      )}
     </div>
   );
 }
