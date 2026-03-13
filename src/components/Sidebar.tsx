@@ -45,7 +45,7 @@ export function Sidebar() {
           })}
         </nav>
         <div className="border-t border-shelf-border p-4">
-          <p className="text-xs text-shelf-muted">Track your favorite shows</p>
+          <p className="text-xs text-shelf-muted">Carter Family TM</p>
         </div>
       </aside>
 
