@@ -95,7 +95,7 @@ describe('MediaCard', () => {
 
   it('should not show status buttons on card (they are in the detail modal)', () => {
     render(<MediaCard media={mockMovie} onDelete={mockOnDelete} />);
-    expect(screen.queryByText('Yet to start')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unwatched')).not.toBeInTheDocument();
     expect(screen.queryByText('In progress')).not.toBeInTheDocument();
     expect(screen.queryByText('Finished')).not.toBeInTheDocument();
   });

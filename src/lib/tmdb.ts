@@ -152,7 +152,7 @@ const TMDB_PROVIDER_TO_OUR_NAME: Record<number, string> = {
   337: "Disney+",
   386: "Peacock",
   531: "Paramount+",
-  283: "Max",       // HBO Max
+  283: "HBO",       // Max / HBO Max -> map to HBO
   384: "HBO",
   350: "Apple TV",  // Apple TV+
   2: "Apple TV",    // Apple TV (legacy)

@@ -17,7 +17,7 @@ type Props = {
 };
 
 const STATUS_OPTIONS: { value: MediaStatus; label: string }[] = [
-  { value: "yet_to_start", label: "Yet to start" },
+  { value: "yet_to_start", label: "Unwatched" },
   { value: "in_progress", label: "In progress" },
   { value: "finished", label: "Finished" },
   { value: "rewatch", label: "Rewatch" },
@@ -34,7 +34,6 @@ const STREAMING_SERVICES = [
   "Hulu",
   "Peacock",
   "Paramount+",
-  "Max",
   "Comedy Specials",
 ];
 

@@ -24,10 +24,10 @@ function StreamingIconComponent({ service, className = "w-5 h-5" }: StreamingIco
     "Netflix": "netflix.png",
     "HBO": "hbo.png",
     "Max": "max.png",
-    "Prime": "prime.png",
+    "Prime": "prime-square.png",
     "Plex": "plex.png",
     "Disney+": "disney.svg",
-    "Hulu": "hulu.png",
+    "Hulu": "hulu.webp",
     "Peacock": "peacock.svg",
     "Paramount+": "paramount.svg",
   };

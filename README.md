@@ -1,10 +1,10 @@
 # WatchBox
 
-A personal **Goodreads-style tracker for movies and TV shows**. Track your watchlist with three status categories: **Yet to start**, **In progress**, and **Finished**. Add titles via search or from TMDB's curated lists.
+A personal **Goodreads-style tracker for movies and TV shows**. Track your watchlist with three status categories: **Unwatched**, **In progress**, and **Finished**. Add titles via search or from TMDB's curated lists.
 
 ## Features
 
-- 🎬 **Three Status Categories**: Yet to start, In progress, Finished
+- 🎬 **Three Status Categories**: Unwatched, In progress, Finished
 - 🔍 **Discover**: Browse Popular, Trending, Top Rated, and Now Playing content
 - 🎭 **Season Tracking**: For TV series, track which seasons you've completed
 - 📊 **Filtering**: Filter by streaming service (Netflix, Apple TV, Plex, HBO, Prime, etc.)

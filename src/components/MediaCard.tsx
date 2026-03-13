@@ -70,9 +70,24 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
       {/* Streaming icon - bottom-right corner */}
       {media.streamingService && (
         <div className="absolute bottom-2 right-2 z-10">
-          <span className="inline-flex rounded-lg p-1.5 shadow-lg" style={{ backgroundColor: '#00d0ff9c' }} title={media.streamingService}>
-            <StreamingIcon service={media.streamingService} className="w-4 h-4 text-black" />
-          </span>
+          {["hulu", "netflix", "hbo", "prime"].includes(
+            media.streamingService.toLowerCase()
+          ) ? (
+            <span
+              className="inline-flex w-8 h-8 rounded-lg shadow-lg overflow-hidden bg-black"
+              title={media.streamingService}
+            >
+              <StreamingIcon service={media.streamingService} className="w-full h-full" />
+            </span>
+          ) : (
+            <span
+              className="inline-flex w-8 h-8 rounded-lg shadow-lg overflow-hidden"
+              style={{ backgroundColor: "#00d0ff9c" }}
+              title={media.streamingService}
+            >
+              <StreamingIcon service={media.streamingService} className="w-full h-full text-black" />
+            </span>
+          )}
         </div>
       )}
 

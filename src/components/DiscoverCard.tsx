@@ -108,8 +108,25 @@ function DiscoverCardComponent({
 
           {/* Streaming service badge - bottom right corner */}
           {watchProviders != null && watchProviders.length > 0 && (
-            <div className="absolute bottom-2 right-2 rounded-lg p-1.5 z-10" style={{ backgroundColor: '#00d0ff9c' }}>
-              <StreamingIcon service={watchProviders[0]} className="w-4 h-4 text-white" />
+            <div className="absolute bottom-2 right-2 z-10">
+              {["hulu", "netflix", "hbo", "prime"].includes(
+                watchProviders[0].toLowerCase()
+              ) ? (
+                <span
+                  className="inline-flex w-8 h-8 rounded-lg shadow-lg overflow-hidden bg-black"
+                  title={watchProviders[0]}
+                >
+                  <StreamingIcon service={watchProviders[0]} className="w-full h-full" />
+                </span>
+              ) : (
+                <span
+                  className="inline-flex w-8 h-8 rounded-lg shadow-lg overflow-hidden"
+                  style={{ backgroundColor: "#00d0ff9c" }}
+                  title={watchProviders[0]}
+                >
+                  <StreamingIcon service={watchProviders[0]} className="w-full h-full text-white" />
+                </span>
+              )}
             </div>
           )}
 
