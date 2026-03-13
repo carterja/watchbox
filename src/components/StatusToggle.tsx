@@ -18,7 +18,7 @@ type Props = {
 
 function StatusToggleComponent({ value, onChange }: Props) {
   return (
-    <div className="flex rounded-lg border border-shelf-border bg-shelf-card p-0.5 w-full md:w-fit overflow-x-auto">
+    <div className="flex rounded-lg border border-shelf-border bg-shelf-card p-0.5 w-fit overflow-x-auto">
       {OPTIONS.map((opt) => (
         <Tooltip key={opt.value} content={opt.label} placement="bottom">
           <button

@@ -72,25 +72,23 @@ export function Sidebar() {
         </div>
       </aside>
 
-      {/* Mobile Top Header: logo left, toggles center, burger right */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 bg-shelf-sidebar border-b border-shelf-border grid grid-cols-[1fr_auto_1fr] items-center px-4 gap-2">
-        <div className="flex items-center gap-2 min-w-0">
+      {/* Mobile Top Header: logo + text first, display toggles centered in middle, burger right */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 bg-shelf-sidebar border-b border-shelf-border flex items-center gap-2 px-4">
+        <div className="flex items-center gap-2 min-w-0 shrink-0">
           <WatchBoxLogo className="w-8 h-8 shrink-0" />
-          <span className="hidden min-[500px]:inline text-lg font-bold text-[#8b5cf6] truncate">WatchBox</span>
+          <span className="text-lg font-bold text-[#8b5cf6] truncate">WatchBox</span>
         </div>
-        <div className="flex justify-center md:hidden">
+        <div className="flex-1 flex justify-center min-w-0">
           <DisplayModeToggle />
         </div>
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={toggle}
-            className="flex items-center justify-center rounded-lg p-2 text-shelf-muted hover:bg-shelf-card hover:text-white transition"
-            aria-label="Toggle filters and sections"
-          >
-            <Menu size={22} />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={toggle}
+          className="flex items-center justify-center rounded-lg p-2 text-shelf-muted hover:bg-shelf-card hover:text-white transition shrink-0"
+          aria-label="Toggle filters and sections"
+        >
+          <Menu size={22} />
+        </button>
       </header>
 
       {/* Mobile Bottom Navigation - always visible, not affected by burger */}
