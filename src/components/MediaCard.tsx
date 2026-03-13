@@ -6,6 +6,7 @@ import { Film, Tv } from "lucide-react";
 import type { Media, SeasonProgressItem } from "@/types/media";
 import { posterUrl } from "@/lib/tmdb";
 import { MediaDetailModal } from "./MediaDetailModal";
+import { StreamingIcon } from "./StreamingIcon";
 
 type Props = {
   media: Media;
@@ -62,6 +63,15 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
         <div className="absolute top-2 left-2 z-10">
           <span className="rounded bg-shelf-bg/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
             {media.type === "movie" ? "Movie" : "Series"}
+          </span>
+        </div>
+      )}
+
+      {/* Streaming icon - bottom-right corner */}
+      {media.streamingService && (
+        <div className="absolute bottom-2 right-2 z-10">
+          <span className="inline-flex rounded-full bg-white/90 p-1.5 shadow-lg" title={media.streamingService}>
+            <StreamingIcon service={media.streamingService} className="w-4 h-4 text-black" />
           </span>
         </div>
       )}
