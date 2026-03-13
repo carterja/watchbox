@@ -14,7 +14,7 @@ describe('StatusToggle', () => {
   it('should render all three status options', () => {
     render(<StatusToggle value="yet_to_start" onChange={mockOnChange} />);
 
-    expect(screen.getByText('Yet to start')).toBeInTheDocument();
+    expect(screen.getByText('Unwatched')).toBeInTheDocument();
     expect(screen.getByText('In progress')).toBeInTheDocument();
     expect(screen.getByText('Finished')).toBeInTheDocument();
   });
@@ -47,8 +47,8 @@ describe('StatusToggle', () => {
     const user = userEvent.setup();
     render(<StatusToggle value="yet_to_start" onChange={mockOnChange} />);
 
-    const yetToStartButton = screen.getByText('Yet to start');
-    await user.click(yetToStartButton);
+    const unwatchedButton = screen.getByText('Unwatched');
+    await user.click(unwatchedButton);
 
     expect(mockOnChange).toHaveBeenCalledWith('yet_to_start');
   });
@@ -59,7 +59,7 @@ describe('StatusToggle', () => {
 
     await user.click(screen.getByText('In progress'));
     await user.click(screen.getByText('Finished'));
-    await user.click(screen.getByText('Yet to start'));
+    await user.click(screen.getByText('Unwatched'));
 
     expect(mockOnChange).toHaveBeenCalledTimes(3);
     expect(mockOnChange).toHaveBeenNthCalledWith(1, 'in_progress');
