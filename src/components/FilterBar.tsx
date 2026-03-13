@@ -34,7 +34,7 @@ function FilterBarComponent({
             type="button"
             onClick={() => onStreamingServiceChange(null)}
             title="All services"
-            className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition ${
+            className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition cursor-pointer ${
               streamingService === null
                 ? "bg-shelf-accent text-white"
                 : "bg-shelf-border/60 text-white/90 hover:bg-shelf-border hover:text-white border border-shelf-border"
@@ -48,7 +48,7 @@ function FilterBarComponent({
               type="button"
               onClick={() => onStreamingServiceChange(service)}
               title={service}
-              className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition ${
+              className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition cursor-pointer ${
                 streamingService === service
                   ? "bg-shelf-accent text-white"
                   : "bg-shelf-border/60 text-white/90 hover:bg-shelf-border hover:text-white border border-shelf-border"
@@ -83,7 +83,7 @@ function FilterBarComponent({
               type="button"
               onClick={() => onViewerChange(isActive ? null : value)}
               title={label}
-              className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition border aspect-square size-9 md:size-10 shrink-0 ${
+              className={`inline-flex items-center justify-center rounded-full p-2 md:p-2.5 transition border aspect-square size-9 md:size-10 shrink-0 cursor-pointer ${
                 isActive ? colorClass : `bg-shelf-card/50 border-shelf-border hover:bg-shelf-card ${colorClass}`
               }`}
             >

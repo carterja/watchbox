@@ -23,7 +23,7 @@ function StatusToggleComponent({ value, onChange }: Props) {
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`flex-1 md:flex-none whitespace-nowrap rounded-md px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium transition ${
+          className={`flex-1 md:flex-none whitespace-nowrap rounded-md px-3 md:px-4 py-1.5 md:py-2 text-xs md:text-sm font-medium transition cursor-pointer ${
             value === opt.value
               ? "bg-shelf-accent text-white"
               : "text-shelf-muted hover:text-white hover:bg-shelf-card"

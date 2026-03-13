@@ -14,7 +14,7 @@ function TabButtonComponent({
   children, 
   ...props 
 }: TabButtonProps) {
-  const baseClasses = "rounded-lg px-4 py-2 text-sm font-medium transition";
+  const baseClasses = "rounded-lg px-4 py-2 text-sm font-medium transition cursor-pointer";
   const activeClasses = active 
     ? "bg-shelf-accent text-white" 
     : "text-shelf-muted hover:bg-shelf-card hover:text-white";
