@@ -1,4 +1,6 @@
 import { Sidebar } from "@/components/Sidebar";
+import { MobileFiltersProvider } from "@/contexts/MobileFiltersContext";
+import { DisplayModeProvider } from "@/contexts/DisplayModeContext";
 
 export default function DashboardLayout({
   children,
@@ -6,12 +8,16 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-shelf-bg">
-      <Sidebar />
-      {/* Desktop: left padding for sidebar, Mobile: top/bottom padding for header/nav */}
-      <main className="min-h-screen pt-14 pb-20 md:pt-0 md:pb-0 md:pl-56">
-        {children}
-      </main>
-    </div>
+    <MobileFiltersProvider>
+      <DisplayModeProvider>
+      <div className="min-h-screen bg-shelf-bg">
+        <Sidebar />
+        {/* Desktop: left padding for sidebar, Mobile: top/bottom padding for header/nav */}
+        <main className="min-h-screen pt-14 pb-20 md:pt-0 md:pb-0 md:pl-56">
+          {children}
+        </main>
+      </div>
+      </DisplayModeProvider>
+    </MobileFiltersProvider>
   );
 }

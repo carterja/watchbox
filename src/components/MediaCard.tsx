@@ -14,9 +14,11 @@ type Props = {
   onUpdate?: (id: string, patch: { progressNote?: string; totalSeasons?: number; seasonProgress?: SeasonProgressItem[]; status?: Media["status"]; streamingService?: string | null; viewer?: import("@/types/media").Viewer | null; posterPath?: string | null }) => void;
   /** Show Movie/Series pill on card. Use true on All page, false on Movies/Series pages. */
   showTypeTag?: boolean;
+  /** Card = poster tile; list = horizontal row (compact view). */
+  variant?: "card" | "list";
 };
 
-export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, showTypeTag = true }: Props) {
+export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, showTypeTag = true, variant = "card" }: Props) {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const imgSrc = posterUrl(media.posterPath) ?? null;
   const year = media.releaseDate?.slice(0, 4) ?? "";
@@ -34,6 +36,62 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
         return "";
     }
   };
+
+  if (variant === "list") {
+    return (
+      <>
+        <div
+          className={`group flex items-center gap-3 rounded-xl border border-shelf-border bg-shelf-card overflow-hidden transition hover:border-[#8b5cf6]/50 hover:shadow-lg hover:shadow-[#8b5cf6]/20 cursor-pointer ${getViewerGlowClass()}`}
+          onClick={() => setShowDetailModal(true)}
+        >
+          <div className="relative w-14 sm:w-16 aspect-[2/3] shrink-0 bg-shelf-border">
+            {imgSrc ? (
+              <Image
+                src={imgSrc}
+                alt={media.title}
+                fill
+                className="object-cover"
+                sizes="64px"
+                loading="lazy"
+                quality={75}
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-shelf-muted">
+                {media.type === "movie" ? <Film size={24} /> : <Tv size={24} />}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0 py-2 pr-3 flex flex-col gap-0.5">
+            {showTypeTag && (
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-shelf-muted">
+                {media.type === "movie" ? "Movie" : "Series"}
+              </span>
+            )}
+            <h3 className="font-semibold text-white truncate">{media.title}</h3>
+            {year && <span className="text-xs text-shelf-muted">{year}</span>}
+          </div>
+          {media.streamingService && (
+            <div className="shrink-0 pr-3">
+              <span className="inline-flex w-7 h-7 rounded-lg overflow-hidden bg-black" title={media.streamingService}>
+                <StreamingIcon service={media.streamingService} className="w-full h-full" />
+              </span>
+            </div>
+          )}
+        </div>
+        {showDetailModal && onUpdate && (
+          <MediaDetailModal
+            media={media}
+            onClose={() => setShowDetailModal(false)}
+            onUpdate={async (patch) => {
+              await onUpdate(media.id, patch);
+              setShowDetailModal(false);
+            }}
+            onDelete={() => onDelete(media.id)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <div

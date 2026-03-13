@@ -30,8 +30,8 @@ function FilterBarComponent({
     <div className="flex flex-col md:flex-row md:flex-wrap md:items-center gap-3 md:gap-4">
       {/* Streaming Service Pills - icons only */}
       {availableServices.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
-          <Tooltip content="All services">
+        <div className="flex flex-nowrap overflow-x-auto items-center gap-1.5 md:gap-2 md:flex-wrap md:overflow-visible pb-1 md:pb-0">
+          <Tooltip content="All services" placement="bottom">
             <button
               type="button"
               onClick={() => onStreamingServiceChange(null)}
@@ -50,7 +50,7 @@ function FilterBarComponent({
             </button>
           </Tooltip>
           {availableServices.map((service) => (
-            <Tooltip key={service} content={service}>
+            <Tooltip key={service} content={service} placement="bottom">
               <button
                 type="button"
                 onClick={() => onStreamingServiceChange(service)}
@@ -77,8 +77,8 @@ function FilterBarComponent({
         <div className="hidden md:block h-6 w-px bg-shelf-border" />
       )}
 
-      {/* Viewer Pills */}
-      <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+      {/* Viewer Pills - single row on mobile, wrap on desktop */}
+      <div className="flex flex-nowrap overflow-x-auto items-center gap-1.5 md:gap-2 md:flex-wrap md:overflow-visible pb-1 md:pb-0">
         {VIEWER_OPTIONS.map(({ value, label, Icon }) => {
           const isActive = viewer === value;
           let colorClass = "";
@@ -90,7 +90,7 @@ function FilterBarComponent({
             colorClass = isActive ? "bg-sky-500/20 border-sky-500/50 text-sky-300" : "border-sky-500/30 text-sky-400/60";
           }
           return (
-            <Tooltip key={value} content={label}>
+            <Tooltip key={value} content={label} placement="bottom">
               <button
                 type="button"
                 onClick={() => onViewerChange(isActive ? null : value)}

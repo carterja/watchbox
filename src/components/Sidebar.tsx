@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, LayoutGrid, Film, Tv, Settings } from "lucide-react";
+import { Sparkles, LayoutGrid, Film, Tv, Settings, Menu } from "lucide-react";
 import { WatchBoxLogo } from "./WatchBoxLogo";
+import { useMobileFilters } from "@/contexts/MobileFiltersContext";
+import { DisplayModeToggle } from "./DisplayModeToggle";
 
 const nav = [
   { href: "/discover", label: "Discover", icon: Sparkles },
@@ -15,6 +17,7 @@ const nav = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { toggle } = useMobileFilters();
 
   return (
     <>
@@ -71,16 +74,26 @@ export function Sidebar() {
 
       {/* Mobile Top Header */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 bg-shelf-sidebar border-b border-shelf-border flex items-center justify-between px-4">
-        <div className="flex items-center gap-2">
-          <WatchBoxLogo className="w-8 h-8" />
-          <span className="text-lg font-bold text-[#8b5cf6]">WatchBox</span>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggle}
+            className="flex items-center justify-center rounded-lg p-2 text-shelf-muted hover:bg-shelf-card hover:text-white transition"
+            aria-label="Toggle filters and sections"
+          >
+            <Menu size={22} />
+          </button>
+          <div className="flex items-center gap-2">
+            <WatchBoxLogo className="w-8 h-8" />
+            <span className="text-lg font-bold text-[#8b5cf6]">WatchBox</span>
+          </div>
         </div>
-        <div className="text-xs text-shelf-muted">
-          {nav.find(n => pathname === n.href || (n.href !== "/discover" && pathname.startsWith(n.href)))?.label}
+        <div className="md:hidden">
+          <DisplayModeToggle />
         </div>
       </header>
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Navigation - always visible, not affected by burger */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-shelf-sidebar border-t border-shelf-border safe-area-pb">
         <div className="grid grid-cols-5 gap-0.5 p-2">
           {nav.map(({ href, label, icon: Icon }) => {
