@@ -9,7 +9,7 @@ type Props = {
 
 export function Tooltip({ content, children }: Props) {
   const [show, setShow] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
   const handleMouseEnter = () => {
     timeoutRef.current = setTimeout(() => setShow(true), 300);
