@@ -106,14 +106,10 @@ function DiscoverCardComponent({
             </div>
           )}
 
-          {/* Streamers strip at bottom - always visible when loaded */}
+          {/* Streaming service badge - bottom right corner */}
           {watchProviders != null && watchProviders.length > 0 && (
-            <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-center justify-center gap-1 px-1.5 py-1.5 bg-black/70 backdrop-blur-sm z-10">
-              {watchProviders.slice(0, 5).map((service) => (
-                <span key={service} className="inline-flex rounded bg-white/20 p-0.5" title={service}>
-                  <StreamingIcon service={service} className="w-3.5 h-3.5 text-white" />
-                </span>
-              ))}
+            <div className="absolute bottom-2 right-2 rounded-lg p-1.5 z-10" style={{ backgroundColor: '#00d0ff9c' }}>
+              <StreamingIcon service={watchProviders[0]} className="w-4 h-4 text-white" />
             </div>
           )}
 
