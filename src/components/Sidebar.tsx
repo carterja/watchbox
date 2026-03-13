@@ -45,7 +45,27 @@ export function Sidebar() {
           })}
         </nav>
         <div className="border-t border-shelf-border p-4">
-          <p className="text-xs text-shelf-muted">Carter Family TM</p>
+          <div className="flex flex-col gap-1 text-xs text-shelf-muted">
+            <div className="inline-flex items-center gap-2">
+              <div className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#8b5cf6] to-[#22d3ee] text-[11px] font-semibold text-white shadow-sm">
+                CF
+              </div>
+              <span className="text-[11px] tracking-wide text-shelf-muted/90">
+                Carter Family<span className="align-super text-[9px] ml-0.5">™</span>
+              </span>
+            </div>
+            <p className="text-[11px] text-shelf-muted/80">
+              Streaming icons by{" "}
+              <a
+                href="https://www.flaticon.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-dotted underline-offset-2 hover:text-shelf-accent"
+              >
+                Flaticon
+              </a>
+            </p>
+          </div>
         </div>
       </aside>
 
