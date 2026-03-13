@@ -87,16 +87,12 @@ docker-compose up -d
 
 ## GitHub Actions Deployment
 
-This repository includes automated deployment to your Portainer instance:
+This repository includes automated deployment to your Portainer instance via webhook:
 
-1. Fork or clone this repository
-2. Add GitHub Secrets:
-   - `PORTAINER_URL`: Your Portainer URL
-   - `PORTAINER_ACCESS_TOKEN`: Portainer access token
-   - `PORTAINER_STACK_ID`: Stack ID to update
-   - `TMDB_API_KEY`: Your TMDB API key
-
-3. Push to `main` branch to trigger deployment
+1. In Portainer, open your stack and copy the **Webhook URL** (or create one in the stack’s webhooks section).
+2. In GitHub: **Settings → Secrets and variables → Actions**, add:
+   - `PORTAINER_WEBHOOK_URL`: The full webhook URL from Portainer (e.g. `https://portainer.example.com/api/stacks/webhooks/...`).
+3. Push to the `main` branch to trigger deployment. Portainer will pull the latest image and redeploy the stack.
 
 ## Scripts
 

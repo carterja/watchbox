@@ -1,0 +1,19 @@
+name: Deploy to Portainer
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Portainer webhook
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${{ secrets.PORTAINER_WEBHOOK_URL }}")
+          if [ "$response" -ge 200 ] && [ "$response" -lt 300 ]; then
+            echo "Deployment triggered successfully (HTTP $response)"
+          else
+            echo "Webhook returned HTTP $response"
+            exit 1
+          fi
