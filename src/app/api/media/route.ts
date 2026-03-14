@@ -5,7 +5,9 @@ import { CreateMediaSchema } from "@/lib/validation";
 import { z } from "zod";
 
 export async function GET() {
-  const list = await prisma.media.findMany({ orderBy: { updatedAt: "desc" } });
+  const list = await prisma.media.findMany({
+    orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
+  });
   return Response.json(list);
 }
 
@@ -30,7 +32,9 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "Already in your list" }, { status: 409 });
     }
 
-    // Create media
+    const { _max } = await prisma.media.aggregate({ _max: { sortOrder: true } });
+    const nextSortOrder = ((_max?.sortOrder ?? 0) + 1) | 0;
+
     const media = await prisma.media.create({
       data: {
         tmdbId: validated.tmdbId,
@@ -43,6 +47,7 @@ export async function POST(request: NextRequest) {
         totalSeasons: validated.type === "tv" ? validated.totalSeasons ?? null : null,
         streamingService: validated.streamingService && validated.streamingService.trim() ? validated.streamingService.trim() : null,
         viewer: validated.viewer ?? null,
+        sortOrder: nextSortOrder,
       },
     });
 

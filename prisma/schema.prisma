@@ -28,6 +28,8 @@ model Media {
   streamingService String?
   // Viewer: "wife" | "both" | "me"
   viewer String?
+  // Custom sort order (lower = first). Default 0; reorder updates this.
+  sortOrder Int @default(0)
 
   @@index([tmdbId, type])
   @@index([status])
@@ -35,4 +37,5 @@ model Media {
   @@index([updatedAt])
   @@index([streamingService])
   @@index([viewer])
+  @@index([sortOrder])
 }

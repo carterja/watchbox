@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { MediaCard } from "@/components/MediaCard";
+import { SortableMediaList } from "@/components/SortableMediaList";
 import { UnifiedCategoryBar, type StatusFilterValue } from "@/components/UnifiedCategoryBar";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { FilterBar } from "@/components/FilterBar";
@@ -105,25 +106,29 @@ export default function AllPage() {
           ) : (
             <LoadingSkeleton count={14} type="grid" gridClassName={containerClass} />
           )
-        ) : (
+        ) : filtered.length === 0 ? (
           <div className={containerClass}>
-            {filtered.length === 0 ? (
-              <p className={isList ? "text-shelf-muted py-8 text-center" : "col-span-full text-shelf-muted py-8 text-center"}>
-                Nothing matches the selected filters.
-              </p>
-            ) : (
-              filtered.map((m) => (
-                <MediaCard
-                  key={m.id}
-                  media={m}
-                  onDelete={handleDelete}
-                  onUpdate={handleUpdate}
-                  showTypeTag={true}
-                  variant={isList ? "list" : "card"}
-                />
-              ))
-            )}
+            <p className={isList ? "text-shelf-muted py-8 text-center" : "col-span-full text-shelf-muted py-8 text-center"}>
+              Nothing matches the selected filters.
+            </p>
           </div>
+        ) : (
+          <SortableMediaList
+            fullOrderedIds={list.map((m) => m.id)}
+            filteredItems={filtered}
+            onReorderSuccess={refetch}
+            containerClass={containerClass}
+            isList={isList}
+            renderItem={(m) => (
+              <MediaCard
+                media={m}
+                onDelete={handleDelete}
+                onUpdate={handleUpdate}
+                showTypeTag={true}
+                variant={isList ? "list" : "card"}
+              />
+            )}
+          />
         )}
       </div>
     </div>

@@ -23,6 +23,7 @@ export type Media = {
   seasonProgress: SeasonProgressItem[] | null;
   streamingService: string | null;
   viewer: Viewer | null;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
-};
+}
