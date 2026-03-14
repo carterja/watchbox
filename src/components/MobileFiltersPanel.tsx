@@ -30,7 +30,7 @@ export function MobileFiltersPanel({ children }: { children: React.ReactNode }) 
         `}
         style={{ transitionDuration: `${SLIDE_DURATION_MS}ms` }}
       >
-        <div className="overflow-y-auto overflow-x-hidden max-h-[70vh] md:max-h-none md:overflow-visible">
+        <div className="overflow-y-auto overflow-x-auto max-h-[70vh] md:max-h-none md:overflow-visible">
           {children}
         </div>
       </div>

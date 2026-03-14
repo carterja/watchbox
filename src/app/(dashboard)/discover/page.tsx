@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { Search, Film, Tv, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -9,7 +9,7 @@ import { DiscoverCard } from "@/components/DiscoverCard";
 import { TabButton } from "@/components/TabButton";
 import { QuickSetupModal } from "@/components/QuickSetupModal";
 import { MobileFiltersPanel } from "@/components/MobileFiltersPanel";
-import { DisplayModeToggle } from "@/components/DisplayModeToggle";
+import { useMediaList } from "@/contexts/MediaListContext";
 import type { Media } from "@/types/media";
 
 type TmdbSearchItem =
@@ -39,22 +39,12 @@ export default function DiscoverPage() {
   const [searchType, setSearchType] = useState<"all" | "movie" | "tv">("all");
   const [searchResults, setSearchResults] = useState<TmdbSearchItem[]>([]);
   const [lists, setLists] = useState<TmdbLists | null>(null);
-  const [myMedia, setMyMedia] = useState<Media[]>([]);
+  const { list: myMedia, refetch: refetchMyMedia } = useMediaList();
   const [loading, setLoading] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [tmdbError, setTmdbError] = useState<string | null>(null);
   const [showQuickSetup, setShowQuickSetup] = useState(false);
   const [quickSetupItem, setQuickSetupItem] = useState<TmdbSearchItem | null>(null);
-
-  const fetchMyMedia = useCallback(async () => {
-    const res = await fetch("/api/media");
-    const data = await res.json();
-    setMyMedia(Array.isArray(data) ? data : []);
-  }, []);
-
-  useEffect(() => {
-    fetchMyMedia();
-  }, [fetchMyMedia]);
 
   const runSearch = useCallback(async () => {
     if (!query.trim()) return;
@@ -74,10 +64,13 @@ export default function DiscoverPage() {
     }
   }, [query]);
 
-  const filteredSearchResults =
-    searchType === "all"
-      ? searchResults
-      : searchResults.filter((item) => item.type === searchType);
+  const filteredSearchResults = useMemo(
+    () =>
+      searchType === "all"
+        ? searchResults
+        : searchResults.filter((item) => item.type === searchType),
+    [searchResults, searchType]
+  );
 
   const loadLists = useCallback(async () => {
     setLoading(true);
@@ -104,201 +97,285 @@ export default function DiscoverPage() {
     }
   }, [tab, lists, loading]); // loadLists is stable (useCallback with no deps) - intentionally excluded
 
-  const isInCollection = (type: "movie" | "tv", tmdbId: number) => {
-    return myMedia.some((m) => m.type === type && m.tmdbId === tmdbId);
-  };
+  const [watchProvidersByKey, setWatchProvidersByKey] = useState<Record<string, string[]>>({});
 
-  const addToLibrary = async (
-    item: TmdbSearchItem,
-    setupData: {
-      streamingService: string | null;
-      viewer: import("@/types/media").Viewer | null;
-      status: import("@/types/media").MediaStatus;
+  const batchProviderItems = useMemo(() => {
+    if (tab !== "browse" || !lists) return [];
+    const seen = new Set<string>();
+    const items: { type: "movie" | "tv"; id: number }[] = [];
+    const add = (type: "movie" | "tv", id: number) => {
+      const key = `${type}-${id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push({ type, id });
+    };
+    if (category === "popular") {
+      (lists.popular?.movies ?? []).forEach((m) => add("movie", m.id));
+      (lists.popular?.tv ?? []).forEach((t) => add("tv", t.id));
+    } else if (category === "trending") {
+      (lists.trending ?? []).forEach((item) => add(item.type, item.data.id));
+    } else if (category === "top") {
+      (lists.top?.movies ?? []).forEach((m) => add("movie", m.id));
+      (lists.top?.tv ?? []).forEach((t) => add("tv", t.id));
+    } else if (category === "nowPlaying") {
+      (lists.nowPlaying ?? []).forEach((m) => add("movie", m.id));
+      (lists.airingToday ?? []).forEach((t) => add("tv", t.id));
     }
-  ) => {
-    const key = item.type === "movie" ? `movie-${item.data.id}` : `tv-${item.data.id}`;
-    if (isInCollection(item.type, item.data.id)) return;
-    setAddingId(key);
-    try {
-      let totalSeasons: number | undefined;
-      if (item.type === "tv") {
-        const tvRes = await fetch(`/api/tmdb/tv/${item.data.id}`);
-        if (tvRes.ok) {
-          const tvData = await tvRes.json();
-          if (tvData.number_of_seasons != null) totalSeasons = tvData.number_of_seasons;
-        }
-      }
-      const payload =
-        item.type === "movie"
-          ? {
-              tmdbId: item.data.id,
-              type: "movie",
-              title: item.data.title,
-              overview: item.data.overview,
-              posterPath: item.data.poster_path,
-              releaseDate: item.data.release_date,
-              status: setupData.status,
-              streamingService: setupData.streamingService,
-              viewer: setupData.viewer,
-            }
-          : {
-              tmdbId: item.data.id,
-              type: "tv",
-              title: item.data.name,
-              overview: item.data.overview,
-              posterPath: item.data.poster_path,
-              releaseDate: item.data.first_air_date,
-              status: setupData.status,
-              streamingService: setupData.streamingService,
-              viewer: setupData.viewer,
-              ...(totalSeasons != null && { totalSeasons }),
-            };
-      const res = await fetch("/api/media", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+    return items;
+  }, [tab, lists, category]);
+
+  useEffect(() => {
+    if (batchProviderItems.length === 0) {
+      setWatchProvidersByKey({});
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/tmdb/watch-providers/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: batchProviderItems }),
+    })
+      .then((res) => (res.ok ? res.json() : { providers: {} }))
+      .then((data: { providers?: Record<string, string[]> }) => {
+        if (cancelled) return;
+        setWatchProvidersByKey(data?.providers ?? {});
+      })
+      .catch(() => {
+        if (!cancelled) setWatchProvidersByKey({});
       });
-      if (res.ok) {
-        await fetchMyMedia();
-        toast.success("Added to your list");
-      } else {
-        const contentType = res.headers.get('content-type');
-        if (contentType?.includes('application/json')) {
-          const err = await res.json();
-          toast.error(err.error || "Failed to add");
-        } else {
-          toast.error("Failed to add: Server error");
-        }
-      }
-    } finally {
-      setAddingId(null);
-    }
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [batchProviderItems]);
 
-  const addMovieFromBrowse = (m: { id: number; title: string; overview: string | null; poster_path: string | null; release_date: string | null }) => (
-    setupData: {
-      streamingService: string | null;
-      viewer: import("@/types/media").Viewer | null;
-      status: import("@/types/media").MediaStatus;
-    }
-  ) => addToLibrary({ type: "movie", data: m }, setupData);
-  
-  const addTvFromBrowse = (t: { id: number; name: string; overview: string | null; poster_path: string | null; first_air_date: string | null }) => (
-    setupData: {
-      streamingService: string | null;
-      viewer: import("@/types/media").Viewer | null;
-      status: import("@/types/media").MediaStatus;
-    }
-  ) => addToLibrary({ type: "tv", data: t }, setupData);
-  
-  const addTrendingItem = (item: TmdbLists["trending"][0]) => (
-    setupData: {
-      streamingService: string | null;
-      viewer: import("@/types/media").Viewer | null;
-      status: import("@/types/media").MediaStatus;
-    }
-  ) => {
-    if (item.type === "movie" && item.data.title) {
-      addToLibrary({
-        type: "movie",
-        data: {
-          id: item.data.id,
-          title: item.data.title,
-          overview: item.data.overview,
-          poster_path: item.data.poster_path,
-          release_date: item.data.release_date ?? null,
-        },
-      }, setupData);
-    } else if (item.type === "tv" && item.data.name) {
-      addToLibrary({
-        type: "tv",
-        data: {
-          id: item.data.id,
-          name: item.data.name,
-          overview: item.data.overview,
-          poster_path: item.data.poster_path,
-          first_air_date: item.data.first_air_date ?? null,
-        },
-      }, setupData);
-    }
-  };
+  const batchProviderKeySet = useMemo(
+    () => new Set(batchProviderItems.map((i) => `${i.type}-${i.id}`)),
+    [batchProviderItems]
+  );
+
+  const getWatchProvidersForCard = useCallback(
+    (key: string): string[] | undefined => {
+      if (batchProviderKeySet.has(key)) {
+        return watchProvidersByKey[key] ?? [];
+      }
+      return watchProvidersByKey[key];
+    },
+    [batchProviderKeySet, watchProvidersByKey]
+  );
+
+  const isInCollection = useCallback(
+    (type: "movie" | "tv", tmdbId: number) =>
+      myMedia.some((m) => m.type === type && m.tmdbId === tmdbId),
+    [myMedia]
+  );
+
+  const addToLibrary = useCallback(
+    async (
+      item: TmdbSearchItem,
+      setupData: {
+        streamingService: string | null;
+        viewer: import("@/types/media").Viewer | null;
+        status: import("@/types/media").MediaStatus;
+      }
+    ) => {
+      const key = item.type === "movie" ? `movie-${item.data.id}` : `tv-${item.data.id}`;
+      if (myMedia.some((m) => m.type === item.type && m.tmdbId === item.data.id)) return;
+      setAddingId(key);
+      try {
+        let totalSeasons: number | undefined;
+        if (item.type === "tv") {
+          const tvRes = await fetch(`/api/tmdb/tv/${item.data.id}`);
+          if (tvRes.ok) {
+            const tvData = await tvRes.json();
+            if (tvData.number_of_seasons != null) totalSeasons = tvData.number_of_seasons;
+          }
+        }
+        const payload =
+          item.type === "movie"
+            ? {
+                tmdbId: item.data.id,
+                type: "movie",
+                title: item.data.title,
+                overview: item.data.overview,
+                posterPath: item.data.poster_path,
+                releaseDate: item.data.release_date,
+                status: setupData.status,
+                streamingService: setupData.streamingService,
+                viewer: setupData.viewer,
+              }
+            : {
+                tmdbId: item.data.id,
+                type: "tv",
+                title: item.data.name,
+                overview: item.data.overview,
+                posterPath: item.data.poster_path,
+                releaseDate: item.data.first_air_date,
+                status: setupData.status,
+                streamingService: setupData.streamingService,
+                viewer: setupData.viewer,
+                ...(totalSeasons != null && { totalSeasons }),
+              };
+        const res = await fetch("/api/media", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) {
+          await refetchMyMedia();
+          toast.success("Added to your list");
+        } else {
+          const contentType = res.headers.get("content-type");
+          if (contentType?.includes("application/json")) {
+            const err = await res.json();
+            toast.error(err.error || "Failed to add");
+          } else {
+            toast.error("Failed to add: Server error");
+          }
+        }
+      } finally {
+        setAddingId(null);
+      }
+    },
+    [myMedia, refetchMyMedia]
+  );
+
+  const addMovieFromBrowse = useCallback(
+    (m: { id: number; title: string; overview: string | null; poster_path: string | null; release_date: string | null }) =>
+      (setupData: {
+        streamingService: string | null;
+        viewer: import("@/types/media").Viewer | null;
+        status: import("@/types/media").MediaStatus;
+      }) =>
+        addToLibrary({ type: "movie", data: m }, setupData),
+    [addToLibrary]
+  );
+
+  const addTvFromBrowse = useCallback(
+    (t: { id: number; name: string; overview: string | null; poster_path: string | null; first_air_date: string | null }) =>
+      (setupData: {
+        streamingService: string | null;
+        viewer: import("@/types/media").Viewer | null;
+        status: import("@/types/media").MediaStatus;
+      }) =>
+        addToLibrary({ type: "tv", data: t }, setupData),
+    [addToLibrary]
+  );
+
+  const addTrendingItem = useCallback(
+    (item: TmdbLists["trending"][0]) =>
+      (setupData: {
+        streamingService: string | null;
+        viewer: import("@/types/media").Viewer | null;
+        status: import("@/types/media").MediaStatus;
+      }) => {
+        if (item.type === "movie" && item.data.title) {
+          addToLibrary(
+            {
+              type: "movie",
+              data: {
+                id: item.data.id,
+                title: item.data.title,
+                overview: item.data.overview,
+                poster_path: item.data.poster_path,
+                release_date: item.data.release_date ?? null,
+              },
+            },
+            setupData
+          );
+        } else if (item.type === "tv" && item.data.name) {
+          addToLibrary(
+            {
+              type: "tv",
+              data: {
+                id: item.data.id,
+                name: item.data.name,
+                overview: item.data.overview,
+                poster_path: item.data.poster_path,
+                first_air_date: item.data.first_air_date ?? null,
+              },
+            },
+            setupData
+          );
+        }
+      },
+    [addToLibrary]
+  );
 
   return (
     <div className="min-h-screen">
       <header className="sticky top-14 md:top-0 z-20 md:border-b border-shelf-border bg-shelf-bg/95 backdrop-blur relative h-0 min-h-0 overflow-visible md:h-auto md:min-h-0">
-        <div className="hidden md:flex md:justify-end md:px-4 md:py-2 md:border-b md:border-shelf-border">
-          <DisplayModeToggle />
-        </div>
         <MobileFiltersPanel>
           <div className="flex flex-col">
-            {/* Row 1: title + Browse/Search — same treatment as unified bar row on other pages */}
-            <div className="bg-shelf-sidebar border-b border-shelf-border px-4 md:px-6 py-2 md:py-2.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h1 className="text-lg md:text-xl font-semibold text-shelf-accent">Discover</h1>
-                <div className="flex gap-1 rounded-lg border border-shelf-border bg-shelf-card p-0.5">
-                  <TabButton active={tab === "browse"} onClick={() => setTab("browse")}>
+            {/* Single bar: Browse/Search + categories (browse) or search UI below (search) */}
+            <div className="bg-shelf-sidebar border-b border-shelf-border px-2 py-1.5 md:px-6 md:py-2.5">
+              <div className="flex flex-nowrap items-center gap-1 md:gap-3 overflow-x-auto min-w-0 pr-2 md:pr-0">
+                <div className="flex rounded-md md:rounded-lg border border-shelf-border bg-shelf-card p-0.5 shrink-0">
+                  <TabButton size="sm" active={tab === "browse"} onClick={() => setTab("browse")}>
                     Browse
                   </TabButton>
-                  <TabButton active={tab === "search"} onClick={() => setTab("search")}>
+                  <TabButton size="sm" active={tab === "search"} onClick={() => setTab("search")}>
                     Search
                   </TabButton>
                 </div>
+                {tab === "browse" && (
+                  <>
+                    <div className="h-4 w-px bg-shelf-border shrink-0 md:h-5" aria-hidden />
+                    <div className="flex flex-nowrap items-center gap-0.5 md:gap-1 shrink-0">
+                      <TabButton size="sm" active={category === "popular"} onClick={() => setCategory("popular")}>
+                        Popular
+                      </TabButton>
+                      <TabButton size="sm" active={category === "trending"} onClick={() => setCategory("trending")}>
+                        Trending
+                      </TabButton>
+                      <TabButton size="sm" active={category === "top"} onClick={() => setCategory("top")}>
+                        <span className="hidden sm:inline">Top Rated</span>
+                        <span className="sm:hidden">Top</span>
+                      </TabButton>
+                      <TabButton size="sm" active={category === "nowPlaying"} onClick={() => setCategory("nowPlaying")}>
+                        <span className="hidden sm:inline">Now Playing</span>
+                        <span className="sm:hidden">Now</span>
+                      </TabButton>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-            {/* Row 2: category filters or search UI — same padding as providers row */}
-            <div className="px-4 md:px-6 py-3 md:py-4">
-              {tab === "search" && (
-                <div className="space-y-3">
-                  <div className="flex gap-2 max-w-xl">
-                    <input
-                      type="text"
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && runSearch()}
-                      placeholder="Search movies & TV shows..."
-                      className="flex-1 rounded-lg border border-shelf-border bg-shelf-card px-3 md:px-4 py-2 md:py-2.5 text-sm md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      onClick={runSearch}
-                      disabled={loading}
-                      className="rounded-lg bg-shelf-accent px-4 py-2.5 text-white font-medium hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-2 shrink-0"
-                    >
-                      {loading && tab === "search" ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-                      Search
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5 md:gap-2">
-                    <TabButton active={searchType === "all"} onClick={() => setSearchType("all")}>
+            {tab === "search" && (
+              <div className="px-2 py-2 md:px-6 md:py-4">
+                <div className="flex flex-nowrap items-center gap-1 md:gap-2 overflow-x-auto min-w-0">
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && runSearch()}
+                    placeholder="Search..."
+                    className="min-w-[80px] w-28 flex-1 max-w-md rounded-md md:rounded-lg border border-shelf-border bg-shelf-card px-2 py-1.5 md:px-4 md:py-2.5 text-xs md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={runSearch}
+                    disabled={loading}
+                    className="rounded-md md:rounded-lg bg-shelf-accent px-2 py-1.5 md:px-4 md:py-2.5 text-xs md:text-base font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-1 shrink-0"
+                  >
+                    {loading && tab === "search" ? <Loader2 size={14} className="animate-spin md:w-[18px] md:h-[18px]" /> : <Search size={14} className="md:w-[18px] md:h-[18px]" />}
+                    Search
+                  </button>
+                  <div className="h-4 w-px bg-shelf-border shrink-0 md:h-5" aria-hidden />
+                  <div className="flex flex-nowrap gap-0.5 md:gap-1 shrink-0">
+                    <TabButton size="sm" active={searchType === "all"} onClick={() => setSearchType("all")}>
                       All
                     </TabButton>
-                    <TabButton active={searchType === "movie"} onClick={() => setSearchType("movie")}>
+                    <TabButton size="sm" active={searchType === "movie"} onClick={() => setSearchType("movie")}>
                       Movies
                     </TabButton>
-                    <TabButton active={searchType === "tv"} onClick={() => setSearchType("tv")}>
+                    <TabButton size="sm" active={searchType === "tv"} onClick={() => setSearchType("tv")}>
                       TV
                     </TabButton>
                   </div>
                 </div>
-              )}
-              {tab === "browse" && (
-                <div className="flex flex-wrap gap-1.5 md:gap-2">
-                  <TabButton active={category === "popular"} onClick={() => setCategory("popular")}>
-                    Popular
-                  </TabButton>
-                  <TabButton active={category === "trending"} onClick={() => setCategory("trending")}>
-                    Trending
-                  </TabButton>
-                  <TabButton active={category === "top"} onClick={() => setCategory("top")}>
-                    Top Rated
-                  </TabButton>
-                  <TabButton active={category === "nowPlaying"} onClick={() => setCategory("nowPlaying")}>
-                    Now Playing
-                  </TabButton>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </MobileFiltersPanel>
       </header>
@@ -410,6 +487,7 @@ export default function DiscoverPage() {
                               inCollection={isInCollection("movie", m.id)}
                               adding={addingId === key}
                               onAdd={addMovieFromBrowse(m)}
+                              watchProviders={getWatchProvidersForCard(key)}
                             />
                           );
                         })}
@@ -432,6 +510,7 @@ export default function DiscoverPage() {
                               inCollection={isInCollection("tv", t.id)}
                               adding={addingId === key}
                               onAdd={addTvFromBrowse(t)}
+                              watchProviders={getWatchProvidersForCard(key)}
                             />
                           );
                         })}
@@ -463,6 +542,7 @@ export default function DiscoverPage() {
                             inCollection={isInCollection(item.type, item.data.id)}
                             adding={addingId === key}
                             onAdd={addTrendingItem(item)}
+                            watchProviders={getWatchProvidersForCard(key)}
                           />
                         );
                       })}
@@ -489,6 +569,7 @@ export default function DiscoverPage() {
                               inCollection={isInCollection("movie", m.id)}
                               adding={addingId === key}
                               onAdd={addMovieFromBrowse(m)}
+                              watchProviders={getWatchProvidersForCard(key)}
                             />
                           );
                         })}
@@ -511,6 +592,7 @@ export default function DiscoverPage() {
                               inCollection={isInCollection("tv", t.id)}
                               adding={addingId === key}
                               onAdd={addTvFromBrowse(t)}
+                              watchProviders={getWatchProvidersForCard(key)}
                             />
                           );
                         })}
@@ -538,6 +620,7 @@ export default function DiscoverPage() {
                               inCollection={isInCollection("movie", m.id)}
                               adding={addingId === key}
                               onAdd={addMovieFromBrowse(m)}
+                              watchProviders={getWatchProvidersForCard(key)}
                             />
                           );
                         })}
@@ -560,6 +643,7 @@ export default function DiscoverPage() {
                               inCollection={isInCollection("tv", t.id)}
                               adding={addingId === key}
                               onAdd={addTvFromBrowse(t)}
+                              watchProviders={getWatchProvidersForCard(key)}
                             />
                           );
                         })}

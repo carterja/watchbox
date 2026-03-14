@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { MediaCard } from "@/components/MediaCard";
 import { UnifiedCategoryBar, type StatusFilterValue } from "@/components/UnifiedCategoryBar";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -8,11 +8,11 @@ import { FilterBar } from "@/components/FilterBar";
 import { MobileFiltersPanel } from "@/components/MobileFiltersPanel";
 import { DisplayModeToggle } from "@/components/DisplayModeToggle";
 import { useDisplayMode, getMediaListContainerClass } from "@/contexts/DisplayModeContext";
+import { useMediaList } from "@/contexts/MediaListContext";
 import type { Media, MediaStatus, SeasonProgressItem, Viewer } from "@/types/media";
 
 export default function AllPage() {
-  const [list, setList] = useState<Media[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { list, loading, refetch } = useMediaList();
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
   const [streamingServiceFilter, setStreamingServiceFilter] = useState<string | null>(null);
   const [viewerFilter, setViewerFilter] = useState<Viewer | null>(null);
@@ -20,41 +20,37 @@ export default function AllPage() {
   const containerClass = getMediaListContainerClass(displayMode);
   const isList = displayMode === "compact";
 
-  const fetchList = useCallback(async () => {
-    const res = await fetch("/api/media");
-    const data = await res.json();
-    setList(Array.isArray(data) ? data : []);
-  }, []);
+  const handleDelete = useCallback(
+    async (id: string) => {
+      if (!confirm("Remove this from your list?")) return;
+      const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
+      if (res.ok) await refetch();
+    },
+    [refetch]
+  );
 
-  useEffect(() => {
-    fetchList().finally(() => setLoading(false));
-  }, [fetchList]);
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Remove this from your list?")) return;
-    const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
-    if (res.ok) await fetchList();
-  };
-
-  const handleUpdate = async (
-    id: string,
-    patch: {
-      progressNote?: string;
-      totalSeasons?: number;
-      seasonProgress?: SeasonProgressItem[];
-      streamingService?: string | null;
-      viewer?: import("@/types/media").Viewer | null;
-      posterPath?: string | null;
-      status?: MediaStatus;
-    }
-  ) => {
-    const res = await fetch(`/api/media/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
-    if (res.ok) await fetchList();
-  };
+  const handleUpdate = useCallback(
+    async (
+      id: string,
+      patch: {
+        progressNote?: string;
+        totalSeasons?: number;
+        seasonProgress?: SeasonProgressItem[];
+        streamingService?: string | null;
+        viewer?: import("@/types/media").Viewer | null;
+        posterPath?: string | null;
+        status?: MediaStatus;
+      }
+    ) => {
+      const res = await fetch(`/api/media/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      if (res.ok) await refetch();
+    },
+    [refetch]
+  );
 
   // Only show streamer filters that have at least one item assigned (hide when none)
   const availableServices = useMemo(() => {

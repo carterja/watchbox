@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/Sidebar";
 import { MobileFiltersProvider } from "@/contexts/MobileFiltersContext";
+import { MediaListProvider } from "@/contexts/MediaListContext";
 import { MobileFiltersOverlay } from "@/components/MobileFiltersOverlay";
 import { DisplayModeProvider } from "@/contexts/DisplayModeContext";
 
@@ -10,6 +11,7 @@ export default function DashboardLayout({
 }) {
   return (
     <MobileFiltersProvider>
+      <MediaListProvider>
       <DisplayModeProvider>
       <div className="min-h-screen bg-shelf-bg">
         <Sidebar />
@@ -20,6 +22,7 @@ export default function DashboardLayout({
         </main>
       </div>
       </DisplayModeProvider>
+      </MediaListProvider>
     </MobileFiltersProvider>
   );
 }

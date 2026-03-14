@@ -79,7 +79,7 @@ export function Sidebar() {
           <span className="text-lg font-bold text-[#8b5cf6] truncate">WatchBox</span>
         </div>
         <div className="flex-1 flex justify-center min-w-0">
-          <DisplayModeToggle />
+          {pathname !== "/discover" && <DisplayModeToggle />}
         </div>
         <button
           type="button"

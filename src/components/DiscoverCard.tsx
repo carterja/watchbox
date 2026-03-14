@@ -24,6 +24,8 @@ type Props = {
     viewer: Viewer | null;
     status: MediaStatus;
   }) => void;
+  /** When provided, used instead of per-card fetch (e.g. from batch). */
+  watchProviders?: string[] | null;
 };
 
 function DiscoverCardComponent({
@@ -36,17 +38,24 @@ function DiscoverCardComponent({
   inCollection,
   adding,
   onAdd,
+  watchProviders: watchProvidersProp,
 }: Props) {
   const [showQuickSetup, setShowQuickSetup] = useState(false);
-  const [watchProviders, setWatchProviders] = useState<string[] | null>(null);
+  const [watchProvidersFetched, setWatchProvidersFetched] = useState<string[] | null>(null);
+
+  const watchProviders =
+    watchProvidersProp !== undefined ? watchProvidersProp : watchProvidersFetched;
+
   const imgSrc = posterUrl(posterPath, "w185");
   const year = releaseDate?.slice(0, 4) || (type === "movie" ? "Movie" : "TV");
 
   useEffect(() => {
+    if (watchProvidersProp !== undefined) return;
+
     const key = `${type}-${id}`;
     const cached = watchProvidersCache.get(key);
     if (cached !== undefined) {
-      setWatchProviders(cached);
+      setWatchProvidersFetched(cached);
       return;
     }
     let cancelled = false;
@@ -56,15 +65,15 @@ function DiscoverCardComponent({
         if (cancelled) return;
         const list = Array.isArray(data?.providers) ? data.providers : [];
         watchProvidersCache.set(key, list);
-        setWatchProviders(list);
+        setWatchProvidersFetched(list);
       })
       .catch(() => {
-        if (!cancelled) setWatchProviders([]);
+        if (!cancelled) setWatchProvidersFetched([]);
       });
     return () => {
       cancelled = true;
     };
-  }, [type, id]);
+  }, [type, id, watchProvidersProp]);
 
   const handleClick = () => {
     if (!inCollection && !adding) {

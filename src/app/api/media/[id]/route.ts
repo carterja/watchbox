@@ -17,12 +17,10 @@ export async function PATCH(
     }
     
     const body = await request.json();
-    console.log("PATCH /api/media/[id] - Received body:", JSON.stringify(body, null, 2));
-    
+
     // Validate input
     const validated = UpdateMediaSchema.parse(body);
-    console.log("PATCH /api/media/[id] - Validated data:", JSON.stringify(validated, null, 2));
-    
+
     // Build update data
     const data: Prisma.MediaUpdateInput = {};
     if (validated.tmdbId !== undefined) data.tmdbId = validated.tmdbId;
@@ -38,20 +36,16 @@ export async function PATCH(
     if (validated.seasonProgress !== undefined) {
       data.seasonProgress = validated.seasonProgress as Prisma.InputJsonValue;
     }
-    
-    console.log("PATCH /api/media/[id] - Update data:", JSON.stringify(data, null, 2));
-    
+
     // Update media
     const media = await prisma.media.update({
       where: { id },
       data,
     });
-    
-    console.log("PATCH /api/media/[id] - Updated media:", JSON.stringify(media, null, 2));
+
     return Response.json(media);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error("PATCH /api/media/[id] - Validation error:", error.issues);
       return Response.json({ 
         error: "Invalid input", 
         details: error.issues 
