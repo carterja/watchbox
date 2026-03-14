@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
         overview: validated.overview ?? null,
         posterPath: validated.posterPath ?? null,
         releaseDate: validated.releaseDate ?? null,
+        runtime: validated.runtime ?? null,
         status: validated.status,
         totalSeasons: validated.type === "tv" ? validated.totalSeasons ?? null : null,
         streamingService: validated.streamingService && validated.streamingService.trim() ? validated.streamingService.trim() : null,

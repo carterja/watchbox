@@ -19,6 +19,7 @@ export const CreateMediaSchema = z.object({
   overview: z.string().max(5000).nullable().optional(),
   posterPath: z.string().max(500).nullable().optional(),
   releaseDate: z.string().nullable().optional(),
+  runtime: z.number().int().min(0).max(500).nullable().optional(),
   status: MediaStatusSchema,
   totalSeasons: z.number().int().positive().max(100).nullable().optional(),
   streamingService: z.string().max(100).nullable().optional(),

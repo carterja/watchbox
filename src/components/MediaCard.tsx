@@ -22,6 +22,16 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
   const [showDetailModal, setShowDetailModal] = useState(false);
   const imgSrc = posterUrl(media.posterPath) ?? null;
   const year = media.releaseDate?.slice(0, 4) ?? "";
+  const runtimeStr =
+    media.type === "movie" && media.runtime != null && media.runtime > 0
+      ? (() => {
+          const h = Math.floor(media.runtime! / 60);
+          const m = media.runtime! % 60;
+          if (h > 0 && m > 0) return `${h}h ${m}m`;
+          if (h > 0) return `${h}h`;
+          return `${m}m`;
+        })()
+      : "";
 
   const getViewerGlowClass = () => {
     if (!media.viewer) return "";
@@ -68,7 +78,10 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
               </span>
             )}
             <h3 className="font-semibold text-white truncate">{media.title}</h3>
-            {year && <span className="text-xs text-shelf-muted">{year}</span>}
+            <div className="flex items-center gap-2 text-xs text-shelf-muted">
+              {year && <span>{year}</span>}
+              {runtimeStr && <span>{runtimeStr}</span>}
+            </div>
           </div>
           {media.streamingService && (
             <div className="shrink-0 pr-3">
@@ -149,11 +162,12 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
         </div>
       )}
 
-      {/* Hover: title + year + hint */}
+      {/* Hover: title + year + runtime + hint */}
       <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition duration-200 p-3">
-        {year && (
-          <span className="text-xs text-white/80 mb-0.5">{year}</span>
-        )}
+        <div className="flex gap-2 text-xs text-white/80 mb-0.5">
+          {year && <span>{year}</span>}
+          {runtimeStr && <span>{runtimeStr}</span>}
+        </div>
         <h3 className="font-bold text-white leading-tight line-clamp-2 mb-1">
           {media.title}
         </h3>

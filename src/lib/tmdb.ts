@@ -144,6 +144,52 @@ export async function getTmdbTvDetails(tvId: number): Promise<TmdbTvDetails | nu
   return json as TmdbTvDetails;
 }
 
+/** Find movie or TV by IMDb ID (e.g. tt0137523). Returns first match from movie_results or tv_results. */
+export type TmdbFindResult =
+  | { type: "movie"; data: TmdbMovie & { runtime?: number } }
+  | { type: "tv"; data: TmdbTv };
+
+export async function getTmdbByImdbId(imdbId: string): Promise<TmdbFindResult | null> {
+  const key = getApiKey();
+  const id = imdbId.replace(/^tt0*/, "tt").trim();
+  if (!id.toLowerCase().startsWith("tt") || id.length < 2) return null;
+  const res = await fetch(
+    `${TMDB_BASE}/find/${encodeURIComponent(id)}?api_key=${key}&external_source=imdb_id`
+  );
+  const json = await res.json();
+  checkTmdbError(json);
+  const movieResults = json.movie_results || [];
+  const tvResults = json.tv_results || [];
+  if (movieResults.length > 0) {
+    const m = movieResults[0];
+    return {
+      type: "movie",
+      data: {
+        id: m.id,
+        title: m.title,
+        overview: m.overview ?? null,
+        poster_path: m.poster_path ?? null,
+        release_date: m.release_date ?? null,
+        runtime: m.runtime ?? undefined,
+      },
+    };
+  }
+  if (tvResults.length > 0) {
+    const t = tvResults[0];
+    return {
+      type: "tv",
+      data: {
+        id: t.id,
+        name: t.name,
+        overview: t.overview ?? null,
+        poster_path: t.poster_path ?? null,
+        first_air_date: t.first_air_date ?? null,
+      },
+    };
+  }
+  return null;
+}
+
 /** TMDB provider_id -> our app streaming service name (only services we show in UI) */
 const TMDB_PROVIDER_TO_OUR_NAME: Record<number, string> = {
   8: "Netflix",

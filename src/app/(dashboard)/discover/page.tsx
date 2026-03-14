@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
 import { Search, Film, Tv, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -8,7 +8,6 @@ import { posterUrl } from "@/lib/tmdb";
 import { DiscoverCard } from "@/components/DiscoverCard";
 import { TabButton } from "@/components/TabButton";
 import { QuickSetupModal } from "@/components/QuickSetupModal";
-import { MobileFiltersPanel } from "@/components/MobileFiltersPanel";
 import { useMediaList } from "@/contexts/MediaListContext";
 import type { Media } from "@/types/media";
 
@@ -39,12 +38,55 @@ export default function DiscoverPage() {
   const [searchType, setSearchType] = useState<"all" | "movie" | "tv">("all");
   const [searchResults, setSearchResults] = useState<TmdbSearchItem[]>([]);
   const [lists, setLists] = useState<TmdbLists | null>(null);
-  const { list: myMedia, refetch: refetchMyMedia } = useMediaList();
+  const { list: myMedia, optimisticAdd } = useMediaList();
   const [loading, setLoading] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [tmdbError, setTmdbError] = useState<string | null>(null);
   const [showQuickSetup, setShowQuickSetup] = useState(false);
   const [quickSetupItem, setQuickSetupItem] = useState<TmdbSearchItem | null>(null);
+  const [imdbInput, setImdbInput] = useState("");
+  const [imdbLoading, setImdbLoading] = useState(false);
+  const [imdbError, setImdbError] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleSlash = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (e.key === "/" && target.tagName !== "INPUT" && target.tagName !== "TEXTAREA" && !target.isContentEditable) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleSlash);
+    return () => window.removeEventListener("keydown", handleSlash);
+  }, []);
+
+  const lookupByImdb = useCallback(async () => {
+    const raw = imdbInput.trim();
+    if (!raw) return;
+    setImdbError(null);
+    setImdbLoading(true);
+    try {
+      const match = raw.match(/(?:imdb\.com\/title\/)?(tt\d+)/i);
+      const id = match ? match[1] : raw.startsWith("tt") ? raw : `tt${raw}`;
+      const res = await fetch(`/api/tmdb/by-imdb?id=${encodeURIComponent(id)}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setImdbError(data.error || "Lookup failed");
+        return;
+      }
+      const item = data.type === "movie"
+        ? { type: "movie" as const, data: { id: data.data.id, title: data.data.title, overview: data.data.overview, poster_path: data.data.poster_path, release_date: data.data.release_date, ...(data.data.runtime != null && { runtime: data.data.runtime }) } }
+        : { type: "tv" as const, data: { id: data.data.id, name: data.data.name, overview: data.data.overview, poster_path: data.data.poster_path, first_air_date: data.data.first_air_date } };
+      setQuickSetupItem(item as TmdbSearchItem);
+      setShowQuickSetup(true);
+      setImdbInput("");
+    } catch {
+      setImdbError("Lookup failed");
+    } finally {
+      setImdbLoading(false);
+    }
+  }, [imdbInput]);
 
   const runSearch = useCallback(async () => {
     if (!query.trim()) return;
@@ -190,6 +232,7 @@ export default function DiscoverPage() {
             if (tvData.number_of_seasons != null) totalSeasons = tvData.number_of_seasons;
           }
         }
+        const movieData = item.data as { runtime?: number };
         const payload =
           item.type === "movie"
             ? {
@@ -199,6 +242,7 @@ export default function DiscoverPage() {
                 overview: item.data.overview,
                 posterPath: item.data.poster_path,
                 releaseDate: item.data.release_date,
+                ...(movieData.runtime != null && movieData.runtime > 0 && { runtime: movieData.runtime }),
                 status: setupData.status,
                 streamingService: setupData.streamingService,
                 viewer: setupData.viewer,
@@ -221,7 +265,8 @@ export default function DiscoverPage() {
           body: JSON.stringify(payload),
         });
         if (res.ok) {
-          await refetchMyMedia();
+          const created = await res.json();
+          optimisticAdd(created);
           toast.success("Added to your list");
         } else {
           const contentType = res.headers.get("content-type");
@@ -236,7 +281,7 @@ export default function DiscoverPage() {
         setAddingId(null);
       }
     },
-    [myMedia, refetchMyMedia]
+    [myMedia, optimisticAdd]
   );
 
   const addMovieFromBrowse = useCallback(
@@ -303,84 +348,41 @@ export default function DiscoverPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-14 md:top-0 z-20 md:border-b border-shelf-border bg-shelf-bg/95 backdrop-blur relative h-0 min-h-0 overflow-visible md:h-auto md:min-h-0">
-        <MobileFiltersPanel>
-          <div className="flex flex-col">
-            {/* Single bar: Browse/Search + categories (browse) or search UI below (search) */}
-            <div className="bg-shelf-sidebar border-b border-shelf-border px-2 py-1.5 md:px-6 md:py-2.5">
-              <div className="flex flex-nowrap items-center gap-1 md:gap-3 overflow-x-auto min-w-0 pr-2 md:pr-0">
-                <div className="flex rounded-md md:rounded-lg border border-shelf-border bg-shelf-card p-0.5 shrink-0">
-                  <TabButton size="sm" active={tab === "browse"} onClick={() => setTab("browse")}>
-                    Browse
-                  </TabButton>
-                  <TabButton size="sm" active={tab === "search"} onClick={() => setTab("search")}>
-                    Search
-                  </TabButton>
-                </div>
-                {tab === "browse" && (
-                  <>
-                    <div className="h-4 w-px bg-shelf-border shrink-0 md:h-5" aria-hidden />
-                    <div className="flex flex-nowrap items-center gap-0.5 md:gap-1 shrink-0">
-                      <TabButton size="sm" active={category === "popular"} onClick={() => setCategory("popular")}>
-                        Popular
-                      </TabButton>
-                      <TabButton size="sm" active={category === "trending"} onClick={() => setCategory("trending")}>
-                        Trending
-                      </TabButton>
-                      <TabButton size="sm" active={category === "top"} onClick={() => setCategory("top")}>
-                        <span className="hidden sm:inline">Top Rated</span>
-                        <span className="sm:hidden">Top</span>
-                      </TabButton>
-                      <TabButton size="sm" active={category === "nowPlaying"} onClick={() => setCategory("nowPlaying")}>
-                        <span className="hidden sm:inline">Now Playing</span>
-                        <span className="sm:hidden">Now</span>
-                      </TabButton>
-                    </div>
-                  </>
-                )}
-              </div>
+      <div className="p-4 md:p-6">
+        {/* Browse or Search: always visible, part of the page */}
+        <div className="sticky top-14 md:top-0 z-10 -mx-4 -mt-4 px-4 pt-4 md:-mx-6 md:-mt-6 md:px-6 md:pt-6 pb-3 md:pb-4 mb-3 md:mb-4 bg-shelf-bg border-b border-shelf-border">
+          <div className="flex flex-nowrap items-center gap-2 md:gap-3 overflow-x-auto min-w-0">
+            <div className="flex rounded-lg border border-shelf-border bg-shelf-card p-0.5 shrink-0">
+              <TabButton size="sm" active={tab === "browse"} onClick={() => setTab("browse")}>
+                Browse
+              </TabButton>
+              <TabButton size="sm" active={tab === "search"} onClick={() => setTab("search")}>
+                Search
+              </TabButton>
             </div>
-            {tab === "search" && (
-              <div className="px-2 py-2 md:px-6 md:py-4">
-                <div className="flex flex-nowrap items-center gap-1 md:gap-2 overflow-x-auto min-w-0">
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && runSearch()}
-                    placeholder="Search..."
-                    className="min-w-[80px] w-28 flex-1 max-w-md rounded-md md:rounded-lg border border-shelf-border bg-shelf-card px-2 py-1.5 md:px-4 md:py-2.5 text-xs md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={runSearch}
-                    disabled={loading}
-                    className="rounded-md md:rounded-lg bg-shelf-accent px-2 py-1.5 md:px-4 md:py-2.5 text-xs md:text-base font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-1 shrink-0"
-                  >
-                    {loading && tab === "search" ? <Loader2 size={14} className="animate-spin md:w-[18px] md:h-[18px]" /> : <Search size={14} className="md:w-[18px] md:h-[18px]" />}
-                    Search
-                  </button>
-                  <div className="h-4 w-px bg-shelf-border shrink-0 md:h-5" aria-hidden />
-                  <div className="flex flex-nowrap gap-0.5 md:gap-1 shrink-0">
-                    <TabButton size="sm" active={searchType === "all"} onClick={() => setSearchType("all")}>
-                      All
-                    </TabButton>
-                    <TabButton size="sm" active={searchType === "movie"} onClick={() => setSearchType("movie")}>
-                      Movies
-                    </TabButton>
-                    <TabButton size="sm" active={searchType === "tv"} onClick={() => setSearchType("tv")}>
-                      TV
-                    </TabButton>
-                  </div>
+            {tab === "browse" && (
+              <>
+                <div className="h-4 w-px bg-shelf-border shrink-0 md:h-5" aria-hidden />
+                <div className="flex flex-nowrap items-center gap-1 md:gap-1.5 shrink-0">
+                  <TabButton size="sm" active={category === "popular"} onClick={() => setCategory("popular")}>
+                    Popular
+                  </TabButton>
+                  <TabButton size="sm" active={category === "trending"} onClick={() => setCategory("trending")}>
+                    Trending
+                  </TabButton>
+                  <TabButton size="sm" active={category === "top"} onClick={() => setCategory("top")}>
+                    <span className="hidden sm:inline">Top Rated</span>
+                    <span className="sm:hidden">Top</span>
+                  </TabButton>
+                  <TabButton size="sm" active={category === "nowPlaying"} onClick={() => setCategory("nowPlaying")}>
+                    <span className="hidden sm:inline">Now Playing</span>
+                    <span className="sm:hidden">Now</span>
+                  </TabButton>
                 </div>
-              </div>
+              </>
             )}
           </div>
-        </MobileFiltersPanel>
-      </header>
-
-      <div className="p-4 md:p-6">
+        </div>
         {tmdbError && (
           <div className="mb-4 rounded-lg bg-red-500/20 border border-red-500/50 text-red-200 px-3 md:px-4 py-2 md:py-3 text-sm">
             {tmdbError}
@@ -388,12 +390,68 @@ export default function DiscoverPage() {
         )}
 
         {tab === "search" && (
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && runSearch()}
+                placeholder="Search… (press / to focus)"
+                className="min-w-[120px] flex-1 max-w-md rounded-lg border border-shelf-border bg-shelf-card px-3 py-2.5 text-sm text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={runSearch}
+                disabled={loading}
+                className="rounded-lg bg-shelf-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-2 shrink-0"
+              >
+                {loading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                Search
+              </button>
+              <div className="flex flex-nowrap gap-1 shrink-0">
+                <TabButton size="sm" active={searchType === "all"} onClick={() => setSearchType("all")}>
+                  All
+                </TabButton>
+                <TabButton size="sm" active={searchType === "movie"} onClick={() => setSearchType("movie")}>
+                  Movies
+                </TabButton>
+                <TabButton size="sm" active={searchType === "tv"} onClick={() => setSearchType("tv")}>
+                  TV
+                </TabButton>
+              </div>
+            </div>
+            <div className="rounded-lg border border-shelf-border bg-shelf-card/50 p-3 md:p-4">
+              <p className="text-xs md:text-sm font-medium text-shelf-muted mb-2">Add by IMDb</p>
+              <p className="text-xs text-shelf-muted mb-2">Paste an IMDb link or ID (e.g. tt0137523) to add that title.</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={imdbInput}
+                  onChange={(e) => { setImdbInput(e.target.value); setImdbError(null); }}
+                  onKeyDown={(e) => e.key === "Enter" && lookupByImdb()}
+                  placeholder="https://www.imdb.com/title/tt0137523/ or tt0137523"
+                  className="min-w-[180px] flex-1 rounded-md border border-shelf-border bg-shelf-bg px-3 py-2 text-sm text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
+                />
+                <button
+                  type="button"
+                  onClick={lookupByImdb}
+                  disabled={imdbLoading || !imdbInput.trim()}
+                  className="rounded-md bg-shelf-accent px-4 py-2 text-sm font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {imdbLoading ? <Loader2 size={16} className="animate-spin" /> : null}
+                  Look up
+                </button>
+              </div>
+              {imdbError && <p className="text-red-400 text-xs mt-2">{imdbError}</p>}
+            </div>
             {!loading && !query && (
-              <p className="text-shelf-muted text-sm">Enter a search term above to find movies or TV shows.</p>
+              <p className="text-shelf-muted text-sm">Enter a search term to find movies or TV shows.</p>
             )}
             {!loading && query && searchResults.length === 0 && (
-              <p className="text-shelf-muted text-sm">No results found for &ldquo;{query}&rdquo;</p>
+              <p className="text-shelf-muted text-sm">No results for &ldquo;{query}&rdquo;. Try a different search or browse by category.</p>
             )}
             {!loading && query && searchResults.length > 0 && filteredSearchResults.length === 0 && (
               <p className="text-shelf-muted text-sm">

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Sparkles, LayoutGrid, Film, Tv, Settings, Menu, GripVertical, Check } from "lucide-react";
 import { WatchBoxLogo } from "./WatchBoxLogo";
 import { useMobileFilters } from "@/contexts/MobileFiltersContext";
+import { useMediaList } from "@/contexts/MediaListContext";
 import { useReorderMode } from "@/contexts/ReorderModeContext";
 import { DisplayModeToggle } from "./DisplayModeToggle";
 import { Tooltip } from "./Tooltip";
@@ -26,8 +27,13 @@ function isListPage(pathname: string) {
 export function Sidebar() {
   const pathname = usePathname();
   const { toggle } = useMobileFilters();
+  const { list, loading } = useMediaList();
   const { reorderMode, setReorderMode } = useReorderMode();
   const showReorder = isListPage(pathname);
+
+  const unwatched = list.filter((m) => m.status === "yet_to_start").length;
+  const inProgress = list.filter((m) => m.status === "in_progress").length;
+  const showBacklog = !loading && list.length > 0 && (unwatched > 0 || inProgress > 0);
 
   return (
     <>
@@ -38,6 +44,13 @@ export function Sidebar() {
           <span className="text-xl font-bold text-[#8b5cf6] tracking-wide">WatchBox</span>
         </div>
         <nav className="flex-1 space-y-1 p-3">
+          {showBacklog && (
+            <div className="mb-2 px-3 py-1.5 text-[11px] text-shelf-muted border-b border-shelf-border/50">
+              {unwatched > 0 && <span>{unwatched} unwatched</span>}
+              {unwatched > 0 && inProgress > 0 && <span> · </span>}
+              {inProgress > 0 && <span>{inProgress} in progress</span>}
+            </div>
+          )}
           {nav.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || (href !== "/discover" && pathname.startsWith(href));
             return (
@@ -106,14 +119,16 @@ export function Sidebar() {
             </Tooltip>
           )}
         </div>
-        <button
-          type="button"
-          onClick={toggle}
-          className="flex items-center justify-center rounded-lg p-2 text-shelf-muted hover:bg-shelf-card hover:text-white transition shrink-0"
-          aria-label="Toggle filters and sections"
-        >
-          <Menu size={22} />
-        </button>
+        {pathname !== "/discover" && (
+          <button
+            type="button"
+            onClick={toggle}
+            className="flex items-center justify-center rounded-lg p-2 text-shelf-muted hover:bg-shelf-card hover:text-white transition shrink-0"
+            aria-label="Toggle filters and sections"
+          >
+            <Menu size={22} />
+          </button>
+        )}
       </header>
 
       {/* Mobile Bottom Navigation - always visible, not affected by burger */}

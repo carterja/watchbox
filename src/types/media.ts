@@ -17,6 +17,7 @@ export type Media = {
   overview: string | null;
   posterPath: string | null;
   releaseDate: string | null;
+  runtime: number | null; // minutes
   status: MediaStatus;
   progressNote: string | null;
   totalSeasons: number | null;

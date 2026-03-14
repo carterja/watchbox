@@ -9,6 +9,7 @@ import { FilterBar } from "@/components/FilterBar";
 import { MobileFiltersPanel } from "@/components/MobileFiltersPanel";
 import { DisplayModeToggle } from "@/components/DisplayModeToggle";
 import { GripVertical, Check } from "lucide-react";
+import { toast } from "sonner";
 import { useDisplayMode, getMediaListContainerClass } from "@/contexts/DisplayModeContext";
 import { useMediaList } from "@/contexts/MediaListContext";
 import { useReorderMode } from "@/contexts/ReorderModeContext";
@@ -20,7 +21,7 @@ const SortableMediaList = dynamic(
 );
 
 export default function MoviesPage() {
-  const { list, loading, refetch } = useMediaList();
+  const { list, loading, refetch, optimisticUpdate, optimisticRemove } = useMediaList();
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
   const [streamingServiceFilter, setStreamingServiceFilter] = useState<string | null>(null);
   const [viewerFilter, setViewerFilter] = useState<Viewer | null>(null);
@@ -32,10 +33,21 @@ export default function MoviesPage() {
   const handleDelete = useCallback(
     async (id: string) => {
       if (!confirm("Remove this from your list?")) return;
-      const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
-      if (res.ok) await refetch();
+      optimisticRemove(id);
+      try {
+        const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          toast.success("Removed");
+        } else {
+          await refetch();
+          toast.error("Could not remove");
+        }
+      } catch {
+        await refetch();
+        toast.error("Could not remove");
+      }
     },
-    [refetch]
+    [refetch, optimisticRemove]
   );
 
   const handleUpdate = useCallback(
@@ -51,14 +63,27 @@ export default function MoviesPage() {
         status?: MediaStatus;
       }
     ) => {
-      const res = await fetch(`/api/media/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
-      });
-      if (res.ok) await refetch();
+      optimisticUpdate(id, patch);
+      try {
+        const res = await fetch(`/api/media/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        if (res.ok) {
+          await refetch();
+          if (patch.status === "finished") toast.success("Marked as finished");
+          else toast.success("Updated");
+        } else {
+          await refetch();
+          toast.error("Could not update");
+        }
+      } catch {
+        await refetch();
+        toast.error("Could not update");
+      }
     },
-    [refetch]
+    [refetch, optimisticUpdate]
   );
 
   const movies = useMemo(() => list.filter((m) => m.type === "movie"), [list]);
@@ -131,15 +156,18 @@ export default function MoviesPage() {
           )
         ) : filtered.length === 0 ? (
           <div className={containerClass}>
-            <p className={isList ? "text-shelf-muted py-8 text-center" : "col-span-full text-shelf-muted py-8 text-center"}>
-              Nothing matches the selected filters.
-            </p>
+            <p className={isList ? "text-shelf-muted py-8 text-center text-sm" : "col-span-full text-shelf-muted py-8 text-center text-sm"}>
+                No movies match your filters. Try changing status or viewer.
+              </p>
           </div>
         ) : reorderMode ? (
           <SortableMediaList
             fullOrderedIds={list.map((m) => m.id)}
             filteredItems={filtered}
-            onReorderSuccess={refetch}
+            onReorderSuccess={async () => {
+              await refetch();
+              toast.success("Order saved");
+            }}
             containerClass={containerClass}
             isList={isList}
             renderItem={(m) => (
