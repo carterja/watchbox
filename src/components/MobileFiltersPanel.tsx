@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useMobileFilters } from "@/contexts/MobileFiltersContext";
 import { useOverlay } from "@/contexts/OverlayContext";
@@ -10,13 +10,14 @@ const SLIDE_DURATION_MS = 280;
 /**
  * On desktop (md+): renders filter/section content in flow.
  * On mobile: when burger is open, shows shared blur overlay and portaled drawer
- * that slides down from below the header, with the same content.
+ * that slides down from below the header; on close it slides up smoothly.
  */
 export function MobileFiltersPanel({ children }: { children: React.ReactNode }) {
   const { open, close } = useMobileFilters();
   const { showOverlay, hideOverlay } = useOverlay();
   const [mounted, setMounted] = useState(false);
   const [animatingIn, setAnimatingIn] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -24,18 +25,33 @@ export function MobileFiltersPanel({ children }: { children: React.ReactNode }) 
 
   // Sync overlay with drawer open state (e.g. close on scroll)
   useEffect(() => {
-    if (!open) hideOverlay();
+    if (!open) {
+      hideOverlay();
+      setIsClosing(false);
+    }
   }, [open, hideOverlay]);
+
+  const startClosing = useCallback(() => {
+    setIsClosing(true);
+  }, []);
 
   // When opening on mobile, show overlay and start slide-in
   useEffect(() => {
     if (open) {
-      showOverlay(close);
+      showOverlay(startClosing);
       const t = requestAnimationFrame(() => setAnimatingIn(true));
       return () => cancelAnimationFrame(t);
     }
     setAnimatingIn(false);
-  }, [open, showOverlay, close]);
+  }, [open, showOverlay, startClosing]);
+
+  const handleTransitionEnd = useCallback(
+    (e: React.TransitionEvent<HTMLDivElement>) => {
+      if (e.propertyName !== "transform" || !isClosing) return;
+      close();
+    },
+    [isClosing, close]
+  );
 
   const drawerPortalTarget = mounted ? document.getElementById("drawer-portal") : null;
 
@@ -45,8 +61,9 @@ export function MobileFiltersPanel({ children }: { children: React.ReactNode }) 
       style={{
         maxHeight: "70vh",
         transition: `transform ${SLIDE_DURATION_MS}ms cubic-bezier(0.32, 0.72, 0, 1)`,
-        transform: animatingIn ? "translateY(0)" : "translateY(-100%)",
+        transform: isClosing || !animatingIn ? "translateY(-100%)" : "translateY(0)",
       }}
+      onTransitionEnd={handleTransitionEnd}
     >
       <div className="overflow-y-auto overflow-x-auto flex-1 min-h-0">
         {children}
@@ -61,7 +78,7 @@ export function MobileFiltersPanel({ children }: { children: React.ReactNode }) 
         {children}
       </div>
 
-      {/* Mobile: when open, render into drawer portal with slide-down animation */}
+      {/* Mobile: when open (or closing), render into drawer portal with slide animation */}
       {mounted &&
         drawerPortalTarget &&
         open &&

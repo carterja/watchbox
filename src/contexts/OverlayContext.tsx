@@ -6,7 +6,6 @@ import {
   useState,
   useCallback,
   useEffect,
-  useRef,
   type ReactNode,
 } from "react";
 
@@ -14,7 +13,7 @@ type OverlayContextValue = {
   /** Show the shared blur overlay; when user clicks it or presses Escape, onClose is called. */
   showOverlay: (onClose: () => void) => void;
   hideOverlay: () => void;
-  /** Call from overlay or modal backdrop onClick; ignores the first click after opening (avoids open-tap closing). */
+  /** Call from overlay onClick to close (runs registered onClose). */
   handleBackdropClick: () => void;
   isOpen: boolean;
 };
@@ -24,10 +23,8 @@ const OverlayContext = createContext<OverlayContextValue | null>(null);
 export function OverlayProvider({ children }: { children: ReactNode }) {
   const [onClose, setOnClose] = useState<(() => void) | null>(null);
   const isOpen = onClose !== null;
-  const ignoreNextBackdropClickRef = useRef(false);
 
   const showOverlay = useCallback((closeCb: () => void) => {
-    ignoreNextBackdropClickRef.current = true;
     setOnClose(() => closeCb);
   }, []);
 
@@ -39,10 +36,6 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   }, [onClose]);
 
   const handleBackdropClick = useCallback(() => {
-    if (ignoreNextBackdropClickRef.current) {
-      ignoreNextBackdropClickRef.current = false;
-      return;
-    }
     hideOverlay();
   }, [hideOverlay]);
 
