@@ -96,7 +96,7 @@ export function Sidebar() {
       </aside>
 
       {/* Mobile Top Header: logo + text first, display toggles centered in middle, burger right */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-30 h-14 bg-shelf-sidebar border-b border-shelf-border flex items-center gap-2 px-4">
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-shelf-sidebar border-b border-shelf-border flex items-center gap-2 px-4">
         <div className="flex items-center gap-2 min-w-0 shrink-0">
           <WatchBoxLogo className="w-8 h-8 shrink-0" />
           <span className="text-lg font-bold text-[#8b5cf6] truncate">WatchBox</span>
@@ -132,7 +132,7 @@ export function Sidebar() {
       </header>
 
       {/* Mobile Bottom Navigation - always visible, not affected by burger */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-shelf-sidebar border-t border-shelf-border safe-area-pb">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-shelf-sidebar border-t border-shelf-border safe-area-pb">
         <div className="grid grid-cols-5 gap-0.5 p-2">
           {nav.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || (href !== "/discover" && pathname.startsWith(href));

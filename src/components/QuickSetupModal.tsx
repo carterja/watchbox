@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { X, Save, Heart, UsersRound, User } from "lucide-react";
 import type { MediaStatus, Viewer } from "@/types/media";
 import { StreamingIcon } from "./StreamingIcon";
@@ -47,17 +47,37 @@ function QuickSetupModalComponent({ mediaTitle, mediaType, onClose, onSave }: Pr
   const [streamingService, setStreamingService] = useState<string | null>(null);
   const [viewer, setViewer] = useState<Viewer | null>("both");
   const [status, setStatus] = useState<MediaStatus>("in_progress");
+  const [isClosing, setIsClosing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const closeDoneRef = useRef(false);
 
-  // Handle ESC key to close
+  useEffect(() => {
+    setIsMobile(typeof window !== "undefined" && window.innerWidth < 768);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    if (closeDoneRef.current) return;
+    if (!isMobile) {
+      onClose();
+      return;
+    }
+    setIsClosing(true);
+  }, [isMobile, onClose]);
+
+  const handleAnimationEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
+    if (e.animationName !== "modal-slide-down") return;
+    if (closeDoneRef.current) return;
+    closeDoneRef.current = true;
+    onClose();
+  };
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
+      if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [onClose]);
+  }, [handleClose]);
 
   const handleSave = () => {
     onSave({ streamingService, viewer, status });
@@ -68,23 +88,27 @@ function QuickSetupModalComponent({ mediaTitle, mediaType, onClose, onSave }: Pr
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-stretch md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm"
-      onClick={onClose}
+    <div
+      className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm"
+      onClick={handleClose}
+      role="dialog"
+      aria-modal
+      aria-labelledby="quick-setup-title"
     >
-      <div 
-        className="relative flex flex-col w-full max-w-md h-full md:h-auto md:max-h-[90vh] rounded-none md:rounded-2xl border-0 md:border border-shelf-border bg-shelf-sidebar shadow-2xl overflow-hidden"
+      <div
+        className={`relative flex flex-col w-full max-w-md h-full md:h-auto md:max-h-[90vh] rounded-t-2xl md:rounded-2xl border-t md:border border-shelf-border bg-shelf-sidebar shadow-2xl overflow-hidden modal-slide-up ${isClosing ? "modal-slide-down" : ""}`}
         onClick={(e) => e.stopPropagation()}
+        onAnimationEnd={handleAnimationEnd}
       >
         {/* Header */}
         <div className="shrink-0 p-4 md:p-6 border-b border-shelf-border bg-gradient-to-r from-shelf-sidebar to-shelf-card">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base md:text-lg font-bold text-white">Quick Setup</h2>
+              <h2 id="quick-setup-title" className="text-base md:text-lg font-bold text-white">Quick Setup</h2>
               <p className="text-xs md:text-sm text-shelf-muted mt-1 truncate">{mediaTitle}</p>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 rounded-lg hover:bg-shelf-card text-shelf-muted hover:text-white transition"
             >
               <X size={18} className="md:w-5 md:h-5" />

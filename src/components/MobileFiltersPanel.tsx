@@ -1,39 +1,74 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMobileFilters } from "@/contexts/MobileFiltersContext";
+import { useOverlay } from "@/contexts/OverlayContext";
 
-const SLIDE_DURATION_MS = 500;
+const SLIDE_DURATION_MS = 280;
 
 /**
- * Wraps page header filter/section content. On mobile, slides up/down based on
- * the burger menu state and overlays content (does not push down). Uses
- * transform for GPU-accelerated slide; max-height for reveal. On desktop (md+) always visible in flow.
+ * On desktop (md+): renders filter/section content in flow.
+ * On mobile: when burger is open, shows shared blur overlay and portaled drawer
+ * that slides down from below the header, with the same content.
  */
 export function MobileFiltersPanel({ children }: { children: React.ReactNode }) {
-  const { open } = useMobileFilters();
-  return (
+  const { open, close } = useMobileFilters();
+  const { showOverlay, hideOverlay } = useOverlay();
+  const [mounted, setMounted] = useState(false);
+  const [animatingIn, setAnimatingIn] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Sync overlay with drawer open state (e.g. close on scroll)
+  useEffect(() => {
+    if (!open) hideOverlay();
+  }, [open, hideOverlay]);
+
+  // When opening on mobile, show overlay and start slide-in
+  useEffect(() => {
+    if (open) {
+      showOverlay(close);
+      const t = requestAnimationFrame(() => setAnimatingIn(true));
+      return () => cancelAnimationFrame(t);
+    }
+    setAnimatingIn(false);
+  }, [open, showOverlay, close]);
+
+  const drawerPortalTarget = mounted ? document.getElementById("drawer-portal") : null;
+
+  const drawerContent = (
     <div
-      className={`
-        absolute top-0 left-0 right-0 z-20 bg-shelf-bg/98 backdrop-blur border-b border-shelf-border
-        md:relative md:top-auto md:left-auto md:right-auto md:z-auto md:bg-transparent md:backdrop-blur-none md:border-0
-        overflow-hidden
-        transition-[max-height] ease-in-out
-        ${open ? "max-h-[70vh]" : "max-h-0"} md:max-h-none md:overflow-visible
-      `}
-      style={{ transitionDuration: `${SLIDE_DURATION_MS}ms` }}
+      className="pointer-events-auto flex flex-col bg-shelf-sidebar border-b border-shelf-border shadow-xl md:hidden"
+      style={{
+        maxHeight: "70vh",
+        transition: `transform ${SLIDE_DURATION_MS}ms cubic-bezier(0.32, 0.72, 0, 1)`,
+        transform: animatingIn ? "translateY(0)" : "translateY(-100%)",
+      }}
     >
-      <div
-        className={`
-          transition-transform ease-in-out
-          md:translate-y-0
-          ${open ? "translate-y-0" : "-translate-y-full"}
-        `}
-        style={{ transitionDuration: `${SLIDE_DURATION_MS}ms` }}
-      >
-        <div className="overflow-y-auto overflow-x-auto max-h-[70vh] md:max-h-none md:overflow-visible">
-          {children}
-        </div>
+      <div className="overflow-y-auto overflow-x-auto flex-1 min-h-0">
+        {children}
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop: always visible in flow */}
+      <div className="hidden md:block">
+        {children}
+      </div>
+
+      {/* Mobile: when open, render into drawer portal with slide-down animation */}
+      {mounted &&
+        drawerPortalTarget &&
+        open &&
+        createPortal(
+          drawerContent,
+          drawerPortalTarget
+        )}
+    </>
   );
 }

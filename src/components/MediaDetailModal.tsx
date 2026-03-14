@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import Image from "next/image";
 import { X, Film, Tv, Save, Search, Check, Trash2, Heart, UsersRound, User } from "lucide-react";
 import type { Media, MediaStatus, SeasonProgressItem, Viewer } from "@/types/media";
@@ -104,17 +104,37 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
   const [saving, setSaving] = useState(false);
 
   const isSeries = media.type === "tv";
+  const [isClosing, setIsClosing] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const closeDoneRef = useRef(false);
 
-  // Handle ESC key to close
+  useEffect(() => {
+    setIsMobile(typeof window !== "undefined" && window.innerWidth < 768);
+  }, []);
+
+  const handleClose = useCallback(() => {
+    if (closeDoneRef.current) return;
+    if (!isMobile) {
+      onClose();
+      return;
+    }
+    setIsClosing(true);
+  }, [isMobile, onClose]);
+
+  const handleAnimationEnd = (e: React.AnimationEvent<HTMLDivElement>) => {
+    if (e.animationName !== "modal-slide-down") return;
+    if (closeDoneRef.current) return;
+    closeDoneRef.current = true;
+    onClose();
+  };
+
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
+      if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", handleEscape);
     return () => window.removeEventListener("keydown", handleEscape);
-  }, [onClose]);
+  }, [handleClose]);
 
   // Load poster options from TMDB
   const searchPosters = async () => {
@@ -219,7 +239,7 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
       };
       console.log("MediaDetailModal - Saving with data:", JSON.stringify(updateData, null, 2));
       await onUpdate(updateData);
-      onClose();
+      handleClose();
     } catch (error) {
       console.error("Failed to save:", error);
     } finally {
@@ -228,13 +248,17 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/80 backdrop-blur-sm"
-      onClick={onClose}
+      onClick={handleClose}
+      role="dialog"
+      aria-modal
+      aria-labelledby="media-detail-title"
     >
-      <div 
-        className="relative w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] rounded-t-2xl md:rounded-2xl border-t md:border border-shelf-border bg-shelf-sidebar shadow-2xl overflow-hidden flex flex-col"
+      <div
+        className={`relative w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] rounded-t-2xl md:rounded-2xl border-t md:border border-shelf-border bg-shelf-sidebar shadow-2xl overflow-hidden flex flex-col modal-slide-up ${isClosing ? "modal-slide-down" : ""}`}
         onClick={(e) => e.stopPropagation()}
+        onAnimationEnd={handleAnimationEnd}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 md:p-6 border-b border-shelf-border bg-gradient-to-r from-shelf-sidebar to-shelf-card">
@@ -247,18 +271,18 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
               )}
             </div>
             <div className="min-w-0">
-              <h2 className="text-base md:text-xl font-bold text-white truncate">{title}</h2>
+              <h2 id="media-detail-title" className="text-base md:text-xl font-bold text-white truncate">{title}</h2>
               <p className="text-xs md:text-sm text-shelf-muted">
                 {(releaseDate || media.releaseDate)?.slice(0, 4)} • {isSeries ? "TV Series" : "Movie"}
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-lg hover:bg-shelf-card text-shelf-muted hover:text-white transition shrink-0"
-          >
-            <X size={18} className="md:w-5 md:h-5" />
-          </button>
+            <button
+              onClick={handleClose}
+              className="p-2 rounded-lg hover:bg-shelf-card text-shelf-muted hover:text-white transition shrink-0"
+            >
+              <X size={18} className="md:w-5 md:h-5" />
+            </button>
         </div>
 
         {/* Content */}
@@ -608,7 +632,7 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
                 onClick={() => {
                   if (confirm("Remove this from your list?")) {
                     onDelete();
-                    onClose();
+                    handleClose();
                   }
                 }}
                 className="px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/20 hover:text-red-300 transition text-sm md:text-base inline-flex items-center gap-1.5"
@@ -620,7 +644,7 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 rounded-lg text-white hover:bg-shelf-sidebar transition text-sm md:text-base"
             >
               Cancel

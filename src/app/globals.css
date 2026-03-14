@@ -98,6 +98,47 @@ body {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
+/* Mobile modal slide-up from bottom */
+@keyframes modal-slide-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.modal-slide-up {
+  animation: modal-slide-up 350ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+@media (min-width: 768px) {
+  .modal-slide-up {
+    animation: none;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile modal slide-down (exit) */
+@keyframes modal-slide-down {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.modal-slide-down {
+  animation: modal-slide-down 350ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+@media (min-width: 768px) {
+  .modal-slide-down {
+    animation-duration: 0.01ms;
+  }
+}
+
 /* Smooth transitions */
 * {
   transition-property: color, background-color, border-color, box-shadow;
