@@ -8,7 +8,12 @@ export async function GET() {
   const list = await prisma.media.findMany({
     orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
   });
-  return Response.json(list);
+  return new Response(JSON.stringify(list), {
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {

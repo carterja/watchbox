@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, LayoutGrid, Film, Tv, Settings, Menu } from "lucide-react";
+import { Sparkles, LayoutGrid, Film, Tv, Settings, Menu, GripVertical, Check } from "lucide-react";
 import { WatchBoxLogo } from "./WatchBoxLogo";
 import { useMobileFilters } from "@/contexts/MobileFiltersContext";
+import { useReorderMode } from "@/contexts/ReorderModeContext";
 import { DisplayModeToggle } from "./DisplayModeToggle";
+import { Tooltip } from "./Tooltip";
 
 const nav = [
   { href: "/discover", label: "Discover", icon: Sparkles },
@@ -15,9 +17,17 @@ const nav = [
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
+const LIST_PATHS = ["/all", "/movies", "/series"] as const;
+
+function isListPage(pathname: string) {
+  return LIST_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const { toggle } = useMobileFilters();
+  const { reorderMode, setReorderMode } = useReorderMode();
+  const showReorder = isListPage(pathname);
 
   return (
     <>
@@ -78,8 +88,23 @@ export function Sidebar() {
           <WatchBoxLogo className="w-8 h-8 shrink-0" />
           <span className="text-lg font-bold text-[#8b5cf6] truncate">WatchBox</span>
         </div>
-        <div className="flex-1 flex justify-center min-w-0">
+        <div className="flex-1 flex justify-center items-center gap-1 min-w-0">
           {pathname !== "/discover" && <DisplayModeToggle />}
+          {showReorder && (
+            <Tooltip content={reorderMode ? "Done" : "Reorder"} placement="bottom">
+              <button
+                type="button"
+                onClick={() => setReorderMode((v) => !v)}
+                className={`flex items-center justify-center rounded-lg p-2 transition shrink-0 ${
+                  reorderMode ? "bg-[#8b5cf6] text-white" : "text-shelf-muted hover:bg-shelf-card hover:text-white"
+                }`}
+                aria-label={reorderMode ? "Done reordering" : "Reorder list"}
+                aria-pressed={reorderMode}
+              >
+                {reorderMode ? <Check size={20} /> : <GripVertical size={20} />}
+              </button>
+            </Tooltip>
+          )}
         </div>
         <button
           type="button"

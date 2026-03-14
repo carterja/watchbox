@@ -20,6 +20,15 @@ A personal **Goodreads-style tracker for movies and TV shows**. Track your watch
 - **TMDB API** for movie/TV metadata
 - **Zod** for validation
 
+## Lightweight / low-resource
+
+The app is tuned to run well on a small server (e.g. 1GB RAM):
+
+- **API caching**: `GET /api/media` uses short-lived browser cache to cut repeat requests.
+- **Lazy JS**: Drag-and-drop reorder (dnd-kit) loads only when you tap "Reorder", keeping initial bundles smaller.
+- **Images**: WebP only, fewer size variants; `compress: true` in Next.js for gzip.
+- **Docker**: Optional `NODE_OPTIONS=--max-old-space-size=384` in `docker-compose.yml` to cap Node heap; adjust or remove if you have more RAM.
+
 ## Prerequisites
 
 - Node.js 18+ 

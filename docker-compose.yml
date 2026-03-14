@@ -8,6 +8,8 @@ services:
       - PORT=9516
       - TMDB_API_KEY=${TMDB_API_KEY}
       - DATABASE_URL=file:/app/data/watchbox.db
+      # Cap Node heap to reduce memory use on small servers (tune or remove if you have RAM)
+      - NODE_OPTIONS=--max-old-space-size=384
     volumes:
       - watchbox-data:/app/data
     restart: unless-stopped

@@ -3,6 +3,7 @@ import { MobileFiltersProvider } from "@/contexts/MobileFiltersContext";
 import { MediaListProvider } from "@/contexts/MediaListContext";
 import { MobileFiltersOverlay } from "@/components/MobileFiltersOverlay";
 import { DisplayModeProvider } from "@/contexts/DisplayModeContext";
+import { ReorderModeProvider } from "@/contexts/ReorderModeContext";
 
 export default function DashboardLayout({
   children,
@@ -13,6 +14,7 @@ export default function DashboardLayout({
     <MobileFiltersProvider>
       <MediaListProvider>
       <DisplayModeProvider>
+      <ReorderModeProvider>
       <div className="min-h-screen bg-shelf-bg">
         <Sidebar />
         <MobileFiltersOverlay />
@@ -21,6 +23,7 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+      </ReorderModeProvider>
       </DisplayModeProvider>
       </MediaListProvider>
     </MobileFiltersProvider>
