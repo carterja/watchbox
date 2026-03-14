@@ -8,6 +8,7 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { FilterBar } from "@/components/FilterBar";
 import { MobileFiltersPanel } from "@/components/MobileFiltersPanel";
 import { DisplayModeToggle } from "@/components/DisplayModeToggle";
+import { GripVertical, Check } from "lucide-react";
 import { useDisplayMode, getMediaListContainerClass } from "@/contexts/DisplayModeContext";
 import { useMediaList } from "@/contexts/MediaListContext";
 import type { Media, MediaStatus, SeasonProgressItem, Viewer } from "@/types/media";
@@ -17,6 +18,7 @@ export default function AllPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
   const [streamingServiceFilter, setStreamingServiceFilter] = useState<string | null>(null);
   const [viewerFilter, setViewerFilter] = useState<Viewer | null>(null);
+  const [reorderMode, setReorderMode] = useState(false);
   const { displayMode } = useDisplayMode();
   const containerClass = getMediaListContainerClass(displayMode);
   const isList = displayMode === "compact";
@@ -75,7 +77,19 @@ export default function AllPage() {
   return (
     <div className="min-h-screen">
       <header className="sticky top-14 md:top-0 z-20 md:border-b border-shelf-border bg-shelf-bg/95 backdrop-blur relative h-0 min-h-0 overflow-visible md:h-auto md:min-h-0">
-        <div className="hidden md:flex md:justify-end md:px-4 md:py-2 md:border-b md:border-shelf-border">
+        <div className="hidden md:flex md:justify-end md:items-center md:gap-2 md:px-4 md:py-2 md:border-b md:border-shelf-border">
+          {!loading && filtered.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setReorderMode((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition ${
+                reorderMode ? "bg-[#8b5cf6] text-white" : "text-shelf-muted hover:bg-shelf-card hover:text-white"
+              }`}
+            >
+              {reorderMode ? <Check size={16} /> : <GripVertical size={16} />}
+              {reorderMode ? "Done" : "Reorder"}
+            </button>
+          )}
           <DisplayModeToggle />
         </div>
         <MobileFiltersPanel>
@@ -100,6 +114,20 @@ export default function AllPage() {
       </header>
 
       <div className="p-4 md:p-6">
+        {!loading && filtered.length > 0 && (
+          <div className="md:hidden flex justify-end mb-2">
+            <button
+              type="button"
+              onClick={() => setReorderMode((v) => !v)}
+              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition ${
+                reorderMode ? "bg-[#8b5cf6] text-white" : "text-shelf-muted hover:bg-shelf-card hover:text-white"
+              }`}
+            >
+              {reorderMode ? <Check size={16} /> : <GripVertical size={16} />}
+              {reorderMode ? "Done" : "Reorder"}
+            </button>
+          </div>
+        )}
         {loading ? (
           isList ? (
             <LoadingSkeleton count={14} type="list" />
@@ -112,7 +140,7 @@ export default function AllPage() {
               Nothing matches the selected filters.
             </p>
           </div>
-        ) : (
+        ) : reorderMode ? (
           <SortableMediaList
             fullOrderedIds={list.map((m) => m.id)}
             filteredItems={filtered}
@@ -129,6 +157,19 @@ export default function AllPage() {
               />
             )}
           />
+        ) : (
+          <div className={containerClass}>
+            {filtered.map((m) => (
+              <MediaCard
+                key={m.id}
+                media={m}
+                onDelete={handleDelete}
+                onUpdate={handleUpdate}
+                showTypeTag={true}
+                variant={isList ? "list" : "card"}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
