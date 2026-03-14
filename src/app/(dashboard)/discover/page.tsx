@@ -9,6 +9,7 @@ import { DiscoverCard } from "@/components/DiscoverCard";
 import { TabButton } from "@/components/TabButton";
 import { QuickSetupModal } from "@/components/QuickSetupModal";
 import { MobileFiltersPanel } from "@/components/MobileFiltersPanel";
+import { DisplayModeToggle } from "@/components/DisplayModeToggle";
 import type { Media } from "@/types/media";
 
 type TmdbSearchItem =
@@ -225,72 +226,79 @@ export default function DiscoverPage() {
   return (
     <div className="min-h-screen">
       <header className="sticky top-14 md:top-0 z-20 md:border-b border-shelf-border bg-shelf-bg/95 backdrop-blur relative h-0 min-h-0 overflow-visible md:h-auto md:min-h-0">
+        <div className="hidden md:flex md:justify-end md:px-4 md:py-2 md:border-b md:border-shelf-border">
+          <DisplayModeToggle />
+        </div>
         <MobileFiltersPanel>
-          <div className="px-4 md:px-6 py-3 md:py-4">
-            <div className="flex items-center justify-between mb-3 md:mb-4">
-              <h1 className="text-xl md:text-2xl font-semibold text-shelf-accent">Discover</h1>
-              <div className="flex gap-1.5 md:gap-2">
-                <TabButton active={tab === "browse"} onClick={() => setTab("browse")}>
-                  Browse
-                </TabButton>
-                <TabButton active={tab === "search"} onClick={() => setTab("search")}>
-                  Search
-                </TabButton>
+          <div className="flex flex-col">
+            {/* Row 1: title + Browse/Search — same treatment as unified bar row on other pages */}
+            <div className="bg-shelf-sidebar border-b border-shelf-border px-4 md:px-6 py-2 md:py-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h1 className="text-lg md:text-xl font-semibold text-shelf-accent">Discover</h1>
+                <div className="flex gap-1 rounded-lg border border-shelf-border bg-shelf-card p-0.5">
+                  <TabButton active={tab === "browse"} onClick={() => setTab("browse")}>
+                    Browse
+                  </TabButton>
+                  <TabButton active={tab === "search"} onClick={() => setTab("search")}>
+                    Search
+                  </TabButton>
+                </div>
               </div>
             </div>
-
-            {tab === "search" && (
-              <div className="space-y-3">
-                <div className="flex gap-2 max-w-xl">
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && runSearch()}
-                    placeholder="Search movies & TV shows..."
-                    className="flex-1 rounded-lg border border-shelf-border bg-shelf-card px-3 md:px-4 py-2 md:py-2.5 text-sm md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={runSearch}
-                    disabled={loading}
-                    className="rounded-lg bg-shelf-accent px-4 py-2.5 text-white font-medium hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-2 shrink-0"
-                  >
-                    {loading && tab === "search" ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-                    Search
-                  </button>
+            {/* Row 2: category filters or search UI — same padding as providers row */}
+            <div className="px-4 md:px-6 py-3 md:py-4">
+              {tab === "search" && (
+                <div className="space-y-3">
+                  <div className="flex gap-2 max-w-xl">
+                    <input
+                      type="text"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && runSearch()}
+                      placeholder="Search movies & TV shows..."
+                      className="flex-1 rounded-lg border border-shelf-border bg-shelf-card px-3 md:px-4 py-2 md:py-2.5 text-sm md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={runSearch}
+                      disabled={loading}
+                      className="rounded-lg bg-shelf-accent px-4 py-2.5 text-white font-medium hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-2 shrink-0"
+                    >
+                      {loading && tab === "search" ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
+                      Search
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 md:gap-2">
+                    <TabButton active={searchType === "all"} onClick={() => setSearchType("all")}>
+                      All
+                    </TabButton>
+                    <TabButton active={searchType === "movie"} onClick={() => setSearchType("movie")}>
+                      Movies
+                    </TabButton>
+                    <TabButton active={searchType === "tv"} onClick={() => setSearchType("tv")}>
+                      TV
+                    </TabButton>
+                  </div>
                 </div>
-                <div className="flex gap-1.5 md:gap-2">
-                  <TabButton active={searchType === "all"} onClick={() => setSearchType("all")}>
-                    All
+              )}
+              {tab === "browse" && (
+                <div className="flex flex-wrap gap-1.5 md:gap-2">
+                  <TabButton active={category === "popular"} onClick={() => setCategory("popular")}>
+                    Popular
                   </TabButton>
-                  <TabButton active={searchType === "movie"} onClick={() => setSearchType("movie")}>
-                    Movies
+                  <TabButton active={category === "trending"} onClick={() => setCategory("trending")}>
+                    Trending
                   </TabButton>
-                  <TabButton active={searchType === "tv"} onClick={() => setSearchType("tv")}>
-                    TV
+                  <TabButton active={category === "top"} onClick={() => setCategory("top")}>
+                    Top Rated
+                  </TabButton>
+                  <TabButton active={category === "nowPlaying"} onClick={() => setCategory("nowPlaying")}>
+                    Now Playing
                   </TabButton>
                 </div>
-              </div>
-            )}
-
-            {tab === "browse" && (
-              <div className="flex gap-2">
-                <TabButton active={category === "popular"} onClick={() => setCategory("popular")}>
-                  Popular
-                </TabButton>
-                <TabButton active={category === "trending"} onClick={() => setCategory("trending")}>
-                  Trending
-                </TabButton>
-                <TabButton active={category === "top"} onClick={() => setCategory("top")}>
-                  Top Rated
-                </TabButton>
-                <TabButton active={category === "nowPlaying"} onClick={() => setCategory("nowPlaying")}>
-                  Now Playing
-                </TabButton>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </MobileFiltersPanel>
       </header>
