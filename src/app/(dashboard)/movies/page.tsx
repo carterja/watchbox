@@ -2,20 +2,20 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { MediaCard } from "@/components/MediaCard";
-import { StatusToggle } from "@/components/StatusToggle";
+import { UnifiedCategoryBar, type StatusFilterValue } from "@/components/UnifiedCategoryBar";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { FilterBar } from "@/components/FilterBar";
 import { MobileFiltersPanel } from "@/components/MobileFiltersPanel";
 import { DisplayModeToggle } from "@/components/DisplayModeToggle";
 import { useDisplayMode, getMediaListContainerClass } from "@/contexts/DisplayModeContext";
-import type { Media, MediaStatus, SeasonProgressItem } from "@/types/media";
+import type { Media, MediaStatus, SeasonProgressItem, Viewer } from "@/types/media";
 
 export default function MoviesPage() {
   const [list, setList] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<MediaStatus>("in_progress");
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
   const [streamingServiceFilter, setStreamingServiceFilter] = useState<string | null>(null);
-  const [viewerFilter, setViewerFilter] = useState<string | null>(null);
+  const [viewerFilter, setViewerFilter] = useState<Viewer | null>(null);
   const { displayMode } = useDisplayMode();
   const containerClass = getMediaListContainerClass(displayMode);
   const isList = displayMode === "compact";
@@ -80,7 +80,7 @@ export default function MoviesPage() {
   // Apply filters
   const filtered = useMemo(() => {
     return movies.filter((m) => {
-      if (m.status !== statusFilter) return false;
+      if (statusFilter !== "all" && m.status !== statusFilter) return false;
       if (streamingServiceFilter && m.streamingService !== streamingServiceFilter) return false;
       if (viewerFilter && m.viewer !== viewerFilter) return false;
       return true;
@@ -94,15 +94,22 @@ export default function MoviesPage() {
           <DisplayModeToggle />
         </div>
         <MobileFiltersPanel>
-          <div className="px-4 md:px-6 py-3 md:py-4 flex flex-col gap-3 md:gap-4">
-            <StatusToggle value={statusFilter} onChange={setStatusFilter} />
-            <FilterBar
-              streamingService={streamingServiceFilter}
-              onStreamingServiceChange={setStreamingServiceFilter}
-              viewer={viewerFilter}
-              onViewerChange={setViewerFilter}
-              availableServices={availableServices}
-            />
+          <div className="flex flex-col">
+            <div className="bg-shelf-sidebar border-b border-shelf-border px-4 md:px-6 py-2 md:py-2.5">
+              <UnifiedCategoryBar
+                statusFilter={statusFilter}
+                onStatusChange={setStatusFilter}
+                viewerFilter={viewerFilter}
+                onViewerChange={setViewerFilter}
+              />
+            </div>
+            <div className="px-4 md:px-6 py-3 md:py-4">
+              <FilterBar
+                streamingService={streamingServiceFilter}
+                onStreamingServiceChange={setStreamingServiceFilter}
+                availableServices={availableServices}
+              />
+            </div>
           </div>
         </MobileFiltersPanel>
       </header>
