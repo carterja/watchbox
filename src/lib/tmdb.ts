@@ -36,8 +36,15 @@ export type TmdbTvDetails = TmdbTv & {
 
 export type TmdbSearchResult = { type: "movie"; data: TmdbMovie } | { type: "tv"; data: TmdbTv };
 
+/** True if path is a full URL (custom/OMDB poster); use <img> instead of Next Image for these. */
+export function isExternalPoster(path: string | null): boolean {
+  if (!path) return false;
+  return path.startsWith("http://") || path.startsWith("https://");
+}
+
 export function posterUrl(path: string | null, size: "w92" | "w154" | "w185" | "w342" = "w185"): string | null {
   if (!path) return null;
+  if (isExternalPoster(path)) return path;
   return `${IMAGE_BASE}/${size}${path}`;
 }
 

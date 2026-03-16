@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 import Image from "next/image";
 import { X, Film, Tv, Save, Search, Check, Trash2, Heart, UsersRound, User } from "lucide-react";
 import type { Media, MediaStatus, SeasonProgressItem, Viewer } from "@/types/media";
-import { posterUrl } from "@/lib/tmdb";
+import { posterUrl, isExternalPoster } from "@/lib/tmdb";
 
 type Props = {
   media: Media;
@@ -26,6 +26,13 @@ type PosterSearchResult = {
   width: number;
   height: number;
   vote_average: number;
+};
+
+type CastMember = {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
 };
 
 type TmdbSearchItem =
@@ -101,6 +108,11 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
   const [posterSearch, setPosterSearch] = useState(false);
   const [posterResults, setPosterResults] = useState<PosterSearchResult[]>([]);
   const [loadingPosters, setLoadingPosters] = useState(false);
+  const [customPosterUrl, setCustomPosterUrl] = useState("");
+  const [imdbPosterUrl, setImdbPosterUrl] = useState<string | null>(null);
+  const [loadingImdbPoster, setLoadingImdbPoster] = useState(false);
+  const [cast, setCast] = useState<CastMember[] | null>(null);
+  const [loadingCast, setLoadingCast] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const isSeries = media.type === "tv";
@@ -139,10 +151,28 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
   // Load poster options from TMDB
   const searchPosters = async () => {
     setLoadingPosters(true);
+    setImdbPosterUrl(null);
     try {
-      const res = await fetch(`/api/tmdb/posters/${media.tmdbId}?type=${media.type}`);
-      const data = await res.json();
-      setPosterResults(data.posters || []);
+      const [postersRes, idsRes] = await Promise.all([
+        fetch(`/api/tmdb/posters/${media.tmdbId}?type=${media.type}`),
+        fetch(`/api/tmdb/external-ids?id=${media.tmdbId}&type=${media.type}`),
+      ]);
+      const postersData = await postersRes.json();
+      setPosterResults(postersData.posters || []);
+      const idsData = await idsRes.json();
+      const imdbId = idsData.imdbId;
+      if (imdbId) {
+        setLoadingImdbPoster(true);
+        try {
+          const omdbRes = await fetch(`/api/omdb/poster?imdbId=${encodeURIComponent(imdbId)}`);
+          if (omdbRes.ok) {
+            const omdb = await omdbRes.json();
+            if (omdb.posterUrl) setImdbPosterUrl(omdb.posterUrl);
+          }
+        } finally {
+          setLoadingImdbPoster(false);
+        }
+      }
     } catch (error) {
       console.error("Failed to load posters:", error);
     } finally {
@@ -219,6 +249,23 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
     return seasonProgress.find((s) => s.season === season)?.status || "not_started";
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingCast(true);
+    setCast(null);
+    fetch(`/api/tmdb/credits?id=${currentTmdbId}&type=${isSeries ? "tv" : "movie"}`)
+      .then((res) => res.json())
+      .then((data: { cast?: CastMember[] }) => {
+        if (!cancelled && data.cast) setCast(data.cast);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCast(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentTmdbId, isSeries]);
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -293,12 +340,20 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
               {/* Compact poster */}
               <div className="relative w-24 h-36 rounded-lg overflow-hidden border border-shelf-border bg-shelf-card shrink-0">
                 {selectedPoster ? (
-                  <Image
-                    src={posterUrl(selectedPoster)!}
-                    alt={title}
-                    fill
-                    className="object-cover"
-                  />
+                  isExternalPoster(selectedPoster) ? (
+                    <img
+                      src={posterUrl(selectedPoster)!}
+                      alt={title}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <Image
+                      src={posterUrl(selectedPoster)!}
+                      alt={title}
+                      fill
+                      className="object-cover"
+                    />
+                  )
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-shelf-muted">
                     {isSeries ? <Tv size={24} /> : <Film size={24} />}
@@ -332,6 +387,44 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
             {posterSearch && (
               <div className="mb-4 space-y-2 max-h-48 overflow-y-auto">
                 <p className="text-xs text-shelf-muted">Select a poster:</p>
+                {/* Custom URL */}
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="url"
+                    value={customPosterUrl}
+                    onChange={(e) => setCustomPosterUrl(e.target.value)}
+                    placeholder="Paste image URL"
+                    className="flex-1 min-w-0 rounded-lg border border-shelf-border bg-shelf-card px-2 py-1.5 text-xs text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customPosterUrl.trim()) {
+                        setSelectedPoster(customPosterUrl.trim());
+                        setCustomPosterUrl("");
+                        setPosterSearch(false);
+                      }
+                    }}
+                    disabled={!customPosterUrl.trim()}
+                    className="shrink-0 px-2 py-1.5 rounded-lg bg-shelf-card hover:bg-[#8b5cf6]/20 border border-shelf-border text-xs text-white disabled:opacity-50"
+                  >
+                    Use URL
+                  </button>
+                </div>
+                {loadingImdbPoster && <p className="text-xs text-shelf-muted">Loading IMDb poster…</p>}
+                {imdbPosterUrl && !loadingImdbPoster && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPoster(imdbPosterUrl);
+                      setPosterSearch(false);
+                    }}
+                    className="flex items-center gap-2 w-full rounded-lg border-2 border-shelf-border hover:border-[#8b5cf6]/50 p-2 text-left"
+                  >
+                    <img src={imdbPosterUrl} alt="IMDb poster" className="w-10 h-14 object-cover rounded shrink-0" />
+                    <span className="text-xs text-shelf-muted">Use IMDb poster</span>
+                  </button>
+                )}
                 {loadingPosters ? (
                   <div className="text-center py-4 text-shelf-muted text-sm">Loading...</div>
                 ) : (
@@ -374,12 +467,20 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
             <div className="space-y-4">
               <div className="relative aspect-[2/3] rounded-xl overflow-hidden border border-shelf-border bg-shelf-card">
                 {selectedPoster ? (
-                  <Image
-                    src={posterUrl(selectedPoster)!}
-                    alt={title}
-                    fill
-                    className="object-cover"
-                  />
+                  isExternalPoster(selectedPoster) ? (
+                    <img
+                      src={posterUrl(selectedPoster)!}
+                      alt={title}
+                      className="object-cover w-full h-full"
+                    />
+                  ) : (
+                    <Image
+                      src={posterUrl(selectedPoster)!}
+                      alt={title}
+                      fill
+                      className="object-cover"
+                    />
+                  )
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-shelf-muted">
                     {isSeries ? <Tv size={48} /> : <Film size={48} />}
@@ -400,6 +501,43 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
               {posterSearch && (
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   <p className="text-xs text-shelf-muted px-1">Select a poster:</p>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="url"
+                      value={customPosterUrl}
+                      onChange={(e) => setCustomPosterUrl(e.target.value)}
+                      placeholder="Paste image URL"
+                      className="flex-1 min-w-0 rounded-lg border border-shelf-border bg-shelf-card px-3 py-2 text-sm text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customPosterUrl.trim()) {
+                          setSelectedPoster(customPosterUrl.trim());
+                          setCustomPosterUrl("");
+                          setPosterSearch(false);
+                        }
+                      }}
+                      disabled={!customPosterUrl.trim()}
+                      className="shrink-0 px-3 py-2 rounded-lg bg-shelf-card hover:bg-[#8b5cf6]/20 border border-shelf-border text-sm text-white disabled:opacity-50"
+                    >
+                      Use URL
+                    </button>
+                  </div>
+                  {loadingImdbPoster && <p className="text-xs text-shelf-muted">Loading IMDb poster…</p>}
+                  {imdbPosterUrl && !loadingImdbPoster && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPoster(imdbPosterUrl);
+                        setPosterSearch(false);
+                      }}
+                      className="flex items-center gap-2 w-full rounded-lg border-2 border-shelf-border hover:border-[#8b5cf6]/50 p-2 text-left"
+                    >
+                      <img src={imdbPosterUrl} alt="IMDb poster" className="w-12 h-[4.5rem] object-cover rounded shrink-0" />
+                      <span className="text-sm text-shelf-muted">Use IMDb poster</span>
+                    </button>
+                  )}
                   {loadingPosters ? (
                     <div className="text-center py-4 text-shelf-muted text-sm">Loading...</div>
                   ) : (
@@ -778,15 +916,43 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
                 </div>
               )}
 
-              {/* Progress Note */}
+              {/* Cast */}
               <div>
-                <label className="block text-xs md:text-sm font-medium text-white mb-2">Notes</label>
-                <textarea
+                <label className="block text-xs md:text-sm font-medium text-white mb-2">Cast</label>
+                {loadingCast ? (
+                  <p className="text-xs text-shelf-muted">Loading…</p>
+                ) : cast && cast.length > 0 ? (
+                  <ul className="flex flex-wrap gap-x-3 gap-y-1 text-xs md:text-sm">
+                    {cast.map((member) => (
+                      <li key={member.id}>
+                        <a
+                          href={`https://www.imdb.com/find?q=${encodeURIComponent(member.name)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#8b5cf6] hover:text-[#a78bfa] hover:underline"
+                        >
+                          {member.name}
+                        </a>
+                        {member.character ? (
+                          <span className="text-shelf-muted ml-1">({member.character})</span>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-shelf-muted">No cast data</p>
+                )}
+              </div>
+
+              {/* Progress Note - compact */}
+              <div>
+                <label className="block text-xs md:text-sm font-medium text-white mb-2">Note</label>
+                <input
+                  type="text"
                   value={progressNote}
                   onChange={(e) => setProgressNote(e.target.value)}
-                  placeholder="Add any notes about your progress..."
-                  rows={3}
-                  className="w-full px-3 md:px-4 py-2 rounded-lg bg-shelf-card border border-shelf-border text-sm md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] resize-none"
+                  placeholder="Optional note about your progress..."
+                  className="w-full px-3 md:px-4 py-2 rounded-lg bg-shelf-card border border-shelf-border text-sm md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]"
                 />
               </div>
       </>

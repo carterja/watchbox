@@ -4,7 +4,7 @@ import { useState, memo } from "react";
 import Image from "next/image";
 import { Film, Tv } from "lucide-react";
 import type { Media, SeasonProgressItem } from "@/types/media";
-import { posterUrl } from "@/lib/tmdb";
+import { posterUrl, isExternalPoster } from "@/lib/tmdb";
 import { MediaDetailModal } from "./MediaDetailModal";
 import { StreamingIcon } from "./StreamingIcon";
 
@@ -56,15 +56,19 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
         >
           <div className="relative w-14 sm:w-16 aspect-[2/3] shrink-0 bg-shelf-border">
             {imgSrc ? (
-              <Image
-                src={imgSrc}
-                alt={media.title}
-                fill
-                className="object-cover"
-                sizes="64px"
-                loading="lazy"
-                quality={75}
-              />
+              isExternalPoster(media.posterPath) ? (
+                <img src={imgSrc} alt={media.title} className="object-cover w-full h-full" loading="lazy" />
+              ) : (
+                <Image
+                  src={imgSrc}
+                  alt={media.title}
+                  fill
+                  className="object-cover"
+                  sizes="64px"
+                  loading="lazy"
+                  quality={75}
+                />
+              )
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-shelf-muted">
                 {media.type === "movie" ? <Film size={24} /> : <Tv size={24} />}
@@ -113,15 +117,19 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
     >
       <div className="absolute inset-0">
         {imgSrc ? (
-          <Image
-            src={imgSrc}
-            alt={media.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 50vw, 180px"
-            loading="lazy"
-            quality={75}
-          />
+          isExternalPoster(media.posterPath) ? (
+            <img src={imgSrc} alt={media.title} className="object-cover w-full h-full" loading="lazy" />
+          ) : (
+            <Image
+              src={imgSrc}
+              alt={media.title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 50vw, 180px"
+              loading="lazy"
+              quality={75}
+            />
+          )
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-shelf-border text-shelf-muted">
             {media.type === "movie" ? <Film size={48} /> : <Tv size={48} />}

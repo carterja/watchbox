@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
-import { Search, Film, Tv, Loader2, Check } from "lucide-react";
+import { Search, Film, Tv, Loader2, Check, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { posterUrl } from "@/lib/tmdb";
 import { DiscoverCard } from "@/components/DiscoverCard";
@@ -34,6 +34,8 @@ type Category = "top" | "popular" | "trending" | "nowPlaying";
 export default function DiscoverPage() {
   const [tab, setTab] = useState<"search" | "browse">("browse");
   const [category, setCategory] = useState<Category>("popular");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchMode, setSearchMode] = useState<"title" | "actor" | "imdb">("title");
   const [query, setQuery] = useState("");
   const [searchType, setSearchType] = useState<"all" | "movie" | "tv">("all");
   const [searchResults, setSearchResults] = useState<TmdbSearchItem[]>([]);
@@ -44,10 +46,51 @@ export default function DiscoverPage() {
   const [tmdbError, setTmdbError] = useState<string | null>(null);
   const [showQuickSetup, setShowQuickSetup] = useState(false);
   const [quickSetupItem, setQuickSetupItem] = useState<TmdbSearchItem | null>(null);
-  const [imdbInput, setImdbInput] = useState("");
   const [imdbLoading, setImdbLoading] = useState(false);
   const [imdbError, setImdbError] = useState<string | null>(null);
+  const [personResults, setPersonResults] = useState<{ id: number; name: string; profile_path: string | null; known_for_department: string }[]>([]);
+  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
+  const [selectedPersonName, setSelectedPersonName] = useState<string | null>(null);
+  const [personCredits, setPersonCredits] = useState<{ movies: { id: number; title: string; poster_path: string | null; release_date: string | null }[]; tv: { id: number; name: string; poster_path: string | null; first_air_date: string | null }[] } | null>(null);
+  const [loadingPersonSearch, setLoadingPersonSearch] = useState(false);
+  const [loadingPersonCredits, setLoadingPersonCredits] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchQueryRef = useRef(searchQuery);
+  searchQueryRef.current = searchQuery;
+
+  useEffect(() => {
+    if (searchMode !== "actor") return;
+    if (searchQuery.trim().length < 2) {
+      setPersonResults([]);
+      setLoadingPersonSearch(false);
+      setSelectedPersonId(null);
+      setSelectedPersonName(null);
+      setPersonCredits(null);
+      return;
+    }
+    setSelectedPersonId(null);
+    setSelectedPersonName(null);
+    setPersonCredits(null);
+    const t = setTimeout(async () => {
+      setLoadingPersonSearch(true);
+      const q = searchQuery.trim();
+      try {
+        const res = await fetch(`/api/tmdb/search/person?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (searchQueryRef.current !== q) return;
+        if (!res.ok) {
+          setTmdbError(data.error || "Search failed");
+          setPersonResults([]);
+        } else {
+          setTmdbError(null);
+          setPersonResults(Array.isArray(data) ? data : []);
+        }
+      } finally {
+        if (searchQueryRef.current === q) setLoadingPersonSearch(false);
+      }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchMode, searchQuery]);
 
   useEffect(() => {
     const handleSlash = (e: KeyboardEvent) => {
@@ -62,7 +105,7 @@ export default function DiscoverPage() {
   }, []);
 
   const lookupByImdb = useCallback(async () => {
-    const raw = imdbInput.trim();
+    const raw = searchQuery.trim();
     if (!raw) return;
     setImdbError(null);
     setImdbLoading(true);
@@ -86,14 +129,16 @@ export default function DiscoverPage() {
     } finally {
       setImdbLoading(false);
     }
-  }, [imdbInput]);
+  }, [searchQuery]);
 
   const runSearch = useCallback(async () => {
-    if (!query.trim()) return;
+    const q = searchQuery.trim();
+    if (!q) return;
+    setQuery(q);
     setLoading(true);
     setTmdbError(null);
     try {
-      const res = await fetch(`/api/tmdb/search?q=${encodeURIComponent(query.trim())}`);
+      const res = await fetch(`/api/tmdb/search?q=${encodeURIComponent(q)}`);
       const data = await res.json();
       if (!res.ok) {
         setTmdbError(data.error || "Search failed");
@@ -104,7 +149,21 @@ export default function DiscoverPage() {
     } finally {
       setLoading(false);
     }
-  }, [query]);
+  }, [searchQuery]);
+
+  const loadPersonCredits = useCallback(async (personId: number, personName: string) => {
+    setSelectedPersonId(personId);
+    setSelectedPersonName(personName);
+    setLoadingPersonCredits(true);
+    setPersonCredits(null);
+    try {
+      const res = await fetch(`/api/tmdb/person/${personId}/credits`);
+      const data = await res.json();
+      if (res.ok) setPersonCredits(data);
+    } finally {
+      setLoadingPersonCredits(false);
+    }
+  }, []);
 
   const filteredSearchResults = useMemo(
     () =>
@@ -381,6 +440,21 @@ export default function DiscoverPage() {
                 </div>
               </>
             )}
+            {tab === "search" && (
+              <div className="ml-auto flex flex-nowrap items-center gap-1 shrink-0">
+                <div className="flex rounded-lg border border-shelf-border bg-shelf-card p-0.5">
+                  <TabButton size="sm" active={searchMode === "title"} onClick={() => setSearchMode("title")}>
+                    Movies & TV
+                  </TabButton>
+                  <TabButton size="sm" active={searchMode === "actor"} onClick={() => setSearchMode("actor")}>
+                    Actor
+                  </TabButton>
+                  <TabButton size="sm" active={searchMode === "imdb"} onClick={() => setSearchMode("imdb")}>
+                    IMDb
+                  </TabButton>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         {tmdbError && (
@@ -391,74 +465,81 @@ export default function DiscoverPage() {
 
         {tab === "search" && (
           <div className="space-y-4">
+            {/* Single search pill: one input + mode pills + primary action */}
             <div className="flex flex-wrap items-center gap-2">
               <input
                 ref={searchInputRef}
                 type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && runSearch()}
-                placeholder="Search… (press / to focus)"
-                className="min-w-[120px] flex-1 max-w-md rounded-lg border border-shelf-border bg-shelf-card px-3 py-2.5 text-sm text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (searchMode === "imdb") setImdbError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  if (searchMode === "title") runSearch();
+                  else if (searchMode === "imdb") lookupByImdb();
+                }}
+                placeholder={
+                  searchMode === "title"
+                    ? "Search movies & TV…"
+                    : searchMode === "actor"
+                      ? "Type an actor name…"
+                      : "IMDb link or ID (e.g. tt0137523)"
+                }
+                className="min-w-[160px] flex-1 max-w-md rounded-lg border border-shelf-border bg-shelf-card px-3 py-2.5 text-sm text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
                 autoFocus
               />
-              <button
-                type="button"
-                onClick={runSearch}
-                disabled={loading}
-                className="rounded-lg bg-shelf-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-2 shrink-0"
-              >
-                {loading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
-                Search
-              </button>
-              <div className="flex flex-nowrap gap-1 shrink-0">
-                <TabButton size="sm" active={searchType === "all"} onClick={() => setSearchType("all")}>
-                  All
-                </TabButton>
-                <TabButton size="sm" active={searchType === "movie"} onClick={() => setSearchType("movie")}>
-                  Movies
-                </TabButton>
-                <TabButton size="sm" active={searchType === "tv"} onClick={() => setSearchType("tv")}>
-                  TV
-                </TabButton>
-              </div>
-            </div>
-            <div className="rounded-lg border border-shelf-border bg-shelf-card/50 p-3 md:p-4">
-              <p className="text-xs md:text-sm font-medium text-shelf-muted mb-2">Add by IMDb</p>
-              <p className="text-xs text-shelf-muted mb-2">Paste an IMDb link or ID (e.g. tt0137523) to add that title.</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  value={imdbInput}
-                  onChange={(e) => { setImdbInput(e.target.value); setImdbError(null); }}
-                  onKeyDown={(e) => e.key === "Enter" && lookupByImdb()}
-                  placeholder="https://www.imdb.com/title/tt0137523/ or tt0137523"
-                  className="min-w-[180px] flex-1 rounded-md border border-shelf-border bg-shelf-bg px-3 py-2 text-sm text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-shelf-accent"
-                />
+              {(searchMode === "title" || searchMode === "imdb") && (
                 <button
                   type="button"
-                  onClick={lookupByImdb}
-                  disabled={imdbLoading || !imdbInput.trim()}
-                  className="rounded-md bg-shelf-accent px-4 py-2 text-sm font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-1.5"
+                  onClick={searchMode === "title" ? runSearch : lookupByImdb}
+                  disabled={searchMode === "title" ? loading : imdbLoading || !searchQuery.trim()}
+                  className="rounded-lg bg-shelf-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-2 shrink-0"
                 >
-                  {imdbLoading ? <Loader2 size={16} className="animate-spin" /> : null}
-                  Look up
+                  {(searchMode === "title" && loading) || (searchMode === "imdb" && imdbLoading) ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <Search size={18} />
+                  )}
+                  {searchMode === "title" ? "Search" : "Look up"}
                 </button>
-              </div>
-              {imdbError && <p className="text-red-400 text-xs mt-2">{imdbError}</p>}
+              )}
+              {searchMode === "actor" && loadingPersonSearch && (
+                <Loader2 size={20} className="animate-spin text-shelf-muted shrink-0" />
+              )}
             </div>
-            {!loading && !query && (
-              <p className="text-shelf-muted text-sm">Enter a search term to find movies or TV shows.</p>
+            {searchMode === "title" && (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex rounded-lg border border-shelf-border bg-shelf-card p-0.5">
+                  <TabButton size="sm" active={searchType === "all"} onClick={() => setSearchType("all")}>
+                    All
+                  </TabButton>
+                  <TabButton size="sm" active={searchType === "movie"} onClick={() => setSearchType("movie")}>
+                    Movies
+                  </TabButton>
+                  <TabButton size="sm" active={searchType === "tv"} onClick={() => setSearchType("tv")}>
+                    TV
+                  </TabButton>
+                </div>
+              </div>
             )}
-            {!loading && query && searchResults.length === 0 && (
-              <p className="text-shelf-muted text-sm">No results for &ldquo;{query}&rdquo;. Try a different search or browse by category.</p>
-            )}
-            {!loading && query && searchResults.length > 0 && filteredSearchResults.length === 0 && (
-              <p className="text-shelf-muted text-sm">
-                No {searchType === "movie" ? "movies" : "TV shows"} in the results. Try &ldquo;All&rdquo; or a different search.
-              </p>
-            )}
-            {filteredSearchResults.map((item) => {
+
+            {/* Mode: Movies & TV — results */}
+            {searchMode === "title" && (
+              <>
+                {!loading && !query && (
+                  <p className="text-shelf-muted text-sm">Enter a search term or switch to Actor / IMDb above.</p>
+                )}
+                {!loading && query && searchResults.length === 0 && (
+                  <p className="text-shelf-muted text-sm">No results for &ldquo;{query}&rdquo;. Try a different search or browse.</p>
+                )}
+                {!loading && query && searchResults.length > 0 && filteredSearchResults.length === 0 && (
+                  <p className="text-shelf-muted text-sm">
+                    No {searchType === "movie" ? "movies" : "TV shows"} in the results. Try &ldquo;All&rdquo; or a different search.
+                  </p>
+                )}
+                {filteredSearchResults.map((item) => {
               const title = item.type === "movie" ? item.data.title : item.data.name;
               const date = item.type === "movie" ? item.data.release_date : item.data.first_air_date;
               const key = item.type === "movie" ? `movie-${item.data.id}` : `tv-${item.data.id}`;
@@ -515,6 +596,129 @@ export default function DiscoverPage() {
                 </div>
               );
             })}
+              </>
+            )}
+
+            {/* Mode: Actor — dropdown + filmography */}
+            {searchMode === "actor" && (
+              <>
+                {searchQuery.trim().length >= 2 && (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                    <label htmlFor="actor-select" className="text-sm font-medium text-shelf-muted shrink-0">
+                      Select actor:
+                    </label>
+                    <select
+                      id="actor-select"
+                      value={selectedPersonId ?? ""}
+                      onChange={(e) => {
+                        const id = e.target.value ? parseInt(e.target.value, 10) : null;
+                        if (id != null) {
+                          const p = personResults.find((r) => r.id === id);
+                          if (p) loadPersonCredits(p.id, p.name);
+                        }
+                      }}
+                      className="min-w-[200px] max-w-full rounded-lg border border-shelf-border bg-shelf-card px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-shelf-accent appearance-none bg-[length:1rem_1rem] bg-[right_0.5rem_center] bg-no-repeat pr-9"
+                      style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")" }}
+                    >
+                      <option value="">Select an actor…</option>
+                      {personResults.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                          {p.known_for_department ? ` (${p.known_for_department})` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {!loadingPersonSearch && searchQuery.trim().length >= 2 && personResults.length === 0 && (
+                  <p className="text-shelf-muted text-sm">No people found for &ldquo;{searchQuery}&rdquo;.</p>
+                )}
+                {searchQuery.trim().length < 2 && (
+                  <p className="text-shelf-muted text-sm">Type at least 2 characters to search by actor name.</p>
+                )}
+                {selectedPersonId && loadingPersonCredits && (
+              <div className="flex justify-center py-12">
+                <Loader2 size={32} className="animate-spin text-shelf-accent" />
+              </div>
+            )}
+            {selectedPersonId && selectedPersonName && personCredits && !loadingPersonCredits && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedPersonId(null); setSelectedPersonName(null); setPersonCredits(null); }}
+                    className="text-shelf-muted hover:text-white text-sm"
+                  >
+                    ← Back to results
+                  </button>
+                  <span className="text-shelf-muted">|</span>
+                  <h2 className="text-lg font-semibold text-white">{selectedPersonName}</h2>
+                </div>
+                {personCredits.movies.length > 0 && (
+                  <section>
+                    <h3 className="text-base font-medium text-shelf-muted mb-3">Movies</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                      {personCredits.movies.map((m) => {
+                        const key = `movie-${m.id}`;
+                        return (
+                          <DiscoverCard
+                            key={key}
+                            id={m.id}
+                            type="movie"
+                            title={m.title}
+                            overview={null}
+                            posterPath={m.poster_path}
+                            releaseDate={m.release_date}
+                            inCollection={isInCollection("movie", m.id)}
+                            adding={addingId === key}
+                            onAdd={addMovieFromBrowse({ ...m, overview: null })}
+                            watchProviders={getWatchProvidersForCard(key)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
+                {personCredits.tv.length > 0 && (
+                  <section>
+                    <h3 className="text-base font-medium text-shelf-muted mb-3">TV</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                      {personCredits.tv.map((t) => {
+                        const key = `tv-${t.id}`;
+                        return (
+                          <DiscoverCard
+                            key={key}
+                            id={t.id}
+                            type="tv"
+                            title={t.name}
+                            overview={null}
+                            posterPath={t.poster_path}
+                            releaseDate={t.first_air_date}
+                            inCollection={isInCollection("tv", t.id)}
+                            adding={addingId === key}
+                            onAdd={addTvFromBrowse({ ...t, overview: null })}
+                            watchProviders={getWatchProvidersForCard(key)}
+                          />
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
+                {personCredits.movies.length === 0 && personCredits.tv.length === 0 && (
+                  <p className="text-shelf-muted text-sm">No credits found.</p>
+                )}
+              </div>
+            )}
+              </>
+            )}
+
+            {/* Mode: IMDb — hint and error only (input/button are in the pill) */}
+            {searchMode === "imdb" && (
+              <>
+                <p className="text-shelf-muted text-sm">Paste an IMDb title link or ID (e.g. tt0137523) and click Look up to add it.</p>
+                {imdbError && <p className="text-red-400 text-sm">{imdbError}</p>}
+              </>
+            )}
           </div>
         )}
 
