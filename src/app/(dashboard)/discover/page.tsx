@@ -123,7 +123,7 @@ export default function DiscoverPage() {
         : { type: "tv" as const, data: { id: data.data.id, name: data.data.name, overview: data.data.overview, poster_path: data.data.poster_path, first_air_date: data.data.first_air_date } };
       setQuickSetupItem(item as TmdbSearchItem);
       setShowQuickSetup(true);
-      setImdbInput("");
+      setSearchQuery("");
     } catch {
       setImdbError("Lookup failed");
     } finally {
