@@ -27,7 +27,7 @@ export default function DashboardLayout({
                   </ErrorBoundary>
                 </main>
                 <BlurOverlay />
-                <div id="drawer-portal" className="fixed inset-x-0 top-14 bottom-0 z-50 pointer-events-none md:pointer-events-auto" aria-hidden />
+                <div id="drawer-portal" className="fixed inset-x-0 top-14 bottom-0 z-50 pointer-events-none" aria-hidden />
                 <KeyboardShortcutsOverlay />
               </div>
             </ReorderModeProvider>
