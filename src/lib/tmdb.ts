@@ -151,8 +151,8 @@ export type TmdbFindResult =
 
 export async function getTmdbByImdbId(imdbId: string): Promise<TmdbFindResult | null> {
   const key = getApiKey();
-  const id = imdbId.replace(/^tt0*/, "tt").trim();
-  if (!id.toLowerCase().startsWith("tt") || id.length < 2) return null;
+  const id = imdbId.trim();
+  if (!/^tt\d+$/i.test(id)) return null;
   const res = await fetch(
     `${TMDB_BASE}/find/${encodeURIComponent(id)}?api_key=${key}&external_source=imdb_id`
   );
