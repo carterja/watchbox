@@ -17,6 +17,7 @@ type UpdatePatch = Partial<
     | "status"
     | "progressNote"
     | "totalSeasons"
+    | "seasonEpisodeCounts"
     | "seasonProgress"
     | "manualLastWatchedSeason"
     | "manualLastWatchedEpisode"

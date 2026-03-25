@@ -33,6 +33,7 @@ describe('MediaCard', () => {
     status: 'yet_to_start',
     progressNote: null,
     totalSeasons: null,
+    seasonEpisodeCounts: null,
     seasonProgress: null,
     manualLastWatchedSeason: null,
     manualLastWatchedEpisode: null,
@@ -55,6 +56,7 @@ describe('MediaCard', () => {
     status: 'in_progress',
     progressNote: 'S2E5',
     totalSeasons: 3,
+    seasonEpisodeCounts: null,
     seasonProgress: [
       { season: 1, status: 'completed' },
       { season: 2, status: 'in_progress' },

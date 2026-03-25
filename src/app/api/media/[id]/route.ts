@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { UpdateMediaSchema } from "@/lib/validation";
 import { z } from "zod";
 
@@ -21,6 +21,11 @@ export async function PATCH(
     // Validate input
     const validated = UpdateMediaSchema.parse(body);
 
+    const existing = await prisma.media.findUnique({ where: { id } });
+    if (!existing) {
+      return Response.json({ error: "Media not found" }, { status: 404 });
+    }
+
     // Build update data
     const data: Prisma.MediaUpdateInput = {};
     if (validated.tmdbId !== undefined) data.tmdbId = validated.tmdbId;
@@ -29,7 +34,12 @@ export async function PATCH(
     if (validated.releaseDate !== undefined) data.releaseDate = validated.releaseDate ?? null;
     if (validated.status !== undefined) data.status = validated.status;
     if (validated.progressNote !== undefined) data.progressNote = validated.progressNote;
-    if (validated.totalSeasons !== undefined) data.totalSeasons = validated.totalSeasons;
+    if (validated.totalSeasons !== undefined) {
+      data.totalSeasons = validated.totalSeasons;
+      if (existing.totalSeasons !== validated.totalSeasons) {
+        data.seasonEpisodeCounts = Prisma.JsonNull;
+      }
+    }
     if (validated.streamingService !== undefined) data.streamingService = validated.streamingService;
     if (validated.viewer !== undefined) data.viewer = validated.viewer;
     if (validated.posterPath !== undefined) data.posterPath = validated.posterPath;
@@ -56,11 +66,6 @@ export async function PATCH(
         error: "Invalid input", 
         details: error.issues 
       }, { status: 400 });
-    }
-    
-    // Prisma not found error
-    if ((error as { code?: string }).code === "P2025") {
-      return Response.json({ error: "Media not found" }, { status: 404 });
     }
     
     console.error("Failed to update media:", error);

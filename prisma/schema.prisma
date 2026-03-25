@@ -23,6 +23,8 @@ model Media {
   progressNote   String?
   // For TV: total season count (from TMDB or set manually)
   totalSeasons   Int?
+  // For TV: cached TMDB episode counts per season [{ "season": 1, "episodeCount": 10 }, ...] (sync or first "set last watched")
+  seasonEpisodeCounts Json?
   // For TV: per-season status. JSON array: [{ "season": 1, "status": "completed" }, ...]
   seasonProgress Json?
   // For TV: last finished episode (manual / non-Plex); merged with Plex scrobbles via max(season,episode)

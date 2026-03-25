@@ -20,6 +20,7 @@ describe('SeasonProgressEditor', () => {
     status: 'in_progress',
     progressNote: null,
     totalSeasons: 3,
+    seasonEpisodeCounts: null,
     seasonProgress: [
       { season: 1, status: 'completed' },
       { season: 2, status: 'in_progress' },

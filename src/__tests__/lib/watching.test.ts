@@ -16,6 +16,7 @@ const baseMedia = (over: Partial<Media>): Media => ({
   status: "in_progress",
   progressNote: "S1 E1",
   totalSeasons: null,
+  seasonEpisodeCounts: null,
   seasonProgress: null,
       manualLastWatchedSeason: null,
       manualLastWatchedEpisode: null,

@@ -14,6 +14,7 @@ const base: Media = {
   status: "in_progress",
   progressNote: null,
   totalSeasons: null,
+  seasonEpisodeCounts: null,
   seasonProgress: null,
   manualLastWatchedSeason: null,
   manualLastWatchedEpisode: null,

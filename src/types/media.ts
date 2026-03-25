@@ -9,6 +9,12 @@ export type SeasonProgressItem = {
   status: SeasonStatus;
 };
 
+/** Cached TMDB episode counts per season (from sync or tv-season-episodes). */
+export type SeasonEpisodeCountItem = {
+  season: number;
+  episodeCount: number;
+};
+
 export type Media = {
   id: string;
   tmdbId: number;
@@ -21,6 +27,7 @@ export type Media = {
   status: MediaStatus;
   progressNote: string | null;
   totalSeasons: number | null;
+  seasonEpisodeCounts: SeasonEpisodeCountItem[] | null;
   seasonProgress: SeasonProgressItem[] | null;
   /** Last episode marked finished manually (merged with Plex scrobbles for what is next) */
   manualLastWatchedSeason: number | null;

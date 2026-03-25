@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useMobileFilters } from "@/contexts/MobileFiltersContext";
 import { useOverlay } from "@/contexts/OverlayContext";
+import { useIsMobileViewport } from "@/hooks/useIsMobileViewport";
 
 const SLIDE_DURATION_MS = 280;
 
@@ -15,6 +16,7 @@ const SLIDE_DURATION_MS = 280;
 export function MobileFiltersPanel({ children }: { children: React.ReactNode }) {
   const { open, close } = useMobileFilters();
   const { showOverlay, hideOverlay } = useOverlay();
+  const isMobileViewport = useIsMobileViewport();
   const [mounted, setMounted] = useState(false);
   const [animatingIn, setAnimatingIn] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -23,27 +25,28 @@ export function MobileFiltersPanel({ children }: { children: React.ReactNode }) 
     setMounted(true);
   }, []);
 
-  // Sync overlay with drawer open state (e.g. close on scroll)
-  useEffect(() => {
-    if (!open) {
-      hideOverlay();
-      setIsClosing(false);
-    }
-  }, [open, hideOverlay]);
-
   const startClosing = useCallback(() => {
     setIsClosing(true);
   }, []);
 
-  // When opening on mobile, show overlay and start slide-in
+  // Sync overlay only on mobile (drawer + blur are md:hidden on larger screens).
   useEffect(() => {
-    if (open) {
-      showOverlay(startClosing);
-      const t = requestAnimationFrame(() => setAnimatingIn(true));
-      return () => cancelAnimationFrame(t);
+    if (!open) {
+      hideOverlay();
+      setIsClosing(false);
+      setAnimatingIn(false);
+      return;
     }
-    setAnimatingIn(false);
-  }, [open, showOverlay, startClosing]);
+    if (!isMobileViewport) {
+      hideOverlay();
+      setIsClosing(false);
+      setAnimatingIn(false);
+      return;
+    }
+    showOverlay(startClosing);
+    const t = requestAnimationFrame(() => setAnimatingIn(true));
+    return () => cancelAnimationFrame(t);
+  }, [open, isMobileViewport, hideOverlay, showOverlay, startClosing]);
 
   const handleTransitionEnd = useCallback(
     (e: React.TransitionEvent<HTMLDivElement>) => {
@@ -82,6 +85,7 @@ export function MobileFiltersPanel({ children }: { children: React.ReactNode }) 
       {mounted &&
         drawerPortalTarget &&
         open &&
+        isMobileViewport &&
         createPortal(
           drawerContent,
           drawerPortalTarget

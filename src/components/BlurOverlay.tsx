@@ -27,7 +27,7 @@ export function BlurOverlay() {
     <div
       role="presentation"
       aria-hidden
-      className={`fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ease-out ${
+      className={`fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-200 ease-out md:hidden ${
         visible ? "opacity-100" : "opacity-0"
       }`}
       style={{ zIndex: OVERLAY_Z }}

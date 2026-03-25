@@ -3,12 +3,9 @@
 import { useState, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { MediaCard } from "@/components/MediaCard";
-import { UnifiedCategoryBar, type StatusFilterValue } from "@/components/UnifiedCategoryBar";
+import { type StatusFilterValue } from "@/components/UnifiedCategoryBar";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { FilterBar } from "@/components/FilterBar";
-import { MobileFiltersPanel } from "@/components/MobileFiltersPanel";
-import { DisplayModeToggle } from "@/components/DisplayModeToggle";
-import { GripVertical, Check } from "lucide-react";
+import { MediaListPageHeader } from "@/components/MediaListPageHeader";
 import { toast } from "sonner";
 import { useDisplayMode, getMediaListContainerClass } from "@/contexts/DisplayModeContext";
 import { useMediaList } from "@/contexts/MediaListContext";
@@ -107,42 +104,19 @@ export default function AllPage() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-14 md:top-0 z-20 md:border-b border-shelf-border bg-shelf-bg/95 backdrop-blur relative h-0 min-h-0 overflow-visible md:h-auto md:min-h-0">
-        <div className="hidden md:flex md:justify-end md:items-center md:gap-2 md:px-4 md:py-2 md:border-b md:border-shelf-border">
-          {!loading && filtered.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setReorderMode((v) => !v)}
-              className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium transition ${
-                reorderMode ? "bg-[#8b5cf6] text-white" : "text-shelf-muted hover:bg-shelf-card hover:text-white"
-              }`}
-            >
-              {reorderMode ? <Check size={16} /> : <GripVertical size={16} />}
-              {reorderMode ? "Done" : "Reorder"}
-            </button>
-          )}
-          <DisplayModeToggle />
-        </div>
-        <MobileFiltersPanel>
-          <div className="flex flex-col">
-            <div className="bg-shelf-sidebar border-b border-shelf-border px-4 md:px-6 py-2 md:py-2.5">
-              <UnifiedCategoryBar
-                statusFilter={statusFilter}
-                onStatusChange={setStatusFilter}
-                viewerFilter={viewerFilter}
-                onViewerChange={setViewerFilter}
-              />
-            </div>
-            <div className="px-4 md:px-6 py-3 md:py-4">
-              <FilterBar
-                streamingService={streamingServiceFilter}
-                onStreamingServiceChange={setStreamingServiceFilter}
-                availableServices={availableServices}
-              />
-            </div>
-          </div>
-        </MobileFiltersPanel>
-      </header>
+      <MediaListPageHeader
+        loading={loading}
+        hasFilteredItems={filtered.length > 0}
+        reorderMode={reorderMode}
+        setReorderMode={setReorderMode}
+        statusFilter={statusFilter}
+        onStatusChange={setStatusFilter}
+        viewerFilter={viewerFilter}
+        onViewerChange={setViewerFilter}
+        streamingServiceFilter={streamingServiceFilter}
+        onStreamingServiceChange={setStreamingServiceFilter}
+        availableServices={availableServices}
+      />
 
       <div className="p-4 md:p-6">
         {loading ? (

@@ -14,13 +14,14 @@ export default function SettingsPage() {
     setSyncingSeasons(true);
     try {
       const res = await fetch("/api/sync-seasons", { method: "POST" });
-      const data = await res.json();
+      const data = (await res.json()) as { error?: string; details?: string; updated?: number; failed?: number; total?: number };
       if (!res.ok) {
-        toast.error(data.error || "Sync failed");
+        const extra = typeof data.details === "string" ? ` ${data.details}` : "";
+        toast.error((data.error || "Sync failed") + extra);
         return;
       }
       if (data.total === 0) {
-        toast.success("All series already have season counts.");
+        toast.success("All series already have season and episode counts.");
       } else {
         toast.success(
           `Updated ${data.updated} series.${data.failed > 0 ? ` ${data.failed} failed.` : ""}`
@@ -112,7 +113,7 @@ export default function SettingsPage() {
             Library
           </h2>
           <p className="text-sm text-shelf-muted mb-4">
-            Sync season counts from TMDB for TV series that are missing them. New series get this when added; use this to backfill older entries.
+            Fetches TMDB season totals and per-season episode counts (for dropdowns and progress). Runs for series missing that data; new series also get counts the first time you open “Set last watched” or run this sync.
           </p>
           <button
             type="button"
@@ -125,7 +126,7 @@ export default function SettingsPage() {
             ) : (
               <RefreshCw size={18} />
             )}
-            {syncingSeasons ? "Syncing…" : "Sync season counts from TMDB"}
+            {syncingSeasons ? "Syncing…" : "Sync seasons & episode counts from TMDB"}
           </button>
         </section>
 

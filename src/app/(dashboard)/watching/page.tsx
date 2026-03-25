@@ -26,10 +26,56 @@ export default function WatchingPage() {
   const [settingId, setSettingId] = useState<string | null>(null);
   const [setSeason, setSetSeason] = useState(1);
   const [setEpisode, setSetEpisode] = useState(1);
+  const [seasonsData, setSeasonsData] = useState<{ season: number; episodeCount: number }[] | null>(null);
+  const [seasonsLoading, setSeasonsLoading] = useState(false);
+  const [seasonsError, setSeasonsError] = useState<string | null>(null);
 
   useEffect(() => {
     void refresh({ silent: true });
   }, [refresh]);
+
+  useEffect(() => {
+    if (!settingId) {
+      setSeasonsData(null);
+      setSeasonsError(null);
+      return;
+    }
+    let cancelled = false;
+    setSeasonsLoading(true);
+    setSeasonsError(null);
+    void fetch(`/api/media/${encodeURIComponent(settingId)}/tv-season-episodes`)
+      .then(async (res) => {
+        const data = (await res.json()) as { seasons?: { season: number; episodeCount: number }[]; error?: string };
+        if (!res.ok) {
+          throw new Error(typeof data.error === "string" ? data.error : "Could not load seasons");
+        }
+        if (!cancelled) setSeasonsData(data.seasons ?? []);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setSeasonsData(null);
+          setSeasonsError(e instanceof Error ? e.message : "Could not load seasons");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setSeasonsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settingId]);
+
+  const episodeMaxForSeason = useMemo(() => {
+    if (!seasonsData?.length) return null;
+    const row = seasonsData.find((s) => s.season === setSeason);
+    const c = row?.episodeCount ?? 0;
+    return c > 0 ? c : 1;
+  }, [seasonsData, setSeason]);
+
+  useEffect(() => {
+    if (episodeMaxForSeason == null) return;
+    setSetEpisode((e) => Math.min(Math.max(1, e), episodeMaxForSeason));
+  }, [episodeMaxForSeason]);
 
   const watchingIds = useMemo(() => new Set(rows.map((r) => r.mediaId)), [rows]);
 
@@ -225,28 +271,72 @@ export default function WatchingPage() {
               Set last watched
             </h2>
             <p className="text-sm text-shelf-muted mb-4 line-clamp-2">{settingTitle}</p>
-            <div className="flex gap-3 items-end">
-              <label className="flex-1">
-                <span className="text-xs text-shelf-muted">Season</span>
-                <input
-                  type="number"
-                  min={1}
-                  className="mt-1 w-full rounded-lg border border-shelf-border bg-shelf-bg px-3 py-2 text-white"
-                  value={setSeason}
-                  onChange={(e) => setSetSeason(Number(e.target.value) || 1)}
-                />
-              </label>
-              <label className="flex-1">
-                <span className="text-xs text-shelf-muted">Episode</span>
-                <input
-                  type="number"
-                  min={1}
-                  className="mt-1 w-full rounded-lg border border-shelf-border bg-shelf-bg px-3 py-2 text-white"
-                  value={setEpisode}
-                  onChange={(e) => setSetEpisode(Number(e.target.value) || 1)}
-                />
-              </label>
-            </div>
+            {seasonsLoading ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-10">
+                <Loader2 className="animate-spin text-cyan-400/90" size={28} aria-hidden />
+                <p className="text-xs text-shelf-muted">Loading seasons from TMDB…</p>
+              </div>
+            ) : seasonsData && seasonsData.length > 0 && episodeMaxForSeason != null ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                <label className="flex-1 min-w-0">
+                  <span className="text-xs text-shelf-muted">Season</span>
+                  <select
+                    className="mt-1 w-full cursor-pointer rounded-lg border border-shelf-border bg-shelf-bg px-3 py-2.5 text-sm text-white"
+                    value={setSeason}
+                    onChange={(e) => setSetSeason(Number(e.target.value) || 1)}
+                  >
+                    {seasonsData.map(({ season }) => (
+                      <option key={season} value={season}>
+                        Season {season}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex-1 min-w-0">
+                  <span className="text-xs text-shelf-muted">Episode</span>
+                  <select
+                    className="mt-1 w-full cursor-pointer rounded-lg border border-shelf-border bg-shelf-bg px-3 py-2.5 text-sm text-white"
+                    value={setEpisode}
+                    onChange={(e) => setSetEpisode(Number(e.target.value) || 1)}
+                  >
+                    {Array.from({ length: episodeMaxForSeason }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        Episode {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : (
+              <>
+                {seasonsError ? (
+                  <p className="mb-3 text-xs text-amber-200/90">{seasonsError}</p>
+                ) : null}
+                <p className="mb-2 text-xs text-shelf-muted">Enter season and episode manually.</p>
+                <div className="flex gap-3 items-end">
+                  <label className="flex-1">
+                    <span className="text-xs text-shelf-muted">Season</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className="mt-1 w-full rounded-lg border border-shelf-border bg-shelf-bg px-3 py-2 text-white"
+                      value={setSeason}
+                      onChange={(e) => setSetSeason(Number(e.target.value) || 1)}
+                    />
+                  </label>
+                  <label className="flex-1">
+                    <span className="text-xs text-shelf-muted">Episode</span>
+                    <input
+                      type="number"
+                      min={1}
+                      className="mt-1 w-full rounded-lg border border-shelf-border bg-shelf-bg px-3 py-2 text-white"
+                      value={setEpisode}
+                      onChange={(e) => setSetEpisode(Number(e.target.value) || 1)}
+                    />
+                  </label>
+                </div>
+              </>
+            )}
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
@@ -257,7 +347,8 @@ export default function WatchingPage() {
               </button>
               <button
                 type="button"
-                className="rounded-lg bg-[#8b5cf6] px-4 py-2 text-sm font-medium text-white hover:bg-[#9b7df0]"
+                disabled={seasonsLoading}
+                className="rounded-lg bg-[#8b5cf6] px-4 py-2 text-sm font-medium text-white hover:bg-[#9b7df0] disabled:opacity-50"
                 onClick={() => void savePosition()}
               >
                 Save
