@@ -42,7 +42,10 @@ export function isExternalPoster(path: string | null): boolean {
   return path.startsWith("http://") || path.startsWith("https://");
 }
 
-export function posterUrl(path: string | null, size: "w92" | "w154" | "w185" | "w342" = "w185"): string | null {
+export function posterUrl(
+  path: string | null,
+  size: "w92" | "w154" | "w185" | "w342" | "w500" | "w780" = "w185"
+): string | null {
   if (!path) return null;
   if (isExternalPoster(path)) return path;
   return `${IMAGE_BASE}/${size}${path}`;
@@ -156,6 +159,53 @@ export type TmdbFindResult =
   | { type: "movie"; data: TmdbMovie & { runtime?: number } }
   | { type: "tv"; data: TmdbTv };
 
+
+
+export type TmdbSeasonEpisode = {
+  episode_number: number;
+  name: string;
+  air_date: string | null;
+  overview: string | null;
+  still_path: string | null;
+  /** Runtime in minutes (TMDB; may be null). */
+  runtime: number | null;
+};
+
+/** Single season detail with episode list (for "what next" and episode titles). */
+export async function getTmdbTvSeason(
+  tvId: number,
+  seasonNumber: number
+): Promise<{ episode_count: number; episodes: TmdbSeasonEpisode[] } | null> {
+  const key = getApiKey();
+  const res = await fetch(`${TMDB_BASE}/tv/${tvId}/season/${seasonNumber}?api_key=${key}`);
+  const json = (await res.json()) as {
+    status_code?: number;
+    episodes?: {
+      episode_number?: number;
+      name?: string;
+      air_date?: string | null;
+      overview?: string | null;
+      still_path?: string | null;
+      runtime?: number | null;
+    }[];
+  };
+  if (json.status_code) return null;
+  const eps = json.episodes || [];
+  return {
+    episode_count: eps.length,
+    episodes: eps.map((e) => ({
+      episode_number: e.episode_number ?? 0,
+      name: e.name ?? "Episode",
+      air_date: e.air_date ?? null,
+      overview: typeof e.overview === "string" && e.overview.trim() ? e.overview.trim() : null,
+      still_path: typeof e.still_path === "string" && e.still_path ? e.still_path : null,
+      runtime:
+        typeof e.runtime === "number" && Number.isFinite(e.runtime) && e.runtime > 0
+          ? Math.round(e.runtime)
+          : null,
+    })),
+  };
+}
 export async function getTmdbByImdbId(imdbId: string): Promise<TmdbFindResult | null> {
   const key = getApiKey();
   const id = imdbId.trim();

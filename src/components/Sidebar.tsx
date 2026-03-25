@@ -1,12 +1,26 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, LayoutGrid, Film, Tv, Settings, Menu, GripVertical, Check, MonitorPlay } from "lucide-react";
+import {
+  Sparkles,
+  LayoutGrid,
+  Film,
+  Tv,
+  Settings,
+  Menu,
+  GripVertical,
+  Check,
+  MonitorPlay,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { WatchBoxLogo } from "./WatchBoxLogo";
 import { useMobileFilters } from "@/contexts/MobileFiltersContext";
 import { useMediaList } from "@/contexts/MediaListContext";
 import { useReorderMode } from "@/contexts/ReorderModeContext";
+import { useSidebarCollapse } from "@/contexts/SidebarCollapseContext";
 import { DisplayModeToggle } from "./DisplayModeToggle";
 import { Tooltip } from "./Tooltip";
 
@@ -32,20 +46,51 @@ export function Sidebar() {
   const { reorderMode, setReorderMode } = useReorderMode();
   const showReorder = isListPage(pathname);
 
+  const { collapsed, toggleCollapsed } = useSidebarCollapse();
+
   const unwatched = list.filter((m) => m.status === "yet_to_start").length;
   const inProgress = list.filter((m) => m.status === "in_progress").length;
   const showBacklog = !loading && list.length > 0 && (unwatched > 0 || inProgress > 0);
 
   return (
     <>
-      {/* Desktop Sidebar - hidden on mobile */}
-      <aside className="hidden md:fixed md:left-0 md:top-0 md:z-30 md:flex md:h-screen md:w-56 md:flex-col md:border-r md:border-shelf-border md:bg-shelf-sidebar">
-        <div className="flex h-16 items-center gap-3 border-b border-shelf-border px-4">
-          <WatchBoxLogo className="w-10 h-10" />
-          <span className="text-xl font-bold text-[#8b5cf6] tracking-wide">WatchBox</span>
+      {/* Desktop Sidebar (md+) — collapsible to icon rail */}
+      <aside
+        className={`hidden md:fixed md:left-0 md:top-0 md:z-30 md:flex md:h-screen md:flex-col md:border-r md:border-shelf-border md:bg-shelf-sidebar md:overflow-hidden transition-[width] duration-200 ease-out ${
+          collapsed ? "md:w-16" : "md:w-56"
+        }`}
+      >
+        <div
+          className={`flex shrink-0 border-b border-shelf-border transition-[padding] duration-200 ${
+            collapsed ? "flex-col items-center gap-2 py-3 px-0" : "h-16 flex-row items-center justify-between gap-2 px-3"
+          }`}
+        >
+          <div
+            className={`flex items-center gap-3 min-w-0 w-full ${collapsed ? "justify-center" : ""}`}
+          >
+            <WatchBoxLogo className={collapsed ? "w-9 h-9" : "w-10 h-10"} />
+            {!collapsed && (
+              <span className="text-xl font-bold text-[#8b5cf6] tracking-wide truncate">WatchBox</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            className={`rounded-lg p-1.5 text-shelf-muted hover:bg-shelf-card hover:text-white transition shrink-0 ${
+              collapsed ? "w-full flex justify-center" : ""
+            }`}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+          </button>
         </div>
-        <nav className="flex-1 space-y-1 p-3">
-          {showBacklog && (
+        <nav
+          className={`flex-1 overflow-y-auto overflow-x-hidden p-2 ${
+            collapsed ? "flex flex-col items-stretch gap-1" : "space-y-1"
+          }`}
+        >
+          {showBacklog && !collapsed && (
             <div className="mb-2 px-3 py-1.5 text-[11px] text-shelf-muted border-b border-shelf-border/50">
               {unwatched > 0 && <span>{unwatched} unwatched</span>}
               {unwatched > 0 && inProgress > 0 && <span> · </span>}
@@ -53,50 +98,81 @@ export function Sidebar() {
             </div>
           )}
           {nav.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href || (href !== "/discover" && pathname.startsWith(href));
-            return (
+            const isActive =
+              pathname === href || (href !== "/discover" && pathname.startsWith(href));
+            const link = (
               <Link
-                key={href}
                 href={href}
                 prefetch={true}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+                className={`flex items-center rounded-lg py-2.5 text-sm font-medium transition ${
+                  collapsed ? "w-full justify-center px-0" : "gap-3 px-3"
+                } ${
                   isActive
                     ? "bg-[#8b5cf6] text-white shadow-lg shadow-[#8b5cf6]/20"
                     : "text-shelf-muted hover:bg-shelf-card hover:text-white"
                 }`}
               >
                 <Icon size={20} className="shrink-0" />
-                {label}
+                {!collapsed && label}
               </Link>
             );
+            if (collapsed) {
+              return (
+                <Tooltip
+                  key={href}
+                  content={label}
+                  placement="bottom"
+                  className="flex w-full min-w-0 justify-center"
+                >
+                  {link}
+                </Tooltip>
+              );
+            }
+            return <Fragment key={href}>{link}</Fragment>;
           })}
         </nav>
-        <div className="border-t border-shelf-border p-4">
-          <div className="flex flex-col gap-1 text-xs text-shelf-muted">
-            <div className="inline-flex items-center gap-2">
-              <div className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#8b5cf6] to-[#22d3ee] text-[11px] font-semibold text-white shadow-sm">
+        <div
+          className={`border-t border-shelf-border shrink-0 w-full ${
+            collapsed ? "p-2 flex justify-center" : "p-4"
+          }`}
+        >
+          {!collapsed ? (
+            <div className="flex flex-col gap-1 text-xs text-shelf-muted">
+              <div className="inline-flex items-center gap-2">
+                <div className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-[#8b5cf6] to-[#22d3ee] text-[11px] font-semibold text-white shadow-sm">
+                  CF
+                </div>
+                <span className="text-[11px] tracking-wide text-shelf-muted/90">
+                  Carter Family<span className="align-super text-[9px] ml-0.5">™</span>
+                </span>
+              </div>
+              <p className="text-[11px] text-shelf-muted/80">
+                Streaming icons by{" "}
+                <a
+                  href="https://www.flaticon.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline decoration-dotted underline-offset-2 hover:text-shelf-accent"
+                >
+                  Flaticon
+                </a>
+              </p>
+            </div>
+          ) : (
+            <Tooltip
+              content="Carter Family"
+              placement="bottom"
+              className="flex w-full justify-center"
+            >
+              <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#8b5cf6] to-[#22d3ee] text-[11px] font-semibold text-white shadow-sm">
                 CF
               </div>
-              <span className="text-[11px] tracking-wide text-shelf-muted/90">
-                Carter Family<span className="align-super text-[9px] ml-0.5">™</span>
-              </span>
-            </div>
-            <p className="text-[11px] text-shelf-muted/80">
-              Streaming icons by{" "}
-              <a
-                href="https://www.flaticon.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline decoration-dotted underline-offset-2 hover:text-shelf-accent"
-              >
-                Flaticon
-              </a>
-            </p>
-          </div>
+            </Tooltip>
+          )}
         </div>
       </aside>
 
-      {/* Mobile Top Header: logo + text first, display toggles centered in middle, burger right */}
+      {/* Mobile Top Header */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-shelf-sidebar border-b border-shelf-border flex items-center gap-2 px-4">
         <div className="flex items-center gap-2 min-w-0 shrink-0">
           <WatchBoxLogo className="w-8 h-8 shrink-0" />
@@ -132,11 +208,12 @@ export function Sidebar() {
         )}
       </header>
 
-      {/* Mobile Bottom Navigation - always visible, not affected by burger */}
+      {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-shelf-sidebar border-t border-shelf-border safe-area-pb">
         <div className="grid grid-cols-6 gap-0.5 p-2">
           {nav.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href || (href !== "/discover" && pathname.startsWith(href));
+            const isActive =
+              pathname === href || (href !== "/discover" && pathname.startsWith(href));
             return (
               <Link
                 key={href}

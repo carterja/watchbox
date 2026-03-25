@@ -18,9 +18,12 @@ type UpdatePatch = Partial<
     | "progressNote"
     | "totalSeasons"
     | "seasonProgress"
+    | "manualLastWatchedSeason"
+    | "manualLastWatchedEpisode"
     | "streamingService"
     | "viewer"
     | "posterPath"
+    | "sortOrder"
   >
 >;
 
@@ -31,6 +34,8 @@ type MediaListContextValue = {
   optimisticUpdate: (id: string, patch: UpdatePatch) => void;
   optimisticRemove: (id: string) => void;
   optimisticAdd: (media: Media) => void;
+  /** Move one item to the front of the list (until refetch replaces sort order). */
+  optimisticMoveToFront: (id: string) => void;
 };
 
 const MediaListContext = createContext<MediaListContextValue | null>(null);
@@ -59,6 +64,14 @@ export function MediaListProvider({ children }: { children: ReactNode }) {
     setList((prev) => [...prev, media]);
   }, []);
 
+  const optimisticMoveToFront = useCallback((id: string) => {
+    setList((prev) => {
+      const m = prev.find((x) => x.id === id);
+      if (!m) return prev;
+      return [m, ...prev.filter((x) => x.id !== id)];
+    });
+  }, []);
+
   useEffect(() => {
     refetch().finally(() => setLoading(false));
   }, [refetch]);
@@ -71,8 +84,9 @@ export function MediaListProvider({ children }: { children: ReactNode }) {
       optimisticUpdate,
       optimisticRemove,
       optimisticAdd,
+      optimisticMoveToFront,
     }),
-    [list, loading, refetch, optimisticUpdate, optimisticRemove, optimisticAdd]
+    [list, loading, refetch, optimisticUpdate, optimisticRemove, optimisticAdd, optimisticMoveToFront]
   );
 
   return (
@@ -92,6 +106,7 @@ export function useMediaList(): MediaListContextValue {
       optimisticUpdate: () => {},
       optimisticRemove: () => {},
       optimisticAdd: () => {},
+      optimisticMoveToFront: () => {},
     };
   }
   return ctx;

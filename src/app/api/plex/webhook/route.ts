@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { extractTmdbFromWebhookMetadata, parseWebhookPayload } from "@/lib/plex";
+import { applyEpisodeWatchedFromPlexWebhook } from "@/lib/seasonProgress";
 
 /**
  * POST /api/plex/webhook — Plex Pass webhooks (Settings → Webhooks on the server).
@@ -102,6 +103,18 @@ export async function POST(request: Request) {
   } catch (e) {
     console.error("playbackEvent create failed:", e);
     return Response.json({ ok: false, error: "persist_failed" }, { status: 500 });
+  }
+
+  if (kind === "episode" && mediaId) {
+    const season = num(meta.parentIndex);
+    const episode = num(meta.index);
+    if (season != null && episode != null) {
+      try {
+        await applyEpisodeWatchedFromPlexWebhook(mediaId, season, episode);
+      } catch (e) {
+        console.error("season progress backfill failed:", e);
+      }
+    }
   }
 
   return Response.json({

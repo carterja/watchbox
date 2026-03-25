@@ -8,9 +8,11 @@ type Props = {
   children: ReactNode;
   /** Default "top" shows above; "bottom" shows below (e.g. for controls in top header). */
   placement?: "top" | "bottom";
+  /** Classes for the hover target wrapper (default `inline-flex`). Use `flex w-full` for full-width rails. */
+  className?: string;
 };
 
-export function Tooltip({ content, children, placement = "top" }: Props) {
+export function Tooltip({ content, children, placement = "top", className }: Props) {
   const [show, setShow] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
@@ -59,7 +61,7 @@ export function Tooltip({ content, children, placement = "top" }: Props) {
     <>
       <div
         ref={triggerRef}
-        className="inline-flex"
+        className={className ?? "inline-flex"}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >

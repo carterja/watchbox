@@ -24,8 +24,11 @@ describe('SeasonProgressEditor', () => {
       { season: 2, status: 'in_progress' },
       { season: 3, status: 'not_started' },
     ],
+    manualLastWatchedSeason: null,
+    manualLastWatchedEpisode: null,
     streamingService: null,
     viewer: null,
+    sortOrder: 0,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
   };

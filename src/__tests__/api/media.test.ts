@@ -97,6 +97,8 @@ describe('API route: /api/media/[id] PATCH', () => {
       progressNote: 'Done!',
       totalSeasons: 3,
       seasonProgress: [{ season: 1, status: 'completed' }],
+      manualLastWatchedSeason: null,
+      manualLastWatchedEpisode: null,
     };
 
     const data: Record<string, unknown> = {};
@@ -104,12 +106,16 @@ describe('API route: /api/media/[id] PATCH', () => {
     if (body.progressNote !== undefined) data.progressNote = body.progressNote;
     if (body.totalSeasons !== undefined) data.totalSeasons = body.totalSeasons;
     if (body.seasonProgress !== undefined) data.seasonProgress = body.seasonProgress;
+    if (body.manualLastWatchedSeason !== undefined) data.manualLastWatchedSeason = body.manualLastWatchedSeason;
+    if (body.manualLastWatchedEpisode !== undefined) data.manualLastWatchedEpisode = body.manualLastWatchedEpisode;
 
     expect(data).toEqual({
       status: 'finished',
       progressNote: 'Done!',
       totalSeasons: 3,
       seasonProgress: [{ season: 1, status: 'completed' }],
+      manualLastWatchedSeason: null,
+      manualLastWatchedEpisode: null,
     });
   });
 });

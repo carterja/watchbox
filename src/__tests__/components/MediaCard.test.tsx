@@ -33,8 +33,11 @@ describe('MediaCard', () => {
     progressNote: null,
     totalSeasons: null,
     seasonProgress: null,
+    manualLastWatchedSeason: null,
+    manualLastWatchedEpisode: null,
     streamingService: null,
     viewer: null,
+    sortOrder: 0,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
   };
@@ -54,8 +57,11 @@ describe('MediaCard', () => {
       { season: 1, status: 'completed' },
       { season: 2, status: 'in_progress' },
     ],
+    manualLastWatchedSeason: null,
+    manualLastWatchedEpisode: null,
     streamingService: null,
     viewer: null,
+    sortOrder: 0,
     createdAt: '2024-01-01T00:00:00Z',
     updatedAt: '2024-01-01T00:00:00Z',
   };

@@ -25,6 +25,9 @@ model Media {
   totalSeasons   Int?
   // For TV: per-season status. JSON array: [{ "season": 1, "status": "completed" }, ...]
   seasonProgress Json?
+  // For TV: last finished episode (manual / non-Plex); merged with Plex scrobbles via max(season,episode)
+  manualLastWatchedSeason  Int?
+  manualLastWatchedEpisode Int?
   // Streaming service: "Apple TV", "Netflix", "Plex", "HBO", "Prime", "Comedy Specials", etc.
   streamingService String?
   // Viewer: "wife" | "both" | "me"

@@ -36,6 +36,8 @@ export const UpdateMediaSchema = z.object({
   progressNote: z.string().max(1000).optional(),
   totalSeasons: z.number().int().min(0).max(100).optional(),
   seasonProgress: z.array(SeasonProgressSchema).optional(),
+  manualLastWatchedSeason: z.number().int().min(1).max(200).nullable().optional(),
+  manualLastWatchedEpisode: z.number().int().min(1).max(500).nullable().optional(),
   streamingService: z.string().max(100).nullable().optional(),
   viewer: ViewerSchema.nullable().optional(),
   posterPath: z.string().max(500).nullable().optional(),

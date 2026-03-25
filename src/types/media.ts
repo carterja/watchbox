@@ -22,6 +22,9 @@ export type Media = {
   progressNote: string | null;
   totalSeasons: number | null;
   seasonProgress: SeasonProgressItem[] | null;
+  /** Last episode marked finished manually (merged with Plex scrobbles for what is next) */
+  manualLastWatchedSeason: number | null;
+  manualLastWatchedEpisode: number | null;
   streamingService: string | null;
   viewer: Viewer | null;
   sortOrder: number;

@@ -22,8 +22,11 @@ describe('Media types', () => {
       progressNote: null,
       totalSeasons: null,
       seasonProgress: null,
+      manualLastWatchedSeason: null,
+      manualLastWatchedEpisode: null,
       streamingService: null,
       viewer: null,
+      sortOrder: 0,
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
     };
@@ -51,8 +54,11 @@ describe('Media types', () => {
       progressNote: 'Watching S2E5',
       totalSeasons: 3,
       seasonProgress,
+      manualLastWatchedSeason: null,
+      manualLastWatchedEpisode: null,
       streamingService: null,
       viewer: null,
+      sortOrder: 0,
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
     };

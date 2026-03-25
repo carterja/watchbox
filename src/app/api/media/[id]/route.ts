@@ -36,6 +36,12 @@ export async function PATCH(
     if (validated.seasonProgress !== undefined) {
       data.seasonProgress = validated.seasonProgress as Prisma.InputJsonValue;
     }
+    if (validated.manualLastWatchedSeason !== undefined) {
+      data.manualLastWatchedSeason = validated.manualLastWatchedSeason;
+    }
+    if (validated.manualLastWatchedEpisode !== undefined) {
+      data.manualLastWatchedEpisode = validated.manualLastWatchedEpisode;
+    }
 
     // Update media
     const media = await prisma.media.update({

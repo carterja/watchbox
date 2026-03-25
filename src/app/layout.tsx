@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/contexts/ThemeContext";
@@ -29,6 +29,9 @@ export const metadata: Metadata = {
     title: "WatchBox",
     statusBarStyle: "black-translucent",
   },
+};
+
+export const viewport: Viewport = {
   themeColor: "#0a0e1a",
 };
 
