@@ -46,6 +46,9 @@ dev.db-journal
 *.db
 *.db-journal
 
+# Cursor (local planning files; shared rules can live in .cursor/rules and stay tracked)
+.cursor/plans/
+
 # IDE
 .vscode/*
 !.vscode/settings.json
