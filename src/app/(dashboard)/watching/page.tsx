@@ -14,7 +14,8 @@ import { Tooltip } from "@/components/Tooltip";
 
 export default function WatchingPage() {
   const { list, loading: listLoading, refetch, optimisticUpdate, optimisticMoveToFront } = useMediaList();
-  const { rows: cachedRows, status: cacheStatus, error: cacheErrorMessage, refresh } = useWhatNextCache();
+  const { rows: cachedRows, status: cacheStatus, error: cacheErrorMessage, refresh, mergeRow } =
+    useWhatNextCache();
 
   const rows = cachedRows ?? [];
   const showWhatNextLoading = cacheStatus === "loading" && cachedRows === null;
@@ -77,7 +78,11 @@ export default function WatchingPage() {
         sortOrder: typeof data.sortOrder === "number" ? data.sortOrder : 0,
       });
       optimisticMoveToFront(mediaId);
-      await refresh({ silent: true });
+      if (data.whatNextRow && typeof data.whatNextRow === "object") {
+        mergeRow(data.whatNextRow as WhatNextRow);
+      } else {
+        void refresh({ silent: true });
+      }
     } finally {
       setMarking(null);
     }

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { promoteMediaToFrontOfList } from "@/lib/promoteMediaSort";
-import { resolveWhatNextForMedia } from "@/lib/whatNext";
+import { resolveWhatNextForMedia, whatNextRowAfterManualAdvance } from "@/lib/whatNext";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -61,10 +61,20 @@ export async function POST(
         const sortOrder = await promoteMediaToFrontOfList(tx, id);
         return { ...updated, sortOrder };
       });
-      return Response.json(payload);
+      const lastFinished = { season: season!, episode: episode! };
+      const whatNextRow = await whatNextRowAfterManualAdvance(
+        {
+          id: payload.id,
+          title: payload.title,
+          posterPath: payload.posterPath,
+          tmdbId: payload.tmdbId,
+        },
+        lastFinished
+      );
+      return Response.json({ ...payload, whatNextRow });
     }
 
-    const { next } = await resolveWhatNextForMedia({
+    const { next, numberOfSeasons } = await resolveWhatNextForMedia({
       id: media.id,
       tmdbId: media.tmdbId,
       manualLastWatchedSeason: media.manualLastWatchedSeason,
@@ -88,7 +98,18 @@ export async function POST(
       const sortOrder = await promoteMediaToFrontOfList(tx, id);
       return { ...updated, sortOrder };
     });
-    return Response.json(payload);
+    const lastFinished = { season: next.season, episode: next.episode };
+    const whatNextRow = await whatNextRowAfterManualAdvance(
+      {
+        id: payload.id,
+        title: payload.title,
+        posterPath: payload.posterPath,
+        tmdbId: payload.tmdbId,
+      },
+      lastFinished,
+      numberOfSeasons
+    );
+    return Response.json({ ...payload, whatNextRow });
   } catch (e) {
     console.error("mark-episode-watched:", e);
     return Response.json({ error: "Internal server error" }, { status: 500 });

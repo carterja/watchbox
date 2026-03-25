@@ -149,15 +149,53 @@ export type MediaWhatNextInput = {
   totalSeasons: number | null;
 };
 
+/**
+ * After advancing manual progress to `lastFinished`, compute the carousel row without re-querying
+ * Plex or re-running full season-progress inference (used by mark-watched POST response).
+ * Pass `numberOfSeasons` when already known (e.g. right after `resolveWhatNextForMedia`) to skip an extra TMDB details fetch.
+ */
+export async function whatNextRowAfterManualAdvance(
+  media: {
+    id: string;
+    title: string;
+    posterPath: string | null;
+    tmdbId: number;
+  },
+  lastFinished: EpisodeRef,
+  numberOfSeasonsHint?: number
+): Promise<WhatNextRow> {
+  let numberOfSeasons = numberOfSeasonsHint;
+  if (numberOfSeasons == null) {
+    const details = await getTmdbTvDetails(media.tmdbId);
+    numberOfSeasons = details?.number_of_seasons ?? 0;
+  }
+  const next = await nextEpisodeAfter(media.tmdbId, lastFinished, numberOfSeasons);
+  const caughtUp = lastFinished != null && next == null;
+  return {
+    mediaId: media.id,
+    title: media.title,
+    posterPath: media.posterPath,
+    tmdbId: media.tmdbId,
+    next,
+    caughtUp,
+    lastFinished,
+  };
+}
+
 export async function resolveWhatNextForMedia(
   m: MediaWhatNextInput
-): Promise<{ lastFinished: EpisodeRef | null; next: NextEpisodeInfo | null; caughtUp: boolean }> {
+): Promise<{
+  lastFinished: EpisodeRef | null;
+  next: NextEpisodeInfo | null;
+  caughtUp: boolean;
+  numberOfSeasons: number;
+}> {
   const sp = (m.seasonProgress ?? null) as SeasonProgressItem[] | null;
 
   const details = await getTmdbTvDetails(m.tmdbId);
   const numberOfSeasons = details?.number_of_seasons ?? 0;
   if (numberOfSeasons < 1) {
-    return { lastFinished: null, next: null, caughtUp: true };
+    return { lastFinished: null, next: null, caughtUp: true, numberOfSeasons };
   }
 
   const plexMax = await getPlexMaxFinished(m.id, m.tmdbId);
@@ -168,5 +206,5 @@ export async function resolveWhatNextForMedia(
   const next = await nextEpisodeAfter(m.tmdbId, lastFinished, numberOfSeasons);
   const caughtUp = lastFinished != null && next == null;
 
-  return { lastFinished, next, caughtUp };
+  return { lastFinished, next, caughtUp, numberOfSeasons };
 }

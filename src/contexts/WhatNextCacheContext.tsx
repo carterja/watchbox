@@ -39,6 +39,8 @@ type WhatNextCacheValue = {
   prefetch: () => Promise<void>;
   /** Clear cache so the next refresh loads fresh (e.g. rare edge cases). */
   invalidate: () => void;
+  /** Patch one row (e.g. after mark-watched) without refetching the full list. */
+  mergeRow: (row: WhatNextRow) => void;
 };
 
 const WhatNextCacheContext = createContext<WhatNextCacheValue | null>(null);
@@ -145,6 +147,17 @@ export function WhatNextCacheProvider({ children }: { children: ReactNode }) {
     setFetchedAt(null);
   }, []);
 
+  const mergeRow = useCallback((row: WhatNextRow) => {
+    setRows((prev) => {
+      if (!prev) return [row];
+      const rest = prev.filter((r) => r.mediaId !== row.mediaId);
+      return [row, ...rest];
+    });
+    setStatus("success");
+    setError(null);
+    setFetchedAt(Date.now());
+  }, []);
+
   const value = useMemo(
     () => ({
       rows,
@@ -154,8 +167,9 @@ export function WhatNextCacheProvider({ children }: { children: ReactNode }) {
       refresh,
       prefetch,
       invalidate,
+      mergeRow,
     }),
-    [rows, status, error, fetchedAt, refresh, prefetch, invalidate]
+    [rows, status, error, fetchedAt, refresh, prefetch, invalidate, mergeRow]
   );
 
   return (
