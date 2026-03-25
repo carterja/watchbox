@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { PlexMarkIcon } from "@/components/icons/PlexMarkIcon";
 import { WatchBoxLogo } from "./WatchBoxLogo";
 import { useMobileFilters } from "@/contexts/MobileFiltersContext";
 import { useMediaList } from "@/contexts/MediaListContext";
@@ -30,6 +31,7 @@ const nav = [
   { href: "/movies", label: "Movies", icon: Film },
   { href: "/series", label: "Series", icon: Tv },
   { href: "/watching", label: "Watching", icon: MonitorPlay },
+  { href: "/plex", label: "Plex", icon: PlexMarkIcon },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -210,7 +212,7 @@ export function Sidebar() {
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-shelf-sidebar border-t border-shelf-border safe-area-pb">
-        <div className="grid grid-cols-6 gap-0.5 p-2">
+        <div className="grid grid-cols-7 gap-0.5 p-2">
           {nav.map(({ href, label, icon: Icon }) => {
             const isActive =
               pathname === href || (href !== "/discover" && pathname.startsWith(href));

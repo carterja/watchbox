@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Settings, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useMediaList } from "@/contexts/MediaListContext";
 import { useWhatNextCache } from "@/contexts/WhatNextCacheContext";
 import type { WhatNextRow } from "@/lib/whatNext";
 import { WatchingNextCarousel } from "@/components/WatchingNextCarousel";
 import { FilterBar } from "@/components/FilterBar";
-import { StreamingIcon } from "@/components/StreamingIcon";
 import { Tooltip } from "@/components/Tooltip";
 
 export default function WatchingPage() {
@@ -17,7 +16,7 @@ export default function WatchingPage() {
   const { rows: cachedRows, status: cacheStatus, error: cacheErrorMessage, refresh, mergeRow } =
     useWhatNextCache();
 
-  const rows = cachedRows ?? [];
+  const rows = useMemo(() => cachedRows ?? [], [cachedRows]);
   const showWhatNextLoading = cacheStatus === "loading" && cachedRows === null;
   const loadError = cacheStatus === "error" && cachedRows === null;
 
@@ -147,13 +146,14 @@ export default function WatchingPage() {
                 <p className="text-xs text-shelf-muted md:text-sm">Assign streaming services on Series to filter here.</p>
               )}
             </div>
-            <Tooltip content="Plex & library sync" placement="bottom">
+            <Tooltip content="Open Plex sync" placement="bottom">
               <Link
-                href="/settings#plex"
-                className="inline-flex shrink-0 items-center justify-center rounded-lg aspect-square size-9 md:size-10 border border-shelf-border bg-shelf-card/50 text-white/90 hover:bg-shelf-card transition overflow-hidden"
-                aria-label="Plex & library sync"
+                href="/plex"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-shelf-border bg-shelf-card/50 px-2.5 py-2 text-xs font-medium text-white/90 hover:bg-shelf-card transition"
+                aria-label="Plex sync"
               >
-                <StreamingIcon service="Plex" className="w-full h-full" />
+                <Settings size={16} className="text-cyan-400/90 shrink-0" aria-hidden />
+                <span className="max-[380px]:sr-only">Plex sync</span>
               </Link>
             </Tooltip>
           </div>

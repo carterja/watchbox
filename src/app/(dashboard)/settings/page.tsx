@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Check, Loader2, RefreshCw } from "lucide-react";
-import { PlexIntegrationPanel } from "@/components/PlexIntegrationPanel";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -104,20 +103,6 @@ export default function SettingsPage() {
             )}
             {syncingSeasons ? "Syncing…" : "Sync season counts from TMDB"}
           </button>
-        </section>
-
-        <section id="plex" className="mt-10 pt-10 border-t border-shelf-border">
-          <h2 className="text-sm font-medium text-shelf-muted uppercase tracking-wide mb-3">
-            Plex & library sync
-          </h2>
-          <p className="text-sm text-shelf-muted mb-4">
-            Connect Plex, refresh On Deck and library scan, and sync progress notes with WatchBox. Requires{" "}
-            <code className="text-xs bg-shelf-card px-1 rounded">PLEX_SERVER_URL</code> and{" "}
-            <code className="text-xs bg-shelf-card px-1 rounded">PLEX_TOKEN</code>.
-          </p>
-          <div className="rounded-2xl border border-shelf-border bg-shelf-bg/40 overflow-hidden">
-            <PlexIntegrationPanel />
-          </div>
         </section>
 
         <section className="mt-10 pt-10 border-t border-shelf-border">

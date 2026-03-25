@@ -16,6 +16,7 @@ describe('SeasonProgressEditor', () => {
     overview: 'A test series',
     posterPath: '/test.jpg',
     releaseDate: '2024-01-01',
+    runtime: null,
     status: 'in_progress',
     progressNote: null,
     totalSeasons: 3,
