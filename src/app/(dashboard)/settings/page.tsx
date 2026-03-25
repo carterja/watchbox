@@ -20,11 +20,14 @@ export default function SettingsPage() {
         toast.error((data.error || "Sync failed") + extra);
         return;
       }
-      if (data.total === 0) {
+      const total = data.total ?? 0;
+      const updated = data.updated ?? 0;
+      const failed = data.failed ?? 0;
+      if (total === 0) {
         toast.success("All series already have season and episode counts.");
       } else {
         toast.success(
-          `Updated ${data.updated} series.${data.failed > 0 ? ` ${data.failed} failed.` : ""}`
+          `Updated ${updated} series.${failed > 0 ? ` ${failed} failed.` : ""}`
         );
       }
     } catch {
