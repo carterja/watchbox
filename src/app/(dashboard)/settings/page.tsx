@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Check, Loader2, RefreshCw } from "lucide-react";
+import { Check, ChevronRight, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { PlexMarkIcon } from "@/components/icons/PlexMarkIcon";
 
 export default function SettingsPage() {
   const { themeId, setThemeId } = useTheme();
@@ -40,6 +42,28 @@ export default function SettingsPage() {
       </header>
       <div className="p-4 md:p-6 max-w-4xl">
         <section>
+          <h2 className="text-sm font-medium text-shelf-muted uppercase tracking-wide mb-3">
+            Integrations
+          </h2>
+          <p className="text-sm text-shelf-muted mb-3">
+            Connect your Plex server and compare On Deck with your WatchBox library.
+          </p>
+          <Link
+            href="/plex"
+            className="flex items-center gap-3 rounded-xl border border-shelf-border bg-shelf-card/60 px-4 py-3.5 transition hover:border-shelf-accent/50 hover:bg-shelf-card"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-shelf-border bg-gradient-to-br from-cyan-500/20 to-[#8b5cf6]/20">
+              <PlexMarkIcon className="text-cyan-400" size={22} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white">Plex & library sync</p>
+              <p className="text-xs text-shelf-muted">Status, On Deck overlap, and progress sync</p>
+            </div>
+            <ChevronRight className="h-5 w-5 shrink-0 text-shelf-muted" aria-hidden />
+          </Link>
+        </section>
+
+        <section className="mt-10">
           <h2 className="text-sm font-medium text-shelf-muted uppercase tracking-wide mb-3">
             Theme
           </h2>

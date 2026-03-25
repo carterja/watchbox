@@ -16,7 +16,6 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { PlexMarkIcon } from "@/components/icons/PlexMarkIcon";
 import { WatchBoxLogo } from "./WatchBoxLogo";
 import { useMobileFilters } from "@/contexts/MobileFiltersContext";
 import { useMediaList } from "@/contexts/MediaListContext";
@@ -31,14 +30,30 @@ const nav = [
   { href: "/movies", label: "Movies", icon: Film },
   { href: "/series", label: "Series", icon: Tv },
   { href: "/watching", label: "Watching", icon: MonitorPlay },
-  { href: "/plex", label: "Plex", icon: PlexMarkIcon },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
+
+function navItemIsActive(pathname: string, href: string): boolean {
+  if (pathname === href) return true;
+  if (href === "/settings" && pathname.startsWith("/plex")) return true;
+  if (href !== "/discover" && pathname.startsWith(href)) return true;
+  return false;
+}
 
 const LIST_PATHS = ["/all", "/movies", "/series"] as const;
 
 function isListPage(pathname: string) {
   return LIST_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
+/** Grid/list/gallery toggle — only pages that consume DisplayModeContext for media grids. */
+function isDisplayModePage(pathname: string): boolean {
+  return isListPage(pathname);
+}
+
+/** Burger opens MobileFiltersPanel — only routes that wrap filters in that panel. */
+function isMobileFiltersPage(pathname: string): boolean {
+  return isListPage(pathname) || pathname === "/watching" || pathname.startsWith("/watching/");
 }
 
 export function Sidebar() {
@@ -100,8 +115,7 @@ export function Sidebar() {
             </div>
           )}
           {nav.map(({ href, label, icon: Icon }) => {
-            const isActive =
-              pathname === href || (href !== "/discover" && pathname.startsWith(href));
+            const isActive = navItemIsActive(pathname, href);
             const link = (
               <Link
                 href={href}
@@ -175,53 +189,70 @@ export function Sidebar() {
       </aside>
 
       {/* Mobile Top Header */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-shelf-sidebar border-b border-shelf-border flex items-center gap-2 px-4">
-        <div className="flex items-center gap-2 min-w-0 shrink-0">
-          <WatchBoxLogo className="w-8 h-8 shrink-0" />
-          <span className="text-lg font-bold text-[#8b5cf6] truncate">WatchBox</span>
-        </div>
-        <div className="flex-1 flex justify-center items-center gap-1 min-w-0">
-          {pathname !== "/discover" &&
-            pathname !== "/watching" &&
-            pathname !== "/plex" && <DisplayModeToggle />}
-          {showReorder && (
-            <Tooltip content={reorderMode ? "Done" : "Reorder"} placement="bottom">
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-shelf-sidebar border-b border-shelf-border flex items-center gap-2 px-3">
+        {pathname === "/plex" ? (
+          <>
+            <Link
+              href="/settings"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-shelf-muted transition hover:bg-shelf-card hover:text-white"
+              aria-label="Back to Settings"
+            >
+              <ChevronLeft size={22} />
+            </Link>
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <WatchBoxLogo className="h-8 w-8 shrink-0" />
+              <span className="truncate text-lg font-bold text-[#8b5cf6]">WatchBox</span>
+            </div>
+            {/* Balance back chevron so title stays visually centered */}
+            <div className="h-10 w-10 shrink-0" aria-hidden />
+          </>
+        ) : (
+          <>
+            <div className="flex min-w-0 shrink-0 items-center gap-2">
+              <WatchBoxLogo className="h-8 w-8 shrink-0" />
+              <span className="truncate text-lg font-bold text-[#8b5cf6]">WatchBox</span>
+            </div>
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-1">
+              {isDisplayModePage(pathname) && <DisplayModeToggle />}
+              {showReorder && (
+                <Tooltip content={reorderMode ? "Done" : "Reorder"} placement="bottom">
+                  <button
+                    type="button"
+                    onClick={() => setReorderMode((v) => !v)}
+                    className={`flex shrink-0 items-center justify-center rounded-lg p-2 transition ${
+                      reorderMode ? "bg-[#8b5cf6] text-white" : "text-shelf-muted hover:bg-shelf-card hover:text-white"
+                    }`}
+                    aria-label={reorderMode ? "Done reordering" : "Reorder list"}
+                    aria-pressed={reorderMode}
+                  >
+                    {reorderMode ? <Check size={20} /> : <GripVertical size={20} />}
+                  </button>
+                </Tooltip>
+              )}
+            </div>
+            {isMobileFiltersPage(pathname) && (
               <button
                 type="button"
-                onClick={() => setReorderMode((v) => !v)}
-                className={`flex items-center justify-center rounded-lg p-2 transition shrink-0 ${
-                  reorderMode ? "bg-[#8b5cf6] text-white" : "text-shelf-muted hover:bg-shelf-card hover:text-white"
-                }`}
-                aria-label={reorderMode ? "Done reordering" : "Reorder list"}
-                aria-pressed={reorderMode}
+                onClick={toggle}
+                className="flex shrink-0 items-center justify-center rounded-lg p-2 text-shelf-muted transition hover:bg-shelf-card hover:text-white"
+                aria-label={
+                  pathname === "/watching"
+                    ? "Streamers and Plex sync"
+                    : "Toggle filters and sections"
+                }
               >
-                {reorderMode ? <Check size={20} /> : <GripVertical size={20} />}
+                <Menu size={22} />
               </button>
-            </Tooltip>
-          )}
-        </div>
-        {pathname !== "/discover" && pathname !== "/plex" && (
-          <button
-            type="button"
-            onClick={toggle}
-            className="flex items-center justify-center rounded-lg p-2 text-shelf-muted hover:bg-shelf-card hover:text-white transition shrink-0"
-            aria-label={
-              pathname === "/watching"
-                ? "Streamers and Plex sync"
-                : "Toggle filters and sections"
-            }
-          >
-            <Menu size={22} />
-          </button>
+            )}
+          </>
         )}
       </header>
 
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-shelf-sidebar border-t border-shelf-border safe-area-pb">
-        <div className="grid grid-cols-7 gap-0.5 p-2">
+        <div className="grid grid-cols-6 gap-0.5 p-2">
           {nav.map(({ href, label, icon: Icon }) => {
-            const isActive =
-              pathname === href || (href !== "/discover" && pathname.startsWith(href));
+            const isActive = navItemIsActive(pathname, href);
             return (
               <Link
                 key={href}

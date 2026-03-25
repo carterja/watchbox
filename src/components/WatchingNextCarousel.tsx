@@ -11,7 +11,6 @@ import {
   Clock,
   Loader2,
   MapPin,
-  PlayCircle,
   Tv,
 } from "lucide-react";
 import { StreamingIcon } from "@/components/StreamingIcon";
@@ -20,6 +19,7 @@ import { EffectCoverflow, Pagination } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import type { WhatNextRow } from "@/lib/whatNext";
 import { posterUrl } from "@/lib/tmdb";
+import type { Media } from "@/types/media";
 
 function formatAirDate(iso: string | null): string | null {
   if (!iso) return null;
@@ -28,6 +28,21 @@ function formatAirDate(iso: string | null): string | null {
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleDateString(undefined, { dateStyle: "medium" });
+}
+
+/** Completed seasons vs total (from Series season checklist). No bar if data is missing. */
+function seasonChecklistProgress(media: Media | null): {
+  pct: number;
+  completed: number;
+  total: number;
+} | null {
+  if (!media || media.type !== "tv") return null;
+  const total = media.totalSeasons;
+  const sp = media.seasonProgress;
+  if (total == null || total < 1 || !sp?.length) return null;
+  const completed = sp.filter((s) => s.status === "completed").length;
+  const pct = Math.min(100, Math.round((completed / total) * 100));
+  return { pct, completed, total };
 }
 
 import "swiper/css";
@@ -41,6 +56,8 @@ type Props = {
   onOpenSetPosition: (row: WhatNextRow) => void;
   /** Library streaming label for badge (optional). */
   resolveStreaming?: (mediaId: string) => string | null;
+  /** For status-style hero badge (e.g. S4 ongoing). */
+  resolveMedia?: (mediaId: string) => Media | null;
 };
 
 export function WatchingNextCarousel({
@@ -49,6 +66,7 @@ export function WatchingNextCarousel({
   onMarkWatched,
   onOpenSetPosition,
   resolveStreaming,
+  resolveMedia,
 }: Props) {
   const swiperRef = useRef<SwiperType | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -70,8 +88,9 @@ export function WatchingNextCarousel({
   const episodeStillSrc =
     activeRow?.next?.stillPath != null ? posterUrl(activeRow.next.stillPath, "w500") : null;
   const primaryVisualSrc = episodeStillSrc ?? detailPosterSrc;
-  const primaryVisualIsStill = Boolean(episodeStillSrc);
   const nextAirLabel = activeRow?.next?.airDate != null ? formatAirDate(activeRow.next.airDate) : null;
+  const activeMedia = activeRow && resolveMedia ? resolveMedia(activeRow.mediaId) : null;
+  const checklistProgress = seasonChecklistProgress(activeMedia);
 
   const onSlideChange = useCallback((swiper: SwiperType) => {
     setActiveIndex(swiper.realIndex);
@@ -154,15 +173,11 @@ export function WatchingNextCarousel({
                         priority={index === 0}
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-shelf-muted">
-                        <Tv size={40} />
+                      <div className="flex h-full flex-col items-center justify-center gap-2 p-3 text-center">
+                        <Tv className="text-shelf-muted" size={40} />
+                        <p className="text-xs font-medium leading-snug text-white/90 line-clamp-4">{row.title}</p>
                       </div>
                     )}
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pt-12 pb-3 px-3">
-                      <p className="text-sm font-semibold text-white line-clamp-2 leading-snug drop-shadow">
-                        {row.title}
-                      </p>
-                    </div>
                   </motion.div>
                 </button>
               </SwiperSlide>
@@ -179,160 +194,171 @@ export function WatchingNextCarousel({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.99 }}
             transition={{ type: "spring", stiffness: 420, damping: 34 }}
-            className="relative mx-auto max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-shelf-card/90 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.45)] ring-1 ring-white/[0.04] backdrop-blur-sm"
+            className="relative mx-auto max-w-3xl overflow-hidden rounded-2xl border border-white/[0.08] bg-[#121218] shadow-[0_24px_48px_-12px_rgba(0,0,0,0.55)] ring-1 ring-white/[0.04]"
           >
             <div
               className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_55%_at_100%_0%,rgba(139,92,246,0.14),transparent_55%)]"
               aria-hidden
             />
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#8b5cf6]/35 to-transparent" />
 
-            <div className="relative flex flex-col gap-3 p-3 sm:flex-row sm:items-start sm:gap-6 sm:p-5 md:p-6 md:gap-6">
-              <div className="flex w-full shrink-0 justify-center sm:w-auto sm:max-w-[min(100%,280px)] sm:justify-start">
-                <div
-                  className={`relative mx-auto overflow-hidden rounded-xl border border-white/10 bg-shelf-border shadow-inner sm:mx-0 sm:max-w-none sm:w-[13.5rem] ${
-                    primaryVisualIsStill
-                      ? "aspect-video w-full max-w-[min(100%,220px)] sm:max-w-none"
-                      : "aspect-[2/3] h-[148px] w-[99px] sm:h-auto sm:aspect-[2/3] sm:w-[13.5rem] sm:max-w-none"
-                  }`}
-                >
-                  {primaryVisualSrc ? (
-                    <Image
-                      src={primaryVisualSrc}
-                      alt=""
-                      fill
-                      className="object-cover"
-                      sizes={
-                        primaryVisualIsStill
-                          ? "(max-width:640px) 90vw, 280px"
-                          : "(max-width:640px) 99px, 216px"
-                      }
-                    />
-                  ) : (
-                    <div className="flex h-full min-h-[6rem] sm:min-h-[9rem] items-center justify-center text-shelf-muted/80">
-                      <Tv size={36} strokeWidth={1.25} />
-                    </div>
-                  )}
+            {/* Hero (reference: full-width still/poster, badge, title on gradient) */}
+            <div className="relative aspect-[16/9] w-full max-h-[min(52vw,280px)] sm:max-h-[320px] sm:aspect-[2.1/1]">
+              {primaryVisualSrc ? (
+                <Image
+                  src={primaryVisualSrc}
+                  alt=""
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 720px"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center bg-shelf-border text-shelf-muted/80">
+                  <Tv size={40} strokeWidth={1.25} />
                 </div>
+              )}
+              {activeRow.next && (
+                <div className="absolute left-3 top-3">
+                  <span className="inline-flex rounded-full bg-fuchsia-400 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-black shadow-lg">
+                    {activeMedia?.status === "finished"
+                      ? `S${activeRow.next.season} complete`
+                      : `S${activeRow.next.season} ongoing`}
+                  </span>
+                </div>
+              )}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/75 to-transparent px-4 pb-4 pt-20 sm:pt-24 sm:pb-5">
+                <h2 className="text-xl font-bold leading-tight tracking-tight text-white drop-shadow-md sm:text-2xl md:text-3xl">
+                  {activeRow.title}
+                </h2>
+              </div>
+            </div>
+
+            <div className="relative space-y-4 p-4 sm:p-5 md:p-6">
+              <div className="flex flex-wrap items-center gap-2">
+                {activeStream ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-shelf-muted">
+                    <StreamingIcon service={activeStream} className="h-3.5 w-3.5 rounded-[2px]" />
+                    {activeStream}
+                  </span>
+                ) : null}
+                {activeRow.lastFinished && (
+                  <p className="text-[11px] text-shelf-muted/90">
+                    Last finished{" "}
+                    <span className="tabular-nums text-shelf-muted">
+                      S{activeRow.lastFinished.season}E{activeRow.lastFinished.episode}
+                    </span>
+                  </p>
+                )}
               </div>
 
-              <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 sm:gap-5">
-                <div className="space-y-1.5 text-left sm:space-y-2.5">
-                  <div className="flex flex-col items-start gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
-                    {activeStream ? (
-                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs font-medium text-shelf-muted">
-                        <StreamingIcon service={activeStream} className="h-4 w-4 rounded-[3px]" />
-                        {activeStream}
-                      </span>
-                    ) : null}
-                    <h2 className="text-lg font-semibold tracking-tight text-white sm:text-xl md:text-2xl">
-                      {activeRow.title}
-                    </h2>
-                  </div>
-
-                  {activeRow.lastFinished && (
-                    <p className="text-[11px] leading-tight text-shelf-muted/90">
-                      Last finished{" "}
-                      <span className="tabular-nums text-shelf-muted">
-                        S{activeRow.lastFinished.season}E{activeRow.lastFinished.episode}
-                      </span>
-                    </p>
+              {activeRow.next && (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-shelf-muted">
+                  {nextAirLabel && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Calendar size={14} className="shrink-0 text-shelf-muted/70" aria-hidden />
+                      <span className="text-white/85">{nextAirLabel}</span>
+                    </span>
                   )}
-
-                  {activeRow.caughtUp && !activeRow.next ? (
-                    <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200/95">
-                      <CheckCircle2 size={17} className="shrink-0 text-emerald-400/90" />
-                      Caught up with aired episodes
-                    </div>
-                  ) : activeRow.next ? (
-                    <div className="space-y-1.5 sm:space-y-2.5">
-                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-shelf-muted">
-                          Next episode
-                        </p>
-                        <div className="mt-1.5 flex flex-row flex-wrap items-baseline gap-x-2 gap-y-1">
-                          <span className="inline-flex shrink-0 rounded-md bg-[#8b5cf6]/15 px-2 py-0.5 font-mono text-xs font-semibold tabular-nums text-[#c4b5fd] ring-1 ring-[#8b5cf6]/25 sm:rounded-lg sm:px-2.5 sm:py-1 sm:text-sm">
-                            S{activeRow.next.season}E{activeRow.next.episode}
-                          </span>
-                          <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-white sm:text-[15px]">
-                            {activeRow.next.name}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-start gap-1.5 sm:gap-2">
-                        {nextAirLabel && (
-                          <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-xs text-shelf-muted">
-                            <Calendar size={13} className="shrink-0 text-shelf-muted/80" aria-hidden />
-                            <span className="text-white/85">{nextAirLabel}</span>
-                          </span>
-                        )}
-                        {activeRow.next.runtimeMinutes != null && (
-                          <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-xs text-shelf-muted">
-                            <Clock size={13} className="shrink-0 text-shelf-muted/80" aria-hidden />
-                            <span className="tabular-nums text-white/85">
-                              {activeRow.next.runtimeMinutes} min
-                            </span>
-                          </span>
-                        )}
-                      </div>
-
-                      {activeRow.next.overview ? (
-                        <p className="text-[13px] leading-snug text-shelf-muted line-clamp-4 sm:text-sm sm:leading-relaxed sm:line-clamp-none md:line-clamp-6">
-                          {activeRow.next.overview}
-                        </p>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/90">
-                      Could not resolve next episode (TMDB).
-                    </p>
+                  {activeRow.next.runtimeMinutes != null && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock size={14} className="shrink-0 text-shelf-muted/70" aria-hidden />
+                      <span className="tabular-nums text-white/85">{activeRow.next.runtimeMinutes} min</span>
+                    </span>
                   )}
                 </div>
+              )}
 
-                <motion.div
-                  className="flex flex-col gap-2 border-t border-white/[0.06] pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:border-t-0 sm:pt-0"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.06, type: "spring", stiffness: 440, damping: 32 }}
-                >
-                  <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                    {activeRow.next && (
-                      <button
-                        type="button"
-                        onClick={() => void onMarkWatched(activeRow.mediaId)}
-                        disabled={marking === activeRow.mediaId}
-                        className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#8b5cf6] px-3 py-2 text-sm font-medium text-white shadow-md shadow-[#8b5cf6]/20 transition hover:bg-[#9b7df0] disabled:opacity-50 active:scale-[0.98] sm:min-h-0 sm:flex-initial sm:gap-2 sm:px-4 sm:py-2.5"
-                      >
-                        {marking === activeRow.mediaId ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                          <PlayCircle size={17} strokeWidth={2} />
-                        )}
-                        Mark watched
-                      </button>
-                    )}
+              {activeRow.caughtUp && !activeRow.next ? (
+                <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200/95">
+                  <CheckCircle2 size={17} className="shrink-0 text-emerald-400/90" />
+                  Caught up with aired episodes
+                </div>
+              ) : activeRow.next ? (
+                <div className="rounded-2xl border border-white/[0.08] bg-shelf-card/80 p-4 shadow-inner">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#a78bfa]">
+                      Next episode
+                    </p>
+                    <p className="shrink-0 text-xs tabular-nums text-shelf-muted">
+                      S{activeRow.next.season} · E{activeRow.next.episode}
+                    </p>
+                  </div>
+                  <h3 className="mt-2 text-lg font-bold leading-snug text-white sm:text-xl md:text-2xl">
+                    {activeRow.next.name}
+                  </h3>
+                  {activeRow.next.overview ? (
+                    <p className="mt-2 text-[13px] leading-relaxed text-shelf-muted line-clamp-4 sm:text-sm sm:line-clamp-none">
+                      {activeRow.next.overview}
+                    </p>
+                  ) : null}
+                  {checklistProgress != null && (
+                    <div
+                      className="mt-4 space-y-1.5"
+                      role="group"
+                      aria-label={`Season checklist: ${checklistProgress.completed} of ${checklistProgress.total} seasons marked complete`}
+                    >
+                      <div className="flex items-center justify-between gap-2 text-[10px] text-shelf-muted">
+                        <span>Season checklist</span>
+                        <span className="tabular-nums text-white/90">
+                          {checklistProgress.completed}/{checklistProgress.total} seasons
+                        </span>
+                      </div>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.08]">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-[#8b5cf6] to-[#c4b5fd]"
+                          style={{ width: `${checklistProgress.pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm text-amber-100/90">
+                  Could not resolve next episode (TMDB).
+                </p>
+              )}
+
+              <motion.div
+                className="flex flex-col gap-3 border-t border-white/[0.08] pt-4"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.06, type: "spring", stiffness: 440, damping: 32 }}
+              >
+                <div className="flex flex-wrap items-stretch justify-center gap-2 sm:justify-start">
+                  {activeRow.next && (
                     <button
                       type="button"
-                      onClick={() => onOpenSetPosition(activeRow)}
-                      className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-shelf-muted transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white sm:min-h-0 sm:flex-initial sm:gap-2 sm:px-4 sm:py-2.5"
+                      onClick={() => void onMarkWatched(activeRow.mediaId)}
+                      disabled={marking === activeRow.mediaId}
+                      className="inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[#8b5cf6] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#8b5cf6]/25 transition hover:bg-[#9b7df0] disabled:opacity-50 active:scale-[0.98] sm:min-h-0 sm:flex-initial sm:px-5"
                     >
-                      <MapPin size={16} />
-                      Set position
+                      {marking === activeRow.mediaId ? (
+                        <Loader2 size={17} className="animate-spin" />
+                      ) : (
+                        <CheckCircle2 size={18} strokeWidth={2} className="shrink-0 text-white" />
+                      )}
+                      Mark watched
                     </button>
-                  </div>
-                  <Link
-                    href="/series"
-                    className="group inline-flex items-center justify-center gap-1 self-center text-xs font-medium text-[#a78bfa] transition hover:text-white sm:text-sm sm:self-auto"
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onOpenSetPosition(activeRow)}
+                    className="inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-white/90 transition hover:border-white/25 hover:bg-white/[0.08] sm:min-h-0 sm:flex-initial sm:px-5"
                   >
-                    Series list
-                    <ChevronRight
-                      size={14}
-                      className="h-3.5 w-3.5 transition group-hover:translate-x-0.5 sm:h-4 sm:w-4"
-                    />
-                  </Link>
-                </motion.div>
-              </div>
+                    <MapPin size={17} className="shrink-0 text-white/70" />
+                    Set position
+                  </button>
+                </div>
+                <Link
+                  href="/series"
+                  className="group flex w-full items-center justify-center gap-1 self-center text-[10px] font-semibold uppercase tracking-[0.2em] text-shelf-muted transition hover:text-[#a78bfa] sm:text-xs"
+                >
+                  Series list
+                  <ChevronRight
+                    size={14}
+                    className="h-3.5 w-3.5 transition group-hover:translate-x-0.5 sm:h-4 sm:w-4"
+                  />
+                </Link>
+              </motion.div>
             </div>
           </motion.div>
         )}

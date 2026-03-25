@@ -204,6 +204,7 @@ export default function WatchingPage() {
             onMarkWatched={markWatched}
             onOpenSetPosition={openSetPosition}
             resolveStreaming={resolveStreaming}
+            resolveMedia={(id) => list.find((m) => m.id === id) ?? null}
           />
         )}
       </div>
