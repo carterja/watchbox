@@ -37,6 +37,7 @@ type StatusState =
 type AppHealth = { ok: boolean; db: boolean; plex?: boolean } | null;
 
 type PlexPanelTab = "both" | "watchbox" | "plexonly";
+type PlexOnlyKind = "tv" | "movies";
 
 function formatProgress(viewOffset?: number, duration?: number): string {
   if (duration == null || duration <= 0) return "—";
@@ -128,6 +129,7 @@ export function PlexIntegrationPanel() {
   const [plexScan, setPlexScan] = useState<{ onDeck: number; library: number } | null>(null);
   const [addingKey, setAddingKey] = useState<string | null>(null);
   const [plexTab, setPlexTab] = useState<PlexPanelTab>("both");
+  const [plexOnlyKind, setPlexOnlyKind] = useState<PlexOnlyKind>("tv");
 
   const loadStatus = useCallback(async () => {
     try {
@@ -219,6 +221,16 @@ export function PlexIntegrationPanel() {
     }
     return { plexOnlyTv: tv, plexOnlyMovies: movies };
   }, [plexOnly]);
+
+  /** In Plex-only tab, show the bucket that has rows when the other is empty. */
+  useEffect(() => {
+    if (plexTab !== "plexonly") return;
+    if (plexOnlyTv.length === 0 && plexOnlyMovies.length > 0) {
+      setPlexOnlyKind("movies");
+    } else if (plexOnlyMovies.length === 0 && plexOnlyTv.length > 0) {
+      setPlexOnlyKind("tv");
+    }
+  }, [plexTab, plexOnlyTv.length, plexOnlyMovies.length]);
 
   const refreshAll = () => {
     loadStatus();
@@ -597,11 +609,53 @@ export function PlexIntegrationPanel() {
 
           {plexOnly.length > 0 && (
             <>
+              <div
+                className="mb-4 flex flex-wrap gap-1.5 rounded-xl border border-shelf-border bg-shelf-bg/50 p-1.5"
+                role="tablist"
+                aria-label="Plex only: TV or movies"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={plexOnlyKind === "tv"}
+                  onClick={() => setPlexOnlyKind("tv")}
+                  className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
+                    plexOnlyKind === "tv"
+                      ? "bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/25"
+                      : "text-shelf-muted hover:bg-shelf-card hover:text-white"
+                  }`}
+                >
+                  <Tv size={16} className="shrink-0 opacity-90" aria-hidden />
+                  <span className="truncate">TV series</span>
+                  <span
+                    className={`tabular-nums ${plexOnlyKind === "tv" ? "text-white/90" : "text-shelf-muted"}`}
+                  >
+                    ({plexOnlyTv.length})
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={plexOnlyKind === "movies"}
+                  onClick={() => setPlexOnlyKind("movies")}
+                  className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
+                    plexOnlyKind === "movies"
+                      ? "bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/25"
+                      : "text-shelf-muted hover:bg-shelf-card hover:text-white"
+                  }`}
+                >
+                  <Film size={16} className="shrink-0 opacity-90" aria-hidden />
+                  <span className="truncate">Movies</span>
+                  <span
+                    className={`tabular-nums ${plexOnlyKind === "movies" ? "text-white/90" : "text-shelf-muted"}`}
+                  >
+                    ({plexOnlyMovies.length})
+                  </span>
+                </button>
+              </div>
+
+              {plexOnlyKind === "tv" && (
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Tv className="text-cyan-400/90 shrink-0" size={18} />
-                  <h3 className="text-base font-semibold text-white">TV series</h3>
-                </div>
                 {plexOnlyTv.length === 0 ? (
                   <p className="text-sm text-shelf-muted">No TV items in this list.</p>
                 ) : (
@@ -667,12 +721,10 @@ export function PlexIntegrationPanel() {
                   </ul>
                 )}
               </div>
+              )}
 
+              {plexOnlyKind === "movies" && (
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Film className="text-cyan-400/90 shrink-0" size={18} />
-                  <h3 className="text-base font-semibold text-white">Movies</h3>
-                </div>
                 {plexOnlyMovies.length === 0 ? (
                   <p className="text-sm text-shelf-muted">No movies in this list.</p>
                 ) : (
@@ -732,6 +784,7 @@ export function PlexIntegrationPanel() {
                   </ul>
                 )}
               </div>
+              )}
             </>
           )}
         </section>
