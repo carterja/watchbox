@@ -8,6 +8,10 @@ services:
       - PORT=9516
       - TMDB_API_KEY=${TMDB_API_KEY}
       - DATABASE_URL=file:/app/data/watchbox.db
+      # Required for Plex (must match Portainer / stack.env — compose must reference them or they never reach the container)
+      - PLEX_SERVER_URL=${PLEX_SERVER_URL:-}
+      - PLEX_TOKEN=${PLEX_TOKEN:-}
+      - PLEX_WEBHOOK_SECRET=${PLEX_WEBHOOK_SECRET:-}
       # Cap Node heap to reduce memory use on small servers (tune or remove if you have RAM)
       - NODE_OPTIONS=--max-old-space-size=384
     volumes:

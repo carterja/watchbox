@@ -83,7 +83,7 @@ docker-compose up -d
 1. Copy the contents of `docker-compose.yml`
 2. In Portainer, create a new stack
 3. Paste the compose file
-4. Add environment variables in Portainer UI
+4. Add environment variables in Portainer UI (`TMDB_API_KEY`, and optional Plex: `PLEX_SERVER_URL`, `PLEX_TOKEN`, `PLEX_WEBHOOK_SECRET`). They must appear in `docker-compose.yml` under `environment:` or the container never receives them.
 5. Deploy the stack
 
 ## Plex Media Server (optional)
