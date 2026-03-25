@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, memo } from "react";
 import Image from "next/image";
-import { X, Film, Tv, Save, Search, Check, Trash2, Heart, UsersRound, User } from "lucide-react";
+import { X, Film, Tv, Save, Search, Check, Trash2, Heart, UsersRound, User, History } from "lucide-react";
 import type { Media, MediaStatus, SeasonProgressItem, Viewer } from "@/types/media";
 import { posterUrl, isExternalPoster } from "@/lib/tmdb";
 
@@ -115,6 +115,20 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
   const [loadingCast, setLoadingCast] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const [plexLog, setPlexLog] = useState<
+    {
+      id: string;
+      createdAt: string;
+      title: string | null;
+      showTitle: string | null;
+      season: number | null;
+      episode: number | null;
+      accountTitle: string | null;
+      playerTitle: string | null;
+    }[]
+  >([]);
+  const [plexLogLoading, setPlexLogLoading] = useState(false);
+
   const isSeries = media.type === "tv";
   const [isClosing, setIsClosing] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -123,6 +137,25 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
   useEffect(() => {
     setIsMobile(typeof window !== "undefined" && window.innerWidth < 768);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPlexLogLoading(true);
+    fetch(`/api/media/${encodeURIComponent(media.id)}/playback`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        if (!cancelled && Array.isArray(data)) setPlexLog(data);
+      })
+      .catch(() => {
+        if (!cancelled) setPlexLog([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPlexLogLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [media.id]);
 
   const handleClose = useCallback(() => {
     if (closeDoneRef.current) return;
@@ -941,6 +974,60 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
                   </ul>
                 ) : (
                   <p className="text-xs text-shelf-muted">No cast data</p>
+                )}
+              </div>
+
+              {/* Plex playback log (webhook scrobbles; survives deleting media in Plex) */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <History size={16} className="text-shelf-muted shrink-0" aria-hidden />
+                  <label className="text-xs md:text-sm font-medium text-white">Plex log</label>
+                </div>
+                {plexLogLoading ? (
+                  <p className="text-xs text-shelf-muted">Loading…</p>
+                ) : plexLog.length === 0 ? (
+                  <p className="text-xs text-shelf-muted">
+                    No Plex scrobbles recorded yet. Add a webhook on your server and finish an episode
+                    or movie past the threshold — history is stored here even if you remove files from
+                    Plex later.
+                  </p>
+                ) : (
+                  <ul className="max-h-40 overflow-y-auto space-y-1.5 text-xs md:text-sm rounded-lg border border-shelf-border bg-shelf-card/50 p-2">
+                    {plexLog.map((e) => {
+                      const when = new Date(e.createdAt);
+                      const dateStr = Number.isNaN(when.getTime())
+                        ? ""
+                        : when.toLocaleString(undefined, {
+                            dateStyle: "medium",
+                            timeStyle: "short",
+                          });
+                      const epLabel =
+                        isSeries &&
+                        e.season != null &&
+                        e.episode != null &&
+                        e.season > 0 &&
+                        e.episode > 0
+                          ? `S${e.season}E${e.episode}`
+                          : isSeries
+                          ? "Episode"
+                          : null;
+                      const primary =
+                        isSeries && (e.title || epLabel)
+                          ? [epLabel, e.title].filter(Boolean).join(" · ")
+                          : e.title ?? media.title;
+                      return (
+                        <li key={e.id} className="text-shelf-muted">
+                          <span className="text-white/90">{primary}</span>
+                          {dateStr ? (
+                            <span className="text-shelf-muted"> · {dateStr}</span>
+                          ) : null}
+                          {e.accountTitle ? (
+                            <span className="text-shelf-muted"> · {e.accountTitle}</span>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
 

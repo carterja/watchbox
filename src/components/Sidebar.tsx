@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Sparkles, LayoutGrid, Film, Tv, Settings, Menu, GripVertical, Check } from "lucide-react";
+import { Sparkles, LayoutGrid, Film, Tv, Settings, Menu, GripVertical, Check, MonitorPlay } from "lucide-react";
 import { WatchBoxLogo } from "./WatchBoxLogo";
 import { useMobileFilters } from "@/contexts/MobileFiltersContext";
 import { useMediaList } from "@/contexts/MediaListContext";
@@ -15,6 +15,7 @@ const nav = [
   { href: "/all", label: "All", icon: LayoutGrid },
   { href: "/movies", label: "Movies", icon: Film },
   { href: "/series", label: "Series", icon: Tv },
+  { href: "/watching", label: "Watching", icon: MonitorPlay },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -133,7 +134,7 @@ export function Sidebar() {
 
       {/* Mobile Bottom Navigation - always visible, not affected by burger */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-shelf-sidebar border-t border-shelf-border safe-area-pb">
-        <div className="grid grid-cols-5 gap-0.5 p-2">
+        <div className="grid grid-cols-6 gap-0.5 p-2">
           {nav.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || (href !== "/discover" && pathname.startsWith(href));
             return (

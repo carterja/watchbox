@@ -32,6 +32,8 @@ model Media {
   // Custom sort order (lower = first). Default 0; reorder updates this.
   sortOrder Int @default(0)
 
+  playbackEvents PlaybackEvent[]
+
   @@index([tmdbId, type])
   @@index([status])
   @@index([type])
@@ -39,4 +41,35 @@ model Media {
   @@index([streamingService])
   @@index([viewer])
   @@index([sortOrder])
+}
+
+/// Append-only Plex webhook history (e.g. media.scrobble). Survives deleting episodes or titles in Plex;
+/// WatchBox `mediaId` is cleared if you remove the show from WatchBox (TMDB fields remain).
+model PlaybackEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  event     String
+
+  mediaId String?
+  media   Media?  @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+
+  tmdbId    Int?
+  mediaKind String?
+
+  title         String?
+  showTitle     String?
+  season        Int?
+  episode       Int?
+  year          Int?
+
+  ratingKey            String?
+  grandparentRatingKey String?
+  guid                 String?
+
+  accountTitle String?
+  playerTitle  String?
+
+  @@index([mediaId])
+  @@index([tmdbId, mediaKind])
+  @@index([createdAt])
 }

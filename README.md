@@ -86,12 +86,59 @@ docker-compose up -d
 4. Add environment variables in Portainer UI
 5. Deploy the stack
 
+## Plex Media Server (optional)
+
+WatchBox can read your **On Deck** (in-progress) list from Plex and accept **webhooks** when playback events fire (foundation for auto-updating your list later).
+
+### Get your `X-Plex-Token`
+
+1. Open **[app.plex.tv](https://app.plex.tv)** in a desktop browser and sign in.
+2. Open **Developer Tools** (F12 or right‑click → Inspect).
+3. Go to the **Network** tab, refresh the page (or click around in the app).
+4. Select any request to **`plex.tv`** or your server (`*.plex.direct`, local IP, etc.).
+5. In **Request headers**, copy the value of **`X-Plex-Token`**.
+
+Treat this token like a password—don’t commit it or share it.
+
+### Configure the app
+
+Set in `.env`:
+
+- **`PLEX_SERVER_URL`** — Base URL of your Plex Media Server, e.g. `http://192.168.1.10:32400` (same network as WatchBox).  
+  If WatchBox runs in Docker and Plex is on the host, try `http://host.docker.internal:32400` (Docker Desktop) or your host LAN IP.
+- **`PLEX_TOKEN`** — The `X-Plex-Token` from above.
+
+Check connectivity:
+
+```bash
+curl -s http://localhost:3000/api/plex/status
+```
+
+In-progress items from Plex:
+
+```bash
+curl -s http://localhost:3000/api/plex/on-deck
+```
+
+TMDB ids are parsed when your library uses **The Movie Database** as the metadata agent for that library (best match with WatchBox, which keys off TMDB).
+
+### Webhooks (Plex Pass)
+
+On the Plex server: **Settings → Webhooks** → add URL:
+
+`https://your-watchbox-domain.com/api/plex/webhook?secret=YOUR_SECRET`
+
+Set **`PLEX_WEBHOOK_SECRET`** in `.env` to the same `YOUR_SECRET`. The handler currently acknowledges events; you can extend it to update `Media` rows on `media.scrobble`.
+
 ## Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `TMDB_API_KEY` | TMDB API key for fetching movie/TV data | Yes |
 | `DATABASE_URL` | SQLite database path | Yes |
+| `PLEX_SERVER_URL` | Plex server base URL (e.g. `http://IP:32400`) | No |
+| `PLEX_TOKEN` | Plex `X-Plex-Token` | No |
+| `PLEX_WEBHOOK_SECRET` | Shared secret for `/api/plex/webhook?secret=` | No |
 | `NODE_ENV` | Environment (production/development) | No |
 
 ## GitHub Actions Deployment

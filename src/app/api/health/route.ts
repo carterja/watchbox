@@ -6,7 +6,7 @@ export const revalidate = 0;
 
 /** GET /api/health - for Docker healthcheck and monitoring. Checks DB; optionally TMDB. */
 export async function GET() {
-  const result: { ok: boolean; db: boolean; tmdb?: boolean } = {
+  const result: { ok: boolean; db: boolean; tmdb?: boolean; plex?: boolean } = {
     ok: true,
     db: false,
   };
@@ -28,6 +28,22 @@ export async function GET() {
       result.tmdb = res.ok;
     } catch {
       result.tmdb = false;
+    }
+  }
+
+  const plexUrl = process.env.PLEX_SERVER_URL?.trim();
+  const plexToken = process.env.PLEX_TOKEN?.trim();
+  if (plexUrl && plexToken) {
+    try {
+      const base = plexUrl.replace(/\/+$/, "");
+      const res = await fetch(`${base}/identity`, {
+        headers: { "X-Plex-Token": plexToken },
+        cache: "no-store",
+        signal: AbortSignal.timeout(5000),
+      });
+      result.plex = res.ok;
+    } catch {
+      result.plex = false;
     }
   }
 
