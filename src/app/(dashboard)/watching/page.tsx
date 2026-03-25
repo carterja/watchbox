@@ -9,6 +9,7 @@ import { useWhatNextCache } from "@/contexts/WhatNextCacheContext";
 import type { WhatNextRow } from "@/lib/whatNext";
 import { WatchingNextCarousel } from "@/components/WatchingNextCarousel";
 import { FilterBar } from "@/components/FilterBar";
+import { MobileFiltersPanel } from "@/components/MobileFiltersPanel";
 import { Tooltip } from "@/components/Tooltip";
 
 export default function WatchingPage() {
@@ -132,32 +133,36 @@ export default function WatchingPage() {
 
   return (
     <div className="min-h-screen pb-8">
-      <header className="sticky top-14 md:top-0 z-20 border-b border-shelf-border bg-shelf-bg/95 backdrop-blur">
-        <div className="px-4 md:px-6 py-3">
-          <div className="flex items-center justify-between gap-3 min-w-0">
-            <div className="min-w-0 flex-1">
-              {availableServices.length > 0 ? (
-                <FilterBar
-                  streamingService={streamingServiceFilter}
-                  onStreamingServiceChange={setStreamingServiceFilter}
-                  availableServices={availableServices}
-                />
-              ) : (
-                <p className="text-xs text-shelf-muted md:text-sm">Assign streaming services on Series to filter here.</p>
-              )}
+      <header className="sticky top-14 md:top-0 z-20 md:border-b border-shelf-border bg-shelf-bg/95 backdrop-blur relative h-0 min-h-0 overflow-visible md:h-auto md:min-h-0">
+        <MobileFiltersPanel>
+          <div className="px-4 md:px-6 py-3 border-b border-shelf-border md:border-b-0 bg-shelf-sidebar md:bg-transparent">
+            <div className="flex items-center justify-between gap-3 min-w-0">
+              <div className="min-w-0 flex-1">
+                {availableServices.length > 0 ? (
+                  <FilterBar
+                    streamingService={streamingServiceFilter}
+                    onStreamingServiceChange={setStreamingServiceFilter}
+                    availableServices={availableServices}
+                  />
+                ) : (
+                  <p className="text-xs text-shelf-muted md:text-sm">
+                    Assign streaming services on Series to filter here.
+                  </p>
+                )}
+              </div>
+              <Tooltip content="Open Plex sync" placement="bottom">
+                <Link
+                  href="/plex"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-shelf-border bg-shelf-card/50 px-2.5 py-2 text-xs font-medium text-white/90 hover:bg-shelf-card transition"
+                  aria-label="Plex sync"
+                >
+                  <Settings size={16} className="text-cyan-400/90 shrink-0" aria-hidden />
+                  <span className="max-[380px]:sr-only">Plex sync</span>
+                </Link>
+              </Tooltip>
             </div>
-            <Tooltip content="Open Plex sync" placement="bottom">
-              <Link
-                href="/plex"
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-shelf-border bg-shelf-card/50 px-2.5 py-2 text-xs font-medium text-white/90 hover:bg-shelf-card transition"
-                aria-label="Plex sync"
-              >
-                <Settings size={16} className="text-cyan-400/90 shrink-0" aria-hidden />
-                <span className="max-[380px]:sr-only">Plex sync</span>
-              </Link>
-            </Tooltip>
           </div>
-        </div>
+        </MobileFiltersPanel>
       </header>
 
       <div className="p-4 md:p-6">

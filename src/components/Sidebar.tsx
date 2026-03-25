@@ -181,7 +181,9 @@ export function Sidebar() {
           <span className="text-lg font-bold text-[#8b5cf6] truncate">WatchBox</span>
         </div>
         <div className="flex-1 flex justify-center items-center gap-1 min-w-0">
-          {pathname !== "/discover" && <DisplayModeToggle />}
+          {pathname !== "/discover" &&
+            pathname !== "/watching" &&
+            pathname !== "/plex" && <DisplayModeToggle />}
           {showReorder && (
             <Tooltip content={reorderMode ? "Done" : "Reorder"} placement="bottom">
               <button
@@ -198,12 +200,16 @@ export function Sidebar() {
             </Tooltip>
           )}
         </div>
-        {pathname !== "/discover" && (
+        {pathname !== "/discover" && pathname !== "/plex" && (
           <button
             type="button"
             onClick={toggle}
             className="flex items-center justify-center rounded-lg p-2 text-shelf-muted hover:bg-shelf-card hover:text-white transition shrink-0"
-            aria-label="Toggle filters and sections"
+            aria-label={
+              pathname === "/watching"
+                ? "Streamers and Plex sync"
+                : "Toggle filters and sections"
+            }
           >
             <Menu size={22} />
           </button>

@@ -319,36 +319,38 @@ export function PlexIntegrationPanel() {
   const plexConfigured = !status.loading && status.configured && status.reachable;
 
   return (
-    <div className="pb-8">
-      <header className="sticky top-14 md:top-0 z-20 border-b border-shelf-border bg-shelf-bg/95 backdrop-blur">
-        <div className="px-4 md:px-6 py-3 md:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-[#8b5cf6]/20 border border-shelf-border">
-              <PlexMarkIcon className="text-cyan-400" size={22} />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-lg md:text-xl font-semibold text-white truncate">Plex & library sync</h2>
-              <p className="text-xs text-shelf-muted truncate">
-                Connect Plex, compare On Deck with WatchBox, and sync progress notes
-              </p>
-            </div>
+    <div className="pb-6 md:pb-8">
+      {/* Not sticky: avoids content sliding under this bar inside overflow-hidden page cards */}
+      <header className="border-b border-shelf-border bg-shelf-bg/95 backdrop-blur">
+        <div className="flex items-center gap-2.5 px-3 py-2 sm:gap-3 sm:px-4 md:px-6 md:py-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-shelf-border bg-gradient-to-br from-cyan-500/20 to-[#8b5cf6]/20 sm:h-9 sm:w-9 sm:rounded-xl">
+            <PlexMarkIcon className="text-cyan-400" size={20} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-semibold leading-tight text-white sm:text-base md:text-lg">
+              Plex & library sync
+            </h2>
+            <p className="mt-0.5 truncate text-[10px] leading-tight text-shelf-muted sm:text-[11px] md:text-xs">
+              Connect Plex, compare On Deck with WatchBox, and sync progress notes
+            </p>
           </div>
           <button
             type="button"
             onClick={refreshAll}
-            className="inline-flex items-center justify-center gap-2 rounded-lg border border-shelf-border bg-shelf-card px-4 py-2.5 text-sm text-white hover:bg-shelf-card/80 shrink-0"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-shelf-border bg-shelf-card px-2.5 py-2 text-xs font-medium text-white hover:bg-shelf-card/80 active:scale-[0.99] sm:gap-2 sm:px-3 sm:text-sm"
+            aria-label="Refresh all"
           >
-            <RefreshCw size={16} />
-            Refresh all
+            <RefreshCw size={15} className="shrink-0 sm:h-4 sm:w-4" />
+            <span>Refresh</span>
           </button>
         </div>
       </header>
 
-      <div className="p-4 md:p-6 max-w-4xl space-y-10">
+      <div className="space-y-5 px-3 pt-3 pb-4 sm:space-y-7 sm:px-4 sm:pt-4 md:space-y-8 md:p-6">
         {/* Status strip */}
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <div
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
+            className={`inline-flex min-h-[2.25rem] items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
               appHealth?.ok && appHealth.db
                 ? "border-green-500/40 bg-green-500/10 text-green-300"
                 : "border-amber-500/40 bg-amber-500/10 text-amber-200"
@@ -359,13 +361,15 @@ export function PlexIntegrationPanel() {
             ) : (
               <AlertCircle size={14} />
             )}
-            WatchBox {appHealth?.ok && appHealth.db ? "· DB OK" : "· check /api/health"}
-            {typeof appHealth?.plex === "boolean" && (
-              <span className="opacity-80">
-                {" "}
-                · Plex {appHealth.plex ? "OK" : "down"}
-              </span>
-            )}
+            <span className="min-w-0 break-words">
+              WatchBox {appHealth?.ok && appHealth.db ? "· DB OK" : "· check /api/health"}
+              {typeof appHealth?.plex === "boolean" && (
+                <span className="opacity-80">
+                  {" "}
+                  · Plex {appHealth.plex ? "OK" : "down"}
+                </span>
+              )}
+            </span>
           </div>
           {status.loading ? (
             <div className="inline-flex items-center gap-2 rounded-full border border-shelf-border bg-shelf-card/50 px-3 py-1.5 text-xs text-shelf-muted">
@@ -378,29 +382,29 @@ export function PlexIntegrationPanel() {
               Plex not configured
             </div>
           ) : status.reachable ? (
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200">
-              <MonitorPlay size={14} />
-              Plex server reachable
+            <div className="inline-flex min-h-[2.25rem] items-center gap-2 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200">
+              <MonitorPlay size={14} className="shrink-0" />
+              <span>Plex server reachable</span>
             </div>
           ) : (
-            <div className="inline-flex items-center gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs text-red-200">
-              <AlertCircle size={14} />
-              Plex unreachable — check URL, token, firewall
+            <div className="inline-flex items-start gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs leading-snug text-red-200 sm:items-center">
+              <AlertCircle size={14} className="mt-0.5 shrink-0 sm:mt-0" />
+              <span>Plex unreachable — check URL, token, firewall</span>
             </div>
           )}
         </div>
 
         {!status.loading && !status.configured && (
-          <p className="text-sm text-shelf-muted rounded-xl border border-shelf-border bg-shelf-card/30 p-4">
-            Add <code className="text-xs bg-shelf-bg px-1 rounded">PLEX_SERVER_URL</code> and{" "}
-            <code className="text-xs bg-shelf-bg px-1 rounded">PLEX_TOKEN</code> to your environment to connect Plex.
-            Overlap and Plex sections stay empty until then.
+          <p className="rounded-xl border border-shelf-border bg-shelf-card/30 p-3 text-[13px] leading-snug text-shelf-muted sm:p-4 sm:text-sm">
+            Add <code className="rounded bg-shelf-bg px-1 text-[11px] sm:text-xs">PLEX_SERVER_URL</code> and{" "}
+            <code className="rounded bg-shelf-bg px-1 text-[11px] sm:text-xs">PLEX_TOKEN</code> to your environment to
+            connect Plex. Overlap and Plex sections stay empty until then.
           </p>
         )}
 
-        {/* Tab switcher */}
+        {/* Tab switcher — full-width stack on small screens, segmented row on md+ */}
         <div
-          className="flex flex-wrap gap-1.5 rounded-xl border border-shelf-border bg-shelf-bg/50 p-1.5"
+          className="flex flex-col gap-2 md:flex-row md:flex-wrap md:gap-1.5 md:rounded-xl md:border md:border-shelf-border md:bg-shelf-bg/50 md:p-1.5"
           role="tablist"
           aria-label="Plex sections"
         >
@@ -423,7 +427,7 @@ export function PlexIntegrationPanel() {
               {
                 id: "plexonly" as const,
                 label: "Plex only",
-                short: "Plex",
+                short: "Plex only",
                 count: plexOnly.length,
                 icon: MonitorPlay,
               },
@@ -437,17 +441,19 @@ export function PlexIntegrationPanel() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setPlexTab(id)}
-                className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2.5 text-xs font-medium transition sm:px-3 sm:text-sm ${
+                className={`flex min-h-[44px] w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition md:min-h-0 md:min-w-0 md:flex-1 md:justify-center md:rounded-lg md:border-0 md:px-3 md:py-2.5 md:text-center md:text-xs lg:text-sm ${
                   active
-                    ? "bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/25"
-                    : "text-shelf-muted hover:bg-shelf-card hover:text-white"
+                    ? "border-[#8b5cf6]/50 bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/20 md:border-0 md:shadow-md md:shadow-[#8b5cf6]/25"
+                    : "border-shelf-border bg-shelf-card/30 text-shelf-muted hover:border-shelf-border hover:bg-shelf-card hover:text-white md:border-0 md:bg-transparent md:hover:bg-shelf-card"
                 }`}
               >
-                <TabIcon size={16} className="shrink-0 opacity-90" aria-hidden />
-                <span className="truncate sm:hidden">{short}</span>
-                <span className="hidden truncate sm:inline">{label}</span>
-                <span className={`tabular-nums ${active ? "text-white/90" : "text-shelf-muted"}`}>
-                  ({count})
+                <span className="flex min-w-0 items-center gap-2.5 md:gap-1.5">
+                  <TabIcon size={18} className="shrink-0 opacity-90 md:h-4 md:w-4" aria-hidden />
+                  <span className="truncate md:hidden">{short}</span>
+                  <span className="hidden truncate md:inline">{label}</span>
+                </span>
+                <span className={`shrink-0 tabular-nums text-sm md:text-xs lg:text-sm ${active ? "text-white/90" : "text-shelf-muted"}`}>
+                  {count}
                 </span>
               </button>
             );
@@ -456,39 +462,39 @@ export function PlexIntegrationPanel() {
 
         {/* Overlap */}
         {plexTab === "both" && (
-        <section>
+        <section className="space-y-3">
           <h2 className="sr-only">In both WatchBox and Plex</h2>
-          <p className="text-sm text-shelf-muted mb-2">
+          <p className="text-[13px] leading-snug text-shelf-muted sm:text-sm sm:leading-relaxed">
             Same title (TMDB id) in your list and on Plex — including shows you started that are{" "}
             <strong className="text-white/90">no longer on Plex’s short “Continue watching” row</strong> but still
             partially watched in your libraries.
           </p>
           {plexScan && plexConfigured && !loadingDeck && (
-            <p className="text-xs text-shelf-muted/90 mb-4">
+            <p className="text-[11px] text-shelf-muted/90 sm:text-xs">
               Plex data: {plexScan.onDeck} on deck + {plexScan.library} from library scan (started, not finished).
             </p>
           )}
-          <p className="text-sm text-shelf-muted mb-4">
+          <p className="text-[13px] leading-snug text-shelf-muted sm:text-sm sm:leading-relaxed">
             Use <span className="text-white/90">Sync from Plex</span> to copy episode or episode-count info into
             WatchBox’s progress note.
           </p>
           {plexConfigured && loadingDeck && (
-            <div className="flex items-center gap-2 text-shelf-muted py-6">
-              <Loader2 size={18} className="animate-spin" />
+            <div className="flex items-center gap-2 py-4 text-sm text-shelf-muted">
+              <Loader2 size={18} className="animate-spin shrink-0" />
               Loading Plex…
             </div>
           )}
           {matches.length === 0 && !loadingDeck && plexConfigured && (
-            <p className="text-shelf-muted text-sm py-2 border border-dashed border-shelf-border rounded-xl px-4 py-6 text-center">
+            <p className="rounded-xl border border-dashed border-shelf-border px-3 py-5 text-center text-[13px] text-shelf-muted sm:text-sm">
               No overlap yet — mark something <strong className="text-white/90">In progress</strong> in WatchBox and
               watch it on Plex (with TMDB metadata) to see it here.
             </p>
           )}
-          <ul className="space-y-4">
+          <ul className="space-y-3 md:space-y-4">
             {matches.map(({ media, plex }) => (
               <li
                 key={media.id}
-                className="rounded-2xl border border-shelf-border bg-gradient-to-br from-shelf-card to-shelf-card/40 p-4 md:p-5"
+                className="rounded-2xl border border-shelf-border bg-gradient-to-br from-shelf-card to-shelf-card/40 p-3 sm:p-4 md:p-5"
               >
                 <div className="flex gap-4">
                   <MediaThumb media={media} />
@@ -531,14 +537,15 @@ export function PlexIntegrationPanel() {
                         type="button"
                         onClick={() => syncFromPlex({ media, plex })}
                         disabled={syncingId === media.id || !progressNoteFromPlex(plex)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-shelf-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-40"
+                        className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-shelf-accent px-3 py-2 text-xs font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-40 sm:min-h-0 sm:py-1.5"
                       >
                         {syncingId === media.id ? (
                           <Loader2 size={14} className="animate-spin" />
                         ) : (
                           <ArrowRight size={14} />
                         )}
-                        Sync progress from Plex
+                        <span className="sm:hidden">Sync from Plex</span>
+                        <span className="hidden sm:inline">Sync progress from Plex</span>
                       </button>
                     </div>
                   </div>
@@ -551,9 +558,9 @@ export function PlexIntegrationPanel() {
 
         {/* WatchBox in progress only */}
         {plexTab === "watchbox" && (
-        <section>
+        <section className="space-y-3">
           <h2 className="sr-only">In WatchBox only</h2>
-          <p className="text-sm text-shelf-muted mb-4">
+          <p className="text-[13px] leading-snug text-shelf-muted sm:text-sm sm:leading-relaxed">
             Marked <strong className="text-white/90">In progress</strong> here but Plex didn’t return a matching title
             (On Deck + library scan), or TMDB couldn’t be matched.
           </p>
@@ -588,10 +595,10 @@ export function PlexIntegrationPanel() {
 
         {/* Plex only — split TV vs movies + add to WatchBox */}
         {plexTab === "plexonly" && (
-        <section className="space-y-8">
+        <section className="space-y-5 md:space-y-8">
           <div>
             <h2 className="sr-only">On Plex only</h2>
-            <p className="text-sm text-shelf-muted mb-4">
+            <p className="text-[13px] leading-snug text-shelf-muted sm:text-sm sm:leading-relaxed">
               Continue watching on Plex for titles you haven’t added to WatchBox (or TMDB didn’t match). Use{" "}
               <span className="text-white/90">Add to WatchBox</span> when TMDB metadata is present.
             </p>
@@ -610,7 +617,7 @@ export function PlexIntegrationPanel() {
           {plexOnly.length > 0 && (
             <>
               <div
-                className="mb-4 flex flex-wrap gap-1.5 rounded-xl border border-shelf-border bg-shelf-bg/50 p-1.5"
+                className="mb-2 flex flex-col gap-2 md:mb-4 md:flex-row md:flex-wrap md:gap-1.5 md:rounded-xl md:border md:border-shelf-border md:bg-shelf-bg/50 md:p-1.5"
                 role="tablist"
                 aria-label="Plex only: TV or movies"
               >
@@ -619,18 +626,20 @@ export function PlexIntegrationPanel() {
                   role="tab"
                   aria-selected={plexOnlyKind === "tv"}
                   onClick={() => setPlexOnlyKind("tv")}
-                  className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
+                  className={`flex min-h-[44px] w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium transition md:min-h-0 md:min-w-0 md:flex-1 md:justify-center md:rounded-lg md:border-0 md:py-2 md:text-xs lg:text-sm ${
                     plexOnlyKind === "tv"
-                      ? "bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/25"
-                      : "text-shelf-muted hover:bg-shelf-card hover:text-white"
+                      ? "border-[#8b5cf6]/50 bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/20 md:border-0 md:shadow-md md:shadow-[#8b5cf6]/25"
+                      : "border-shelf-border bg-shelf-card/30 text-shelf-muted hover:border-shelf-border hover:bg-shelf-card hover:text-white md:border-0 md:bg-transparent md:hover:bg-shelf-card"
                   }`}
                 >
-                  <Tv size={16} className="shrink-0 opacity-90" aria-hidden />
-                  <span className="truncate">TV series</span>
+                  <span className="flex items-center gap-2">
+                    <Tv size={18} className="shrink-0 opacity-90 md:h-4 md:w-4" aria-hidden />
+                    <span>TV series</span>
+                  </span>
                   <span
                     className={`tabular-nums ${plexOnlyKind === "tv" ? "text-white/90" : "text-shelf-muted"}`}
                   >
-                    ({plexOnlyTv.length})
+                    {plexOnlyTv.length}
                   </span>
                 </button>
                 <button
@@ -638,18 +647,20 @@ export function PlexIntegrationPanel() {
                   role="tab"
                   aria-selected={plexOnlyKind === "movies"}
                   onClick={() => setPlexOnlyKind("movies")}
-                  className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition sm:px-3 sm:text-sm ${
+                  className={`flex min-h-[44px] w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium transition md:min-h-0 md:min-w-0 md:flex-1 md:justify-center md:rounded-lg md:border-0 md:py-2 md:text-xs lg:text-sm ${
                     plexOnlyKind === "movies"
-                      ? "bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/25"
-                      : "text-shelf-muted hover:bg-shelf-card hover:text-white"
+                      ? "border-[#8b5cf6]/50 bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/20 md:border-0 md:shadow-md md:shadow-[#8b5cf6]/25"
+                      : "border-shelf-border bg-shelf-card/30 text-shelf-muted hover:border-shelf-border hover:bg-shelf-card hover:text-white md:border-0 md:bg-transparent md:hover:bg-shelf-card"
                   }`}
                 >
-                  <Film size={16} className="shrink-0 opacity-90" aria-hidden />
-                  <span className="truncate">Movies</span>
+                  <span className="flex items-center gap-2">
+                    <Film size={18} className="shrink-0 opacity-90 md:h-4 md:w-4" aria-hidden />
+                    <span>Movies</span>
+                  </span>
                   <span
                     className={`tabular-nums ${plexOnlyKind === "movies" ? "text-white/90" : "text-shelf-muted"}`}
                   >
-                    ({plexOnlyMovies.length})
+                    {plexOnlyMovies.length}
                   </span>
                 </button>
               </div>

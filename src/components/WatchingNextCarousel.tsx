@@ -80,7 +80,7 @@ export function WatchingNextCarousel({
   if (rows.length === 0) return null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div className="relative -mx-4 px-4 md:mx-0 md:px-0">
         <div
           className="pointer-events-none absolute inset-x-0 -top-px h-32 bg-gradient-to-b from-[#8b5cf6]/[0.07] to-transparent rounded-t-[2rem]"
@@ -111,7 +111,7 @@ export function WatchingNextCarousel({
                 }
               : undefined
           }
-          className="watching-swiper !pb-12 !pt-2"
+          className="watching-swiper !pb-9 !pt-1 md:!pb-12 md:!pt-2"
         >
           {rows.map((row, index) => {
             const src = row.posterPath ? posterUrl(row.posterPath, "w342") : null;
@@ -119,7 +119,7 @@ export function WatchingNextCarousel({
             return (
               <SwiperSlide
                 key={row.mediaId}
-                className="!w-[min(72vw,220px)] sm:!w-[200px] md:!w-[220px]"
+                className="!w-[min(56vw,168px)] sm:!w-[188px] md:!w-[220px]"
               >
                 <button
                   type="button"
@@ -150,7 +150,7 @@ export function WatchingNextCarousel({
                         alt={row.title}
                         fill
                         className="object-cover transition duration-300 group-hover:scale-[1.03]"
-                        sizes="(max-width: 768px) 72vw, 220px"
+                        sizes="(max-width: 768px) 56vw, 188px"
                         priority={index === 0}
                       />
                     ) : (
@@ -187,11 +187,13 @@ export function WatchingNextCarousel({
             />
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#8b5cf6]/35 to-transparent" />
 
-            <div className="relative flex flex-col gap-5 p-4 sm:flex-row sm:items-start sm:gap-6 sm:p-5 md:p-6">
+            <div className="relative flex flex-col gap-3 p-3 sm:flex-row sm:items-start sm:gap-6 sm:p-5 md:p-6 md:gap-6">
               <div className="flex w-full shrink-0 justify-center sm:w-auto sm:max-w-[min(100%,280px)] sm:justify-start">
                 <div
-                  className={`relative w-full max-w-[280px] overflow-hidden rounded-xl border border-white/10 bg-shelf-border shadow-inner sm:max-w-none sm:w-[13.5rem] ${
-                    primaryVisualIsStill ? "aspect-video" : "aspect-[2/3]"
+                  className={`relative mx-auto overflow-hidden rounded-xl border border-white/10 bg-shelf-border shadow-inner sm:mx-0 sm:max-w-none sm:w-[13.5rem] ${
+                    primaryVisualIsStill
+                      ? "aspect-video w-full max-w-[min(100%,220px)] sm:max-w-none"
+                      : "aspect-[2/3] h-[148px] w-[99px] sm:h-auto sm:aspect-[2/3] sm:w-[13.5rem] sm:max-w-none"
                   }`}
                 >
                   {primaryVisualSrc ? (
@@ -200,32 +202,36 @@ export function WatchingNextCarousel({
                       alt=""
                       fill
                       className="object-cover"
-                      sizes={primaryVisualIsStill ? "(max-width:640px) 100vw, 280px" : "128px"}
+                      sizes={
+                        primaryVisualIsStill
+                          ? "(max-width:640px) 90vw, 280px"
+                          : "(max-width:640px) 99px, 216px"
+                      }
                     />
                   ) : (
-                    <div className="flex h-full min-h-[9rem] items-center justify-center text-shelf-muted/80">
+                    <div className="flex h-full min-h-[6rem] sm:min-h-[9rem] items-center justify-center text-shelf-muted/80">
                       <Tv size={36} strokeWidth={1.25} />
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="flex min-w-0 flex-1 flex-col justify-between gap-5">
-                <div className="space-y-3 text-center sm:text-left">
-                  <div className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-start sm:gap-2.5">
+              <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 sm:gap-5">
+                <div className="space-y-1.5 text-left sm:space-y-2.5">
+                  <div className="flex flex-col items-start gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
                     {activeStream ? (
                       <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1 text-xs font-medium text-shelf-muted">
                         <StreamingIcon service={activeStream} className="h-4 w-4 rounded-[3px]" />
                         {activeStream}
                       </span>
                     ) : null}
-                    <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+                    <h2 className="text-lg font-semibold tracking-tight text-white sm:text-xl md:text-2xl">
                       {activeRow.title}
                     </h2>
                   </div>
 
                   {activeRow.lastFinished && (
-                    <p className="text-[11px] text-shelf-muted/90">
+                    <p className="text-[11px] leading-tight text-shelf-muted/90">
                       Last finished{" "}
                       <span className="tabular-nums text-shelf-muted">
                         S{activeRow.lastFinished.season}E{activeRow.lastFinished.episode}
@@ -234,27 +240,27 @@ export function WatchingNextCarousel({
                   )}
 
                   {activeRow.caughtUp && !activeRow.next ? (
-                    <div className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200/95 sm:justify-start">
+                    <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200/95">
                       <CheckCircle2 size={17} className="shrink-0 text-emerald-400/90" />
                       Caught up with aired episodes
                     </div>
                   ) : activeRow.next ? (
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-shelf-muted">
+                    <div className="space-y-1.5 sm:space-y-2.5">
+                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-shelf-muted">
                           Next episode
                         </p>
-                        <div className="mt-1.5 flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-3">
-                          <span className="inline-flex w-fit shrink-0 rounded-lg bg-[#8b5cf6]/15 px-2.5 py-1 font-mono text-sm font-semibold tabular-nums text-[#c4b5fd] ring-1 ring-[#8b5cf6]/25">
+                        <div className="mt-1.5 flex flex-row flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <span className="inline-flex shrink-0 rounded-md bg-[#8b5cf6]/15 px-2 py-0.5 font-mono text-xs font-semibold tabular-nums text-[#c4b5fd] ring-1 ring-[#8b5cf6]/25 sm:rounded-lg sm:px-2.5 sm:py-1 sm:text-sm">
                             S{activeRow.next.season}E{activeRow.next.episode}
                           </span>
-                          <p className="min-w-0 text-[15px] font-medium leading-snug text-white">
+                          <p className="min-w-0 flex-1 text-sm font-medium leading-snug text-white sm:text-[15px]">
                             {activeRow.next.name}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                      <div className="flex flex-wrap items-center justify-start gap-1.5 sm:gap-2">
                         {nextAirLabel && (
                           <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.07] bg-white/[0.03] px-2.5 py-1.5 text-xs text-shelf-muted">
                             <Calendar size={13} className="shrink-0 text-shelf-muted/80" aria-hidden />
@@ -272,7 +278,7 @@ export function WatchingNextCarousel({
                       </div>
 
                       {activeRow.next.overview ? (
-                        <p className="text-sm leading-relaxed text-shelf-muted line-clamp-6 sm:line-clamp-none">
+                        <p className="text-[13px] leading-snug text-shelf-muted line-clamp-4 sm:text-sm sm:leading-relaxed sm:line-clamp-none md:line-clamp-6">
                           {activeRow.next.overview}
                         </p>
                       ) : null}
@@ -285,7 +291,7 @@ export function WatchingNextCarousel({
                 </div>
 
                 <motion.div
-                  className="flex flex-col gap-2 border-t border-white/[0.06] pt-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:border-t-0 sm:pt-0"
+                  className="flex flex-col gap-2 border-t border-white/[0.06] pt-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:border-t-0 sm:pt-0"
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.06, type: "spring", stiffness: 440, damping: 32 }}
@@ -296,7 +302,7 @@ export function WatchingNextCarousel({
                         type="button"
                         onClick={() => void onMarkWatched(activeRow.mediaId)}
                         disabled={marking === activeRow.mediaId}
-                        className="inline-flex items-center gap-2 rounded-xl bg-[#8b5cf6] px-4 py-2.5 text-sm font-medium text-white shadow-md shadow-[#8b5cf6]/20 transition hover:bg-[#9b7df0] disabled:opacity-50 active:scale-[0.98]"
+                        className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#8b5cf6] px-3 py-2 text-sm font-medium text-white shadow-md shadow-[#8b5cf6]/20 transition hover:bg-[#9b7df0] disabled:opacity-50 active:scale-[0.98] sm:min-h-0 sm:flex-initial sm:gap-2 sm:px-4 sm:py-2.5"
                       >
                         {marking === activeRow.mediaId ? (
                           <Loader2 size={16} className="animate-spin" />
@@ -309,7 +315,7 @@ export function WatchingNextCarousel({
                     <button
                       type="button"
                       onClick={() => onOpenSetPosition(activeRow)}
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-shelf-muted transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white"
+                      className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-shelf-muted transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white sm:min-h-0 sm:flex-initial sm:gap-2 sm:px-4 sm:py-2.5"
                     >
                       <MapPin size={16} />
                       Set position
@@ -317,12 +323,12 @@ export function WatchingNextCarousel({
                   </div>
                   <Link
                     href="/series"
-                    className="group inline-flex items-center justify-center gap-1 self-center text-sm font-medium text-[#a78bfa] transition hover:text-white sm:self-auto"
+                    className="group inline-flex items-center justify-center gap-1 self-center text-xs font-medium text-[#a78bfa] transition hover:text-white sm:text-sm sm:self-auto"
                   >
                     Series list
                     <ChevronRight
-                      size={16}
-                      className="transition group-hover:translate-x-0.5"
+                      size={14}
+                      className="h-3.5 w-3.5 transition group-hover:translate-x-0.5 sm:h-4 sm:w-4"
                     />
                   </Link>
                 </motion.div>
