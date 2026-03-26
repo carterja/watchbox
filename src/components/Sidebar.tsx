@@ -65,8 +65,12 @@ export function Sidebar() {
 
   const { collapsed, toggleCollapsed } = useSidebarCollapse();
 
-  const unwatched = list.filter((m) => m.status === "yet_to_start").length;
-  const inProgress = list.filter((m) => m.status === "in_progress").length;
+  let unwatched = 0;
+  let inProgress = 0;
+  for (const m of list) {
+    if (m.status === "yet_to_start") unwatched++;
+    else if (m.status === "in_progress") inProgress++;
+  }
   const showBacklog = !loading && list.length > 0 && (unwatched > 0 || inProgress > 0);
 
   return (

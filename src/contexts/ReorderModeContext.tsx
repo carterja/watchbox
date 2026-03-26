@@ -5,6 +5,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 
@@ -21,7 +22,10 @@ export function ReorderModeProvider({ children }: { children: ReactNode }) {
     setReorderModeState((prev) => (typeof value === "function" ? value(prev) : value));
   }, []);
 
-  const value: ReorderModeContextValue = { reorderMode, setReorderMode };
+  const value = useMemo(
+    () => ({ reorderMode, setReorderMode }),
+    [reorderMode, setReorderMode]
+  );
   return (
     <ReorderModeContext.Provider value={value}>
       {children}

@@ -10,6 +10,20 @@ import type { MediaStatus, Viewer } from "@/types/media";
 
 const watchProvidersCache = new Map<string, string[]>();
 
+export type DiscoverAddPayload = {
+  id: number;
+  type: "movie" | "tv";
+  title: string;
+  overview: string | null;
+  posterPath: string | null;
+  releaseDate: string | null | undefined;
+  setupData: {
+    streamingService: string | null;
+    viewer: Viewer | null;
+    status: MediaStatus;
+  };
+};
+
 type Props = {
   id: number;
   type: "movie" | "tv";
@@ -19,11 +33,7 @@ type Props = {
   releaseDate: string | null | undefined;
   inCollection: boolean;
   adding: boolean;
-  onAdd: (data: {
-    streamingService: string | null;
-    viewer: Viewer | null;
-    status: MediaStatus;
-  }) => void;
+  onAdd: (payload: DiscoverAddPayload) => void;
   /** When provided, used instead of per-card fetch (e.g. from batch). */
   watchProviders?: string[] | null;
 };
@@ -81,13 +91,13 @@ function DiscoverCardComponent({
     }
   };
 
-  const handleQuickSetupSave = (data: {
+  const handleQuickSetupSave = (setupData: {
     streamingService: string | null;
     viewer: Viewer | null;
     status: MediaStatus;
   }) => {
     setShowQuickSetup(false);
-    onAdd(data);
+    onAdd({ id, type, title, overview, posterPath, releaseDate, setupData });
   };
 
   return (

@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import Image from "next/image";
-import { Search, Film, Tv, Loader2, Check, UserRound } from "lucide-react";
+import { Search, Film, Tv, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { posterUrl } from "@/lib/tmdb";
 import { DiscoverCard } from "@/components/DiscoverCard";
@@ -254,14 +254,15 @@ export default function DiscoverPage() {
     [batchProviderItems]
   );
 
+  const EMPTY_PROVIDERS: string[] = useMemo(() => [], []);
   const getWatchProvidersForCard = useCallback(
     (key: string): string[] | undefined => {
       if (batchProviderKeySet.has(key)) {
-        return watchProvidersByKey[key] ?? [];
+        return watchProvidersByKey[key] ?? EMPTY_PROVIDERS;
       }
       return watchProvidersByKey[key];
     },
-    [batchProviderKeySet, watchProvidersByKey]
+    [batchProviderKeySet, watchProvidersByKey, EMPTY_PROVIDERS]
   );
 
   const isInCollection = useCallback(
@@ -343,65 +344,15 @@ export default function DiscoverPage() {
     [myMedia, optimisticAdd]
   );
 
-  const addMovieFromBrowse = useCallback(
-    (m: { id: number; title: string; overview: string | null; poster_path: string | null; release_date: string | null }) =>
-      (setupData: {
-        streamingService: string | null;
-        viewer: import("@/types/media").Viewer | null;
-        status: import("@/types/media").MediaStatus;
-      }) =>
-        addToLibrary({ type: "movie", data: m }, setupData),
-    [addToLibrary]
-  );
-
-  const addTvFromBrowse = useCallback(
-    (t: { id: number; name: string; overview: string | null; poster_path: string | null; first_air_date: string | null }) =>
-      (setupData: {
-        streamingService: string | null;
-        viewer: import("@/types/media").Viewer | null;
-        status: import("@/types/media").MediaStatus;
-      }) =>
-        addToLibrary({ type: "tv", data: t }, setupData),
-    [addToLibrary]
-  );
-
-  const addTrendingItem = useCallback(
-    (item: TmdbLists["trending"][0]) =>
-      (setupData: {
-        streamingService: string | null;
-        viewer: import("@/types/media").Viewer | null;
-        status: import("@/types/media").MediaStatus;
-      }) => {
-        if (item.type === "movie" && item.data.title) {
-          addToLibrary(
-            {
-              type: "movie",
-              data: {
-                id: item.data.id,
-                title: item.data.title,
-                overview: item.data.overview,
-                poster_path: item.data.poster_path,
-                release_date: item.data.release_date ?? null,
-              },
-            },
-            setupData
-          );
-        } else if (item.type === "tv" && item.data.name) {
-          addToLibrary(
-            {
-              type: "tv",
-              data: {
-                id: item.data.id,
-                name: item.data.name,
-                overview: item.data.overview,
-                poster_path: item.data.poster_path,
-                first_air_date: item.data.first_air_date ?? null,
-              },
-            },
-            setupData
-          );
-        }
-      },
+  const handleDiscoverAdd = useCallback(
+    (payload: import("@/components/DiscoverCard").DiscoverAddPayload) => {
+      const { id, type, title, overview, posterPath, releaseDate, setupData } = payload;
+      const item: TmdbSearchItem =
+        type === "movie"
+          ? { type: "movie", data: { id, title, overview, poster_path: posterPath, release_date: releaseDate ?? null } }
+          : { type: "tv", data: { id, name: title, overview, poster_path: posterPath, first_air_date: releaseDate ?? null } };
+      addToLibrary(item, setupData);
+    },
     [addToLibrary]
   );
 
@@ -671,7 +622,7 @@ export default function DiscoverPage() {
                             releaseDate={m.release_date}
                             inCollection={isInCollection("movie", m.id)}
                             adding={addingId === key}
-                            onAdd={addMovieFromBrowse({ ...m, overview: null })}
+                            onAdd={handleDiscoverAdd}
                             watchProviders={getWatchProvidersForCard(key)}
                           />
                         );
@@ -696,7 +647,7 @@ export default function DiscoverPage() {
                             releaseDate={t.first_air_date}
                             inCollection={isInCollection("tv", t.id)}
                             adding={addingId === key}
-                            onAdd={addTvFromBrowse({ ...t, overview: null })}
+                            onAdd={handleDiscoverAdd}
                             watchProviders={getWatchProvidersForCard(key)}
                           />
                         );
@@ -748,7 +699,7 @@ export default function DiscoverPage() {
                               releaseDate={m.release_date}
                               inCollection={isInCollection("movie", m.id)}
                               adding={addingId === key}
-                              onAdd={addMovieFromBrowse(m)}
+                              onAdd={handleDiscoverAdd}
                               watchProviders={getWatchProvidersForCard(key)}
                             />
                           );
@@ -771,7 +722,7 @@ export default function DiscoverPage() {
                               releaseDate={t.first_air_date}
                               inCollection={isInCollection("tv", t.id)}
                               adding={addingId === key}
-                              onAdd={addTvFromBrowse(t)}
+                              onAdd={handleDiscoverAdd}
                               watchProviders={getWatchProvidersForCard(key)}
                             />
                           );
@@ -803,7 +754,7 @@ export default function DiscoverPage() {
                             releaseDate={releaseDate}
                             inCollection={isInCollection(item.type, item.data.id)}
                             adding={addingId === key}
-                            onAdd={addTrendingItem(item)}
+                            onAdd={handleDiscoverAdd}
                             watchProviders={getWatchProvidersForCard(key)}
                           />
                         );
@@ -830,7 +781,7 @@ export default function DiscoverPage() {
                               releaseDate={m.release_date}
                               inCollection={isInCollection("movie", m.id)}
                               adding={addingId === key}
-                              onAdd={addMovieFromBrowse(m)}
+                              onAdd={handleDiscoverAdd}
                               watchProviders={getWatchProvidersForCard(key)}
                             />
                           );
@@ -853,7 +804,7 @@ export default function DiscoverPage() {
                               releaseDate={t.first_air_date}
                               inCollection={isInCollection("tv", t.id)}
                               adding={addingId === key}
-                              onAdd={addTvFromBrowse(t)}
+                              onAdd={handleDiscoverAdd}
                               watchProviders={getWatchProvidersForCard(key)}
                             />
                           );
@@ -881,7 +832,7 @@ export default function DiscoverPage() {
                               releaseDate={m.release_date}
                               inCollection={isInCollection("movie", m.id)}
                               adding={addingId === key}
-                              onAdd={addMovieFromBrowse(m)}
+                              onAdd={handleDiscoverAdd}
                               watchProviders={getWatchProvidersForCard(key)}
                             />
                           );
@@ -904,7 +855,7 @@ export default function DiscoverPage() {
                               releaseDate={t.first_air_date}
                               inCollection={isInCollection("tv", t.id)}
                               adding={addingId === key}
-                              onAdd={addTvFromBrowse(t)}
+                              onAdd={handleDiscoverAdd}
                               watchProviders={getWatchProvidersForCard(key)}
                             />
                           );

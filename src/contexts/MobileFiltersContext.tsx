@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
 
 type MobileFiltersContextValue = {
   open: boolean;
@@ -21,8 +21,10 @@ export function MobileFiltersProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const value = useMemo(() => ({ open, toggle, close }), [open, toggle, close]);
+
   return (
-    <MobileFiltersContext.Provider value={{ open, toggle, close }}>
+    <MobileFiltersContext.Provider value={value}>
       {children}
     </MobileFiltersContext.Provider>
   );
@@ -32,7 +34,7 @@ export function useMobileFilters(): MobileFiltersContextValue {
   const ctx = useContext(MobileFiltersContext);
   if (!ctx) {
     return {
-      open: true,
+      open: false,
       toggle: () => {},
       close: () => {},
     };

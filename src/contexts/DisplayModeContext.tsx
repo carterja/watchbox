@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from "react";
 
 export type DisplayMode = "compact" | "mid" | "poster";
 
@@ -32,11 +32,11 @@ export function DisplayModeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // Always pass real setDisplayMode so clicks work before hydration. Only gate displayed mode to avoid hydration mismatch.
-  const value = {
-    displayMode: mounted ? displayMode : "mid",
-    setDisplayMode,
-  };
+  const resolvedMode = mounted ? displayMode : "mid";
+  const value = useMemo(
+    () => ({ displayMode: resolvedMode, setDisplayMode }),
+    [resolvedMode, setDisplayMode]
+  );
 
   return (
     <DisplayModeContext.Provider value={value}>

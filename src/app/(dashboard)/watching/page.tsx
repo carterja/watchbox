@@ -77,16 +77,17 @@ export default function WatchingPage() {
     setSetEpisode((e) => Math.min(Math.max(1, e), episodeMaxForSeason));
   }, [episodeMaxForSeason]);
 
+  const mediaById = useMemo(() => new Map(list.map((m) => [m.id, m])), [list]);
   const watchingIds = useMemo(() => new Set(rows.map((r) => r.mediaId)), [rows]);
 
   const availableServices = useMemo(() => {
-    const services = new Set(
-      list
-        .filter((m) => watchingIds.has(m.id) && m.streamingService)
-        .map((m) => m.streamingService as string)
-    );
+    const services = new Set<string>();
+    for (const id of watchingIds) {
+      const svc = mediaById.get(id)?.streamingService;
+      if (svc) services.add(svc);
+    }
     return Array.from(services).sort();
-  }, [list, watchingIds]);
+  }, [mediaById, watchingIds]);
 
   useEffect(() => {
     if (streamingServiceFilter && !availableServices.includes(streamingServiceFilter)) {
@@ -97,17 +98,22 @@ export default function WatchingPage() {
   const filteredRows = useMemo(() => {
     if (!streamingServiceFilter) return rows;
     return rows.filter((row) => {
-      const svc = list.find((m) => m.id === row.mediaId)?.streamingService ?? null;
+      const svc = mediaById.get(row.mediaId)?.streamingService ?? null;
       return svc === streamingServiceFilter;
     });
-  }, [rows, list, streamingServiceFilter]);
+  }, [rows, mediaById, streamingServiceFilter]);
 
   const resolveStreaming = useCallback(
-    (mediaId: string) => list.find((m) => m.id === mediaId)?.streamingService ?? null,
-    [list]
+    (mediaId: string) => mediaById.get(mediaId)?.streamingService ?? null,
+    [mediaById]
   );
 
-  const markWatched = async (mediaId: string) => {
+  const resolveMedia = useCallback(
+    (mediaId: string) => mediaById.get(mediaId) ?? null,
+    [mediaById]
+  );
+
+  const markWatched = useCallback(async (mediaId: string) => {
     setMarking(mediaId);
     try {
       const res = await fetch(`/api/media/${encodeURIComponent(mediaId)}/mark-episode-watched`, {
@@ -129,12 +135,14 @@ export default function WatchingPage() {
       } else {
         void refresh({ silent: true });
       }
+    } catch {
+      toast.error("Network error — could not mark episode");
     } finally {
       setMarking(null);
     }
-  };
+  }, [optimisticUpdate, optimisticMoveToFront, mergeRow, refresh]);
 
-  const openSetPosition = (row: WhatNextRow) => {
+  const openSetPosition = useCallback((row: WhatNextRow) => {
     setSettingId(row.mediaId);
     if (row.lastFinished) {
       setSetSeason(row.lastFinished.season);
@@ -143,7 +151,7 @@ export default function WatchingPage() {
       setSetSeason(1);
       setSetEpisode(1);
     }
-  };
+  }, []);
 
   const savePosition = async () => {
     if (!settingId) return;
@@ -173,7 +181,7 @@ export default function WatchingPage() {
     }
   };
 
-  const settingTitle = settingId ? list.find((m) => m.id === settingId)?.title ?? "Show" : "";
+  const settingTitle = settingId ? mediaById.get(settingId)?.title ?? "Show" : "";
 
   const showFullLoading = listLoading || showWhatNextLoading;
 
@@ -250,7 +258,7 @@ export default function WatchingPage() {
             onMarkWatched={markWatched}
             onOpenSetPosition={openSetPosition}
             resolveStreaming={resolveStreaming}
-            resolveMedia={(id) => list.find((m) => m.id === id) ?? null}
+            resolveMedia={resolveMedia}
           />
         )}
       </div>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useTheme, THEMES } from "@/contexts/ThemeContext";
 import { Check, ChevronRight, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { PlexMarkIcon } from "@/components/icons/PlexMarkIcon";
@@ -75,14 +75,7 @@ export default function SettingsPage() {
             Choose an accent theme. Inspired by popular IDE color schemes.
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {[
-              { id: "default" as const, name: "WatchBox Purple", accent: "#8b5cf6" },
-              { id: "one-dark" as const, name: "One Dark", accent: "#61afef" },
-              { id: "dracula" as const, name: "Dracula", accent: "#bd93f9" },
-              { id: "monokai" as const, name: "Monokai", accent: "#fd971f" },
-              { id: "github-dark" as const, name: "GitHub Dark", accent: "#58a6ff" },
-              { id: "solarized" as const, name: "Solarized Dark", accent: "#b58900" },
-            ].map((theme) => {
+            {THEMES.map((theme) => {
               const isActive = themeId === theme.id;
               return (
                 <button

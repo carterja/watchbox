@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import {
   DndContext,
   closestCenter,
@@ -145,7 +145,7 @@ export function SortableMediaList({
   );
 
   const strategy = isList ? verticalListSortingStrategy : rectSortingStrategy;
-  const itemIds = filteredItems.map((m) => m.id);
+  const itemIds = useMemo(() => filteredItems.map((m) => m.id), [filteredItems]);
 
   return (
     <DndContext

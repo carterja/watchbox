@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { MediaCard } from "@/components/MediaCard";
 import { type StatusFilterValue } from "@/components/UnifiedCategoryBar";
@@ -73,16 +73,21 @@ export function MediaListPage({
     });
   }, [typeFiltered, statusFilter, streamingServiceFilter, viewerFilter]);
 
-  const renderItem = (m: Media, isReordering = false) => (
-    <MediaCard
-      media={m}
-      onDelete={handleDelete}
-      onUpdate={handleUpdate}
-      showTypeTag={showTypeTag}
-      variant={isList ? "list" : "card"}
-      reorderMode={isReordering}
-    />
+  const renderItem = useCallback(
+    (m: Media, isReordering = false) => (
+      <MediaCard
+        media={m}
+        onDelete={handleDelete}
+        onUpdate={handleUpdate}
+        showTypeTag={showTypeTag}
+        variant={isList ? "list" : "card"}
+        reorderMode={isReordering}
+      />
+    ),
+    [handleDelete, handleUpdate, showTypeTag, isList]
   );
+
+  const fullOrderedIds = useMemo(() => list.map((m) => m.id), [list]);
 
   return (
     <div className="min-h-screen">
@@ -125,7 +130,7 @@ export function MediaListPage({
           </div>
         ) : reorderMode ? (
           <SortableMediaList
-            fullOrderedIds={list.map((m) => m.id)}
+            fullOrderedIds={fullOrderedIds}
             filteredItems={filtered}
             optimisticReorder={optimisticReorder}
             refetch={refetch}

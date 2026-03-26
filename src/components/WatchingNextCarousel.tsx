@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
@@ -49,6 +49,16 @@ import "swiper/css";
 import "swiper/css/effect-coverflow";
 import "swiper/css/pagination";
 
+const SWIPER_MODULES = [EffectCoverflow, Pagination];
+const SWIPER_PAGINATION = { clickable: true, dynamicBullets: true } as const;
+const COVERFLOW_EFFECT = {
+  rotate: 32,
+  stretch: 0,
+  depth: 160,
+  modifier: 1,
+  slideShadows: true,
+} as const;
+
 type Props = {
   rows: WhatNextRow[];
   marking: string | null;
@@ -96,6 +106,15 @@ export function WatchingNextCarousel({
     setActiveIndex(swiper.realIndex);
   }, []);
 
+  const handleSwiper = useCallback((s: SwiperType) => {
+    swiperRef.current = s;
+  }, []);
+
+  const coverflowEffect = useMemo(
+    () => (useCoverflow ? COVERFLOW_EFFECT : undefined),
+    [useCoverflow]
+  );
+
   if (rows.length === 0) return null;
 
   return (
@@ -107,29 +126,17 @@ export function WatchingNextCarousel({
         />
         <Swiper
           key={rowsKey}
-          modules={[EffectCoverflow, Pagination]}
+          modules={SWIPER_MODULES}
           effect={useCoverflow ? "coverflow" : "slide"}
           grabCursor
           centeredSlides
           slidesPerView="auto"
           spaceBetween={useCoverflow ? 0 : 18}
           slideToClickedSlide
-          pagination={{ clickable: true, dynamicBullets: true }}
-          onSwiper={(s) => {
-            swiperRef.current = s;
-          }}
+          pagination={SWIPER_PAGINATION}
+          onSwiper={handleSwiper}
           onSlideChange={onSlideChange}
-          coverflowEffect={
-            useCoverflow
-              ? {
-                  rotate: 32,
-                  stretch: 0,
-                  depth: 160,
-                  modifier: 1,
-                  slideShadows: true,
-                }
-              : undefined
-          }
+          coverflowEffect={coverflowEffect}
           className="watching-swiper !pb-9 !pt-1 md:!pb-12 md:!pt-2"
         >
           {rows.map((row, index) => {

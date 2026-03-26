@@ -6,6 +6,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useMemo,
   type ReactNode,
 } from "react";
 
@@ -59,10 +60,13 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
     };
   }, [isOpen]);
 
+  const value = useMemo(
+    () => ({ showOverlay, hideOverlay, handleBackdropClick, isOpen }),
+    [showOverlay, hideOverlay, handleBackdropClick, isOpen]
+  );
+
   return (
-    <OverlayContext.Provider
-      value={{ showOverlay, hideOverlay, handleBackdropClick, isOpen }}
-    >
+    <OverlayContext.Provider value={value}>
       {children}
     </OverlayContext.Provider>
   );

@@ -47,6 +47,9 @@ export function AddMediaModal({ onClose, onAdded, defaultStatus, typeFilter }: P
       const raw = Array.isArray(data) ? data : [];
       const filtered = typeFilter ? raw.filter((x: TmdbSearchItem) => x.type === typeFilter) : raw;
       setSearchResults(filtered);
+    } catch {
+      setTmdbError("Network error — search failed");
+      setSearchResults([]);
     } finally {
       setLoading(false);
     }
@@ -66,6 +69,9 @@ export function AddMediaModal({ onClose, onAdded, defaultStatus, typeFilter }: P
       if (typeFilter === "movie") setTopResults({ movies: data.movies || [], tv: [] });
       else if (typeFilter === "tv") setTopResults({ movies: [], tv: data.tv || [] });
       else setTopResults(data);
+    } catch {
+      setTmdbError("Network error — could not load Top 100");
+      setTopResults(null);
     } finally {
       setLoading(false);
     }
@@ -121,6 +127,8 @@ export function AddMediaModal({ onClose, onAdded, defaultStatus, typeFilter }: P
           toast.error("Failed to add: Server error");
         }
       }
+    } catch {
+      toast.error("Network error — could not add");
     } finally {
       setAddingId(null);
     }

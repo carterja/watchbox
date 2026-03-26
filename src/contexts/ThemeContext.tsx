@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { Toaster } from "sonner";
 
 export const THEMES = [
@@ -48,8 +48,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [mounted, themeId]);
 
+  const value = useMemo(() => ({ themeId, setThemeId }), [themeId, setThemeId]);
+
   return (
-    <ThemeContext.Provider value={{ themeId, setThemeId }}>
+    <ThemeContext.Provider value={value}>
       {children}
       <Toaster
         position="bottom-center"

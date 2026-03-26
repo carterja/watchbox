@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo } from "react";
+import { useState, useCallback, memo } from "react";
 import Image from "next/image";
 import { Film, Tv } from "lucide-react";
 import type { Media, MediaUpdatePatch } from "@/types/media";
@@ -23,6 +23,17 @@ type Props = {
 
 export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, showTypeTag = true, variant = "card", reorderMode = false }: Props) {
   const [showDetailModal, setShowDetailModal] = useState(false);
+
+  const handleCloseModal = useCallback(() => setShowDetailModal(false), []);
+  const handleUpdateAndClose = useCallback(
+    async (patch: MediaUpdatePatch) => {
+      await onUpdate?.(media.id, patch);
+      setShowDetailModal(false);
+    },
+    [onUpdate, media.id]
+  );
+  const handleDeleteMedia = useCallback(() => onDelete(media.id), [onDelete, media.id]);
+
   const imgSrc = posterUrl(media.posterPath) ?? null;
   const year = media.releaseDate?.slice(0, 4) ?? "";
   const runtimeStr =
@@ -101,12 +112,9 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
         {showDetailModal && onUpdate && (
           <MediaDetailModal
             media={media}
-            onClose={() => setShowDetailModal(false)}
-            onUpdate={async (patch) => {
-              await onUpdate(media.id, patch);
-              setShowDetailModal(false);
-            }}
-            onDelete={() => onDelete(media.id)}
+            onClose={handleCloseModal}
+            onUpdate={handleUpdateAndClose}
+            onDelete={handleDeleteMedia}
           />
         )}
       </>
@@ -195,12 +203,9 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
       {showDetailModal && onUpdate && (
         <MediaDetailModal
           media={media}
-          onClose={() => setShowDetailModal(false)}
-          onUpdate={async (patch) => {
-            await onUpdate(media.id, patch);
-            setShowDetailModal(false);
-          }}
-          onDelete={() => onDelete(media.id)}
+          onClose={handleCloseModal}
+          onUpdate={handleUpdateAndClose}
+          onDelete={handleDeleteMedia}
         />
       )}
     </div>
