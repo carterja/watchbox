@@ -1,3 +1,5 @@
+import { TMDB_PROVIDER_TO_SERVICE } from "@/lib/constants";
+
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const IMAGE_BASE = "https://image.tmdb.org/t/p";
 
@@ -7,12 +9,37 @@ function getApiKey(): string {
   return key;
 }
 
-/** TMDB returns { status_code, status_message } when something goes wrong (e.g. 7 = invalid API key). */
-function checkTmdbError(json: { status_code?: number; status_message?: string }): void {
+/** Shared fetch helper for TMDB endpoints — handles api_key injection and error checking. */
+async function tmdbGet<T = Record<string, unknown>>(
+  path: string,
+  params?: Record<string, string>
+): Promise<T> {
+  const url = new URL(`${TMDB_BASE}${path}`);
+  url.searchParams.set("api_key", getApiKey());
+  if (params) {
+    for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  }
+  const res = await fetch(url);
+  const json = await res.json();
   if (json.status_code) {
     throw new Error(json.status_message || `TMDB error ${json.status_code}`);
   }
+  return json as T;
 }
+
+/** Variant that returns null instead of throwing on TMDB errors (for optional lookups). */
+async function tmdbGetOrNull<T = Record<string, unknown>>(
+  path: string,
+  params?: Record<string, string>
+): Promise<T | null> {
+  try {
+    return await tmdbGet<T>(path, params);
+  } catch {
+    return null;
+  }
+}
+
+// ── Types ────────────────────────────────────────────────────────────
 
 export type TmdbMovie = {
   id: number;
@@ -36,7 +63,23 @@ export type TmdbTvDetails = TmdbTv & {
 
 export type TmdbSearchResult = { type: "movie"; data: TmdbMovie } | { type: "tv"; data: TmdbTv };
 
-/** True if path is a full URL (custom/OMDB poster); use <img> instead of Next Image for these. */
+export type TmdbFindResult =
+  | { type: "movie"; data: TmdbMovie & { runtime?: number } }
+  | { type: "tv"; data: TmdbTv };
+
+export type TmdbSeasonEpisode = {
+  episode_number: number;
+  name: string;
+  air_date: string | null;
+  overview: string | null;
+  still_path: string | null;
+  runtime: number | null;
+};
+
+export type SearchTypeFilter = "movie" | "tv" | "all";
+
+// ── Image helpers ────────────────────────────────────────────────────
+
 export function isExternalPoster(path: string | null): boolean {
   if (!path) return false;
   return path.startsWith("http://") || path.startsWith("https://");
@@ -51,145 +94,76 @@ export function posterUrl(
   return `${IMAGE_BASE}/${size}${path}`;
 }
 
-export type SearchTypeFilter = "movie" | "tv" | "all";
+// ── Search ───────────────────────────────────────────────────────────
+
+type ResultsPage<T> = { results: T[] };
 
 export async function searchTmdb(query: string, typeFilter: SearchTypeFilter = "all"): Promise<TmdbSearchResult[]> {
-  const key = getApiKey();
+  const q = encodeURIComponent(query);
   const searchMovie = typeFilter === "all" || typeFilter === "movie";
   const searchTv = typeFilter === "all" || typeFilter === "tv";
 
-  const [moviesRes, tvRes] = await Promise.all([
-    searchMovie ? fetch(`${TMDB_BASE}/search/movie?api_key=${key}&query=${encodeURIComponent(query)}`) : Promise.resolve(null),
-    searchTv ? fetch(`${TMDB_BASE}/search/tv?api_key=${key}&query=${encodeURIComponent(query)}`) : Promise.resolve(null),
-  ]);
   const [moviesJson, tvJson] = await Promise.all([
-    moviesRes ? moviesRes.json() : Promise.resolve({ results: [] }),
-    tvRes ? tvRes.json() : Promise.resolve({ results: [] }),
+    searchMovie ? tmdbGet<ResultsPage<TmdbMovie & { popularity?: number }>>(`/search/movie`, { query: q }) : { results: [] },
+    searchTv ? tmdbGet<ResultsPage<TmdbTv & { popularity?: number }>>(`/search/tv`, { query: q }) : { results: [] },
   ]);
-  if (searchMovie) checkTmdbError(moviesJson);
-  if (searchTv) checkTmdbError(tvJson);
 
-  const movies: TmdbSearchResult[] = (moviesJson.results || []).slice(0, 20).map((m: TmdbMovie & { popularity?: number }) => ({
-    type: "movie",
-    data: m,
-    popularity: m.popularity || 0,
+  const movies: (TmdbSearchResult & { popularity: number })[] = (moviesJson.results || []).slice(0, 20).map((m) => ({
+    type: "movie", data: m, popularity: m.popularity || 0,
   }));
-  const tvs: TmdbSearchResult[] = (tvJson.results || []).slice(0, 20).map((t: TmdbTv & { popularity?: number }) => ({
-    type: "tv",
-    data: t,
-    popularity: t.popularity || 0,
+  const tvs: (TmdbSearchResult & { popularity: number })[] = (tvJson.results || []).slice(0, 20).map((t) => ({
+    type: "tv", data: t, popularity: t.popularity || 0,
   }));
 
-  const combined = [...movies, ...tvs] as (TmdbSearchResult & { popularity: number })[];
-  return combined.sort((a, b) => b.popularity - a.popularity).slice(0, 20);
+  return [...movies, ...tvs].sort((a, b) => b.popularity - a.popularity).slice(0, 20);
 }
 
-export async function getTmdbTopMovies(): Promise<TmdbMovie[]> {
-  const key = getApiKey();
-  const res = await fetch(`${TMDB_BASE}/movie/top_rated?api_key=${key}&page=1`);
-  const json = await res.json();
-  checkTmdbError(json);
-  return (json.results || []).slice(0, 100);
+// ── List endpoints ───────────────────────────────────────────────────
+
+async function tmdbResultsList<T>(path: string, limit = 100): Promise<T[]> {
+  const json = await tmdbGet<ResultsPage<T>>(path, { page: "1" });
+  return (json.results || []).slice(0, limit);
 }
 
-export async function getTmdbTopTv(): Promise<TmdbTv[]> {
-  const key = getApiKey();
-  const res = await fetch(`${TMDB_BASE}/tv/top_rated?api_key=${key}&page=1`);
-  const json = await res.json();
-  checkTmdbError(json);
-  return (json.results || []).slice(0, 100);
-}
-
-export async function getTmdbPopularMovies(): Promise<TmdbMovie[]> {
-  const key = getApiKey();
-  const res = await fetch(`${TMDB_BASE}/movie/popular?api_key=${key}&page=1`);
-  const json = await res.json();
-  checkTmdbError(json);
-  return (json.results || []).slice(0, 100);
-}
-
-export async function getTmdbPopularTv(): Promise<TmdbTv[]> {
-  const key = getApiKey();
-  const res = await fetch(`${TMDB_BASE}/tv/popular?api_key=${key}&page=1`);
-  const json = await res.json();
-  checkTmdbError(json);
-  return (json.results || []).slice(0, 100);
-}
+export function getTmdbTopMovies() { return tmdbResultsList<TmdbMovie>("/movie/top_rated"); }
+export function getTmdbTopTv() { return tmdbResultsList<TmdbTv>("/tv/top_rated"); }
+export function getTmdbPopularMovies() { return tmdbResultsList<TmdbMovie>("/movie/popular"); }
+export function getTmdbPopularTv() { return tmdbResultsList<TmdbTv>("/tv/popular"); }
+export function getTmdbNowPlaying() { return tmdbResultsList<TmdbMovie>("/movie/now_playing"); }
+export function getTmdbAiringToday() { return tmdbResultsList<TmdbTv>("/tv/airing_today"); }
 
 export async function getTmdbTrending(timeWindow: "day" | "week" = "week"): Promise<{ type: "movie" | "tv"; data: TmdbMovie | TmdbTv }[]> {
-  const key = getApiKey();
-  const res = await fetch(`${TMDB_BASE}/trending/all/${timeWindow}?api_key=${key}`);
-  const json = await res.json();
-  checkTmdbError(json);
-  const results = (json.results || []).slice(0, 100);
-  return results.map((r: { media_type: string } & TmdbMovie & TmdbTv) => {
-    if (r.media_type === "movie") {
-      return { type: "movie" as const, data: { id: r.id, title: r.title, overview: r.overview, poster_path: r.poster_path, release_date: r.release_date } };
-    }
-    return { type: "tv" as const, data: { id: r.id, name: r.name, overview: r.overview, poster_path: r.poster_path, first_air_date: r.first_air_date } };
-  }).filter((x: { type: string }) => x.type === "movie" || x.type === "tv");
+  const json = await tmdbGet<ResultsPage<{ media_type: string } & TmdbMovie & TmdbTv>>(`/trending/all/${timeWindow}`);
+  return (json.results || []).slice(0, 100)
+    .filter((r) => r.media_type === "movie" || r.media_type === "tv")
+    .map((r) => {
+      if (r.media_type === "movie") {
+        return { type: "movie" as const, data: { id: r.id, title: r.title, overview: r.overview, poster_path: r.poster_path, release_date: r.release_date } };
+      }
+      return { type: "tv" as const, data: { id: r.id, name: r.name, overview: r.overview, poster_path: r.poster_path, first_air_date: r.first_air_date } };
+    });
 }
 
-export async function getTmdbNowPlaying(): Promise<TmdbMovie[]> {
-  const key = getApiKey();
-  const res = await fetch(`${TMDB_BASE}/movie/now_playing?api_key=${key}&page=1`);
-  const json = await res.json();
-  checkTmdbError(json);
-  return (json.results || []).slice(0, 100);
-}
-
-export async function getTmdbAiringToday(): Promise<TmdbTv[]> {
-  const key = getApiKey();
-  const res = await fetch(`${TMDB_BASE}/tv/airing_today?api_key=${key}&page=1`);
-  const json = await res.json();
-  checkTmdbError(json);
-  return (json.results || []).slice(0, 100);
-}
+// ── Detail endpoints ─────────────────────────────────────────────────
 
 export async function getTmdbTvDetails(tvId: number): Promise<TmdbTvDetails | null> {
-  const key = getApiKey();
-  const res = await fetch(`${TMDB_BASE}/tv/${tvId}?api_key=${key}`);
-  const json = await res.json();
-  if (json.status_code) return null;
-  return json as TmdbTvDetails;
+  return tmdbGetOrNull<TmdbTvDetails>(`/tv/${tvId}`);
 }
 
-/** Find movie or TV by IMDb ID (e.g. tt0137523). Returns first match from movie_results or tv_results. */
-export type TmdbFindResult =
-  | { type: "movie"; data: TmdbMovie & { runtime?: number } }
-  | { type: "tv"; data: TmdbTv };
-
-
-
-export type TmdbSeasonEpisode = {
-  episode_number: number;
-  name: string;
-  air_date: string | null;
-  overview: string | null;
-  still_path: string | null;
-  /** Runtime in minutes (TMDB; may be null). */
-  runtime: number | null;
-};
-
-/** Single season detail with episode list (for "what next" and episode titles). */
 export async function getTmdbTvSeason(
   tvId: number,
   seasonNumber: number
 ): Promise<{ episode_count: number; episodes: TmdbSeasonEpisode[] } | null> {
-  const key = getApiKey();
-  const res = await fetch(`${TMDB_BASE}/tv/${tvId}/season/${seasonNumber}?api_key=${key}`);
-  const json = (await res.json()) as {
-    status_code?: number;
-    episodes?: {
-      episode_number?: number;
-      name?: string;
-      air_date?: string | null;
-      overview?: string | null;
-      still_path?: string | null;
-      runtime?: number | null;
-    }[];
+  type RawEpisode = {
+    episode_number?: number;
+    name?: string;
+    air_date?: string | null;
+    overview?: string | null;
+    still_path?: string | null;
+    runtime?: number | null;
   };
-  if (json.status_code) return null;
+  const json = await tmdbGetOrNull<{ episodes?: RawEpisode[] }>(`/tv/${tvId}/season/${seasonNumber}`);
+  if (!json) return null;
   const eps = json.episodes || [];
   return {
     episode_count: eps.length,
@@ -206,77 +180,50 @@ export async function getTmdbTvSeason(
     })),
   };
 }
+
 export async function getTmdbByImdbId(imdbId: string): Promise<TmdbFindResult | null> {
-  const key = getApiKey();
   const id = imdbId.trim();
   if (!/^tt\d+$/i.test(id)) return null;
-  const res = await fetch(
-    `${TMDB_BASE}/find/${encodeURIComponent(id)}?api_key=${key}&external_source=imdb_id`
+  const json = await tmdbGet<{ movie_results?: TmdbMovie[]; tv_results?: TmdbTv[] }>(
+    `/find/${encodeURIComponent(id)}`,
+    { external_source: "imdb_id" }
   );
-  const json = await res.json();
-  checkTmdbError(json);
   const movieResults = json.movie_results || [];
   const tvResults = json.tv_results || [];
   if (movieResults.length > 0) {
     const m = movieResults[0];
     return {
       type: "movie",
-      data: {
-        id: m.id,
-        title: m.title,
-        overview: m.overview ?? null,
-        poster_path: m.poster_path ?? null,
-        release_date: m.release_date ?? null,
-        runtime: m.runtime ?? undefined,
-      },
+      data: { id: m.id, title: m.title, overview: m.overview ?? null, poster_path: m.poster_path ?? null, release_date: m.release_date ?? null },
     };
   }
   if (tvResults.length > 0) {
     const t = tvResults[0];
     return {
       type: "tv",
-      data: {
-        id: t.id,
-        name: t.name,
-        overview: t.overview ?? null,
-        poster_path: t.poster_path ?? null,
-        first_air_date: t.first_air_date ?? null,
-      },
+      data: { id: t.id, name: t.name, overview: t.overview ?? null, poster_path: t.poster_path ?? null, first_air_date: t.first_air_date ?? null },
     };
   }
   return null;
 }
 
-/** TMDB provider_id -> our app streaming service name (only services we show in UI) */
-const TMDB_PROVIDER_TO_OUR_NAME: Record<number, string> = {
-  8: "Netflix",
-  9: "Prime",       // Amazon Prime Video
-  15: "Hulu",
-  337: "Disney+",
-  386: "Peacock",
-  531: "Paramount+",
-  283: "HBO",       // Max / HBO Max -> map to HBO
-  384: "HBO",
-  350: "Apple TV",  // Apple TV+
-  2: "Apple TV",    // Apple TV (legacy)
-};
+// ── Watch providers ──────────────────────────────────────────────────
 
-/** Get flatrate (subscription) watch provider names we recognize for a movie or TV show. Region defaults to US. */
 export async function getTmdbWatchProviders(
   type: "movie" | "tv",
   id: number,
   region = "US"
 ): Promise<string[]> {
-  const key = getApiKey();
   const path = type === "movie" ? "movie" : "tv";
-  const res = await fetch(`${TMDB_BASE}/${path}/${id}/watch/providers?api_key=${key}`);
-  const json = await res.json();
-  if (json.status_code) return [];
+  const json = await tmdbGetOrNull<{ results?: Record<string, { flatrate?: { provider_id?: number }[] }> }>(
+    `/${path}/${id}/watch/providers`
+  );
+  if (!json) return [];
   const regionData = json.results?.[region];
   if (!regionData?.flatrate || !Array.isArray(regionData.flatrate)) return [];
   const names = new Set<string>();
-  for (const p of regionData.flatrate as { provider_id?: number }[]) {
-    const ourName = p.provider_id != null ? TMDB_PROVIDER_TO_OUR_NAME[p.provider_id] : undefined;
+  for (const p of regionData.flatrate) {
+    const ourName = p.provider_id != null ? TMDB_PROVIDER_TO_SERVICE[p.provider_id] : undefined;
     if (ourName) names.add(ourName);
   }
   return Array.from(names);

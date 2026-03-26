@@ -37,4 +37,22 @@ export type Media = {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
-}
+};
+
+/** Fields that can be patched via the UI (used by optimistic updates, API calls, and component props). */
+export type MediaUpdatePatch = Partial<
+  Pick<
+    Media,
+    | "status"
+    | "progressNote"
+    | "totalSeasons"
+    | "seasonEpisodeCounts"
+    | "seasonProgress"
+    | "manualLastWatchedSeason"
+    | "manualLastWatchedEpisode"
+    | "streamingService"
+    | "viewer"
+    | "posterPath"
+    | "sortOrder"
+  >
+>;

@@ -9,30 +9,13 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
-import type { Media } from "@/types/media";
-
-type UpdatePatch = Partial<
-  Pick<
-    Media,
-    | "status"
-    | "progressNote"
-    | "totalSeasons"
-    | "seasonEpisodeCounts"
-    | "seasonProgress"
-    | "manualLastWatchedSeason"
-    | "manualLastWatchedEpisode"
-    | "streamingService"
-    | "viewer"
-    | "posterPath"
-    | "sortOrder"
-  >
->;
+import type { Media, MediaUpdatePatch } from "@/types/media";
 
 type MediaListContextValue = {
   list: Media[];
   loading: boolean;
   refetch: () => Promise<void>;
-  optimisticUpdate: (id: string, patch: UpdatePatch) => void;
+  optimisticUpdate: (id: string, patch: MediaUpdatePatch) => void;
   optimisticRemove: (id: string) => void;
   optimisticAdd: (media: Media) => void;
   /** Move one item to the front of the list (until refetch replaces sort order). */
@@ -53,7 +36,7 @@ export function MediaListProvider({ children }: { children: ReactNode }) {
     setList(Array.isArray(data) ? data : []);
   }, []);
 
-  const optimisticUpdate = useCallback((id: string, patch: UpdatePatch) => {
+  const optimisticUpdate = useCallback((id: string, patch: MediaUpdatePatch) => {
     setList((prev) =>
       prev.map((m) => (m.id !== id ? m : { ...m, ...patch }))
     );

@@ -3,28 +3,16 @@
 import { useState, memo } from "react";
 import Image from "next/image";
 import { Film, Tv } from "lucide-react";
-import type { Media, SeasonProgressItem } from "@/types/media";
+import type { Media, MediaUpdatePatch } from "@/types/media";
 import { posterUrl, isExternalPoster } from "@/lib/tmdb";
+import { DARK_BG_ICON_SERVICES } from "@/lib/constants";
 import { MediaDetailModal } from "./MediaDetailModal";
 import { StreamingIcon } from "./StreamingIcon";
 
 type Props = {
   media: Media;
   onDelete: (id: string) => void;
-  onUpdate?: (
-    id: string,
-    patch: {
-      progressNote?: string;
-      totalSeasons?: number;
-      seasonProgress?: SeasonProgressItem[];
-      manualLastWatchedSeason?: number | null;
-      manualLastWatchedEpisode?: number | null;
-      status?: Media["status"];
-      streamingService?: string | null;
-      viewer?: import("@/types/media").Viewer | null;
-      posterPath?: string | null;
-    }
-  ) => void;
+  onUpdate?: (id: string, patch: MediaUpdatePatch) => void;
   /** Show Movie/Series pill on card. Use true on All page, false on Movies/Series pages. */
   showTypeTag?: boolean;
   /** Card = poster tile; list = horizontal row (compact view). */
@@ -162,9 +150,7 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
       {/* Streaming icon - bottom-right corner */}
       {media.streamingService && (
         <div className="absolute bottom-2 right-2 z-10">
-          {["hulu", "netflix", "hbo", "prime"].includes(
-            media.streamingService.toLowerCase()
-          ) ? (
+          {DARK_BG_ICON_SERVICES.has(media.streamingService.toLowerCase()) ? (
             <span
               className="inline-flex w-8 h-8 rounded-lg shadow-lg overflow-hidden bg-black"
               title={media.streamingService}

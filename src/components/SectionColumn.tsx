@@ -1,6 +1,6 @@
 "use client";
 
-import type { Media, MediaStatus, SeasonProgressItem } from "@/types/media";
+import type { Media, MediaStatus, MediaUpdatePatch } from "@/types/media";
 import { MediaCard } from "./MediaCard";
 
 type Props = {
@@ -8,20 +8,7 @@ type Props = {
   status: MediaStatus;
   items: Media[];
   onDelete: (id: string) => void;
-  onUpdate?: (
-    id: string,
-    patch: {
-      progressNote?: string;
-      totalSeasons?: number;
-      seasonProgress?: SeasonProgressItem[];
-      manualLastWatchedSeason?: number | null;
-      manualLastWatchedEpisode?: number | null;
-      status?: MediaStatus;
-      streamingService?: string | null;
-      viewer?: import("@/types/media").Viewer | null;
-      posterPath?: string | null;
-    }
-  ) => void;
+  onUpdate?: (id: string, patch: MediaUpdatePatch) => void;
 };
 
 export function SectionColumn({ title, status, items, onDelete, onUpdate }: Props) {
