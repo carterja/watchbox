@@ -8,7 +8,20 @@ type Props = {
   status: MediaStatus;
   items: Media[];
   onDelete: (id: string) => void;
-  onUpdate?: (id: string, patch: { progressNote?: string; totalSeasons?: number; seasonProgress?: SeasonProgressItem[]; status?: MediaStatus; streamingService?: string | null; viewer?: import("@/types/media").Viewer | null; posterPath?: string | null }) => void;
+  onUpdate?: (
+    id: string,
+    patch: {
+      progressNote?: string;
+      totalSeasons?: number;
+      seasonProgress?: SeasonProgressItem[];
+      manualLastWatchedSeason?: number | null;
+      manualLastWatchedEpisode?: number | null;
+      status?: MediaStatus;
+      streamingService?: string | null;
+      viewer?: import("@/types/media").Viewer | null;
+      posterPath?: string | null;
+    }
+  ) => void;
 };
 
 export function SectionColumn({ title, status, items, onDelete, onUpdate }: Props) {

@@ -18,7 +18,7 @@ const SortableMediaList = dynamic(
 );
 
 export default function AllPage() {
-  const { list, loading, refetch, optimisticUpdate, optimisticRemove } = useMediaList();
+  const { list, loading, refetch, optimisticUpdate, optimisticRemove, optimisticReorder } = useMediaList();
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
   const [streamingServiceFilter, setStreamingServiceFilter] = useState<string | null>(null);
   const [viewerFilter, setViewerFilter] = useState<Viewer | null>(null);
@@ -54,6 +54,8 @@ export default function AllPage() {
         progressNote?: string;
         totalSeasons?: number;
         seasonProgress?: SeasonProgressItem[];
+        manualLastWatchedSeason?: number | null;
+        manualLastWatchedEpisode?: number | null;
         streamingService?: string | null;
         viewer?: import("@/types/media").Viewer | null;
         posterPath?: string | null;
@@ -135,10 +137,8 @@ export default function AllPage() {
           <SortableMediaList
             fullOrderedIds={list.map((m) => m.id)}
             filteredItems={filtered}
-            onReorderSuccess={async () => {
-              await refetch();
-              toast.success("Order saved");
-            }}
+            optimisticReorder={optimisticReorder}
+            refetch={refetch}
             containerClass={containerClass}
             isList={isList}
             renderItem={(m) => (

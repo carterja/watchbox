@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import {
   DndContext,
   closestCenter,
@@ -20,12 +20,14 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
+import { toast } from "sonner";
 import type { Media } from "@/types/media";
 
 type Props = {
   fullOrderedIds: string[];
   filteredItems: Media[];
-  onReorderSuccess: () => void;
+  optimisticReorder: (orderedIds: string[]) => void;
+  refetch: () => Promise<void>;
   containerClass: string;
   isList: boolean;
   renderItem: (media: Media) => React.ReactNode;
@@ -60,16 +62,16 @@ function SortableItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative ${isDragging ? "z-50 opacity-80" : ""}`}
+      className={`relative touch-none ${isDragging ? "z-50 opacity-90" : ""}`}
     >
       <div
-        className={`absolute left-0 top-0 z-10 flex items-center justify-center cursor-grab active:cursor-grabbing touch-none text-shelf-muted hover:text-white ${isList ? "h-full w-8" : "h-10 w-10 rounded-br"}`}
+        className={`cursor-grab active:cursor-grabbing rounded-lg ${isList ? "" : ""}`}
         {...attributes}
         {...listeners}
       >
-        <GripVertical size={18} className="shrink-0" />
-      </div>
-      <div className={isList ? "pl-8" : "pt-6"}>
+        <span className="pointer-events-none absolute right-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-md bg-black/50 text-shelf-muted md:right-2 md:top-2">
+          <GripVertical size={16} className="shrink-0" aria-hidden />
+        </span>
         {renderItem(media)}
       </div>
     </div>
@@ -79,16 +81,15 @@ function SortableItem({
 export function SortableMediaList({
   fullOrderedIds,
   filteredItems,
-  onReorderSuccess,
+  optimisticReorder,
+  refetch,
   containerClass,
   isList,
   renderItem,
 }: Props) {
-  const [isReordering, setIsReordering] = useState(false);
-
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
+      activationConstraint: { distance: 10 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -99,14 +100,12 @@ export function SortableMediaList({
     async (event: DragEndEvent) => {
       const { active, over } = event;
       if (over == null || active.id === over.id) {
-        setIsReordering(false);
         return;
       }
 
       const oldIndex = filteredItems.findIndex((m) => m.id === active.id);
       const newIndex = filteredItems.findIndex((m) => m.id === over.id);
       if (oldIndex === -1 || newIndex === -1) {
-        setIsReordering(false);
         return;
       }
 
@@ -126,7 +125,7 @@ export function SortableMediaList({
         newOrder[indicesOfFiltered[j]] = id;
       });
 
-      setIsReordering(true);
+      optimisticReorder(newOrder);
       try {
         const res = await fetch("/api/media/reorder", {
           method: "POST",
@@ -134,13 +133,18 @@ export function SortableMediaList({
           body: JSON.stringify({ orderedIds: newOrder }),
         });
         if (res.ok) {
-          onReorderSuccess();
+          await refetch();
+          toast.success("Order saved");
+        } else {
+          await refetch();
+          toast.error("Could not save order");
         }
-      } finally {
-        setIsReordering(false);
+      } catch {
+        await refetch();
+        toast.error("Could not save order");
       }
     },
-    [filteredItems, fullOrderedIds, onReorderSuccess]
+    [filteredItems, fullOrderedIds, optimisticReorder, refetch]
   );
 
   const strategy = isList ? verticalListSortingStrategy : rectSortingStrategy;
@@ -150,9 +154,7 @@ export function SortableMediaList({
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      onDragStart={() => setIsReordering(true)}
       onDragEnd={handleDragEnd}
-      onDragCancel={() => setIsReordering(false)}
     >
       <SortableContext items={itemIds} strategy={strategy}>
         <div className={containerClass}>

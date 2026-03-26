@@ -11,7 +11,20 @@ import { StreamingIcon } from "./StreamingIcon";
 type Props = {
   media: Media;
   onDelete: (id: string) => void;
-  onUpdate?: (id: string, patch: { progressNote?: string; totalSeasons?: number; seasonProgress?: SeasonProgressItem[]; status?: Media["status"]; streamingService?: string | null; viewer?: import("@/types/media").Viewer | null; posterPath?: string | null }) => void;
+  onUpdate?: (
+    id: string,
+    patch: {
+      progressNote?: string;
+      totalSeasons?: number;
+      seasonProgress?: SeasonProgressItem[];
+      manualLastWatchedSeason?: number | null;
+      manualLastWatchedEpisode?: number | null;
+      status?: Media["status"];
+      streamingService?: string | null;
+      viewer?: import("@/types/media").Viewer | null;
+      posterPath?: string | null;
+    }
+  ) => void;
   /** Show Movie/Series pill on card. Use true on All page, false on Movies/Series pages. */
   showTypeTag?: boolean;
   /** Card = poster tile; list = horizontal row (compact view). */

@@ -128,6 +128,7 @@ export function PlexIntegrationPanel() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [plexScan, setPlexScan] = useState<{ onDeck: number; library: number } | null>(null);
   const [addingKey, setAddingKey] = useState<string | null>(null);
+  const [bulkSyncingTv, setBulkSyncingTv] = useState(false);
   const [plexTab, setPlexTab] = useState<PlexPanelTab>("both");
   const [plexOnlyKind, setPlexOnlyKind] = useState<PlexOnlyKind>("tv");
 
@@ -316,6 +317,45 @@ export function PlexIntegrationPanel() {
     }
   };
 
+  const syncAllTvFromPlex = async () => {
+    const tvMatches = matches.filter(
+      (m) => m.media.type === "tv" && Boolean(progressNoteFromPlex(m.plex))
+    );
+    if (tvMatches.length === 0) {
+      toast.info("No TV overlap with Plex progress notes to sync.");
+      return;
+    }
+    setBulkSyncingTv(true);
+    let ok = 0;
+    try {
+      for (const { media, plex } of tvMatches) {
+        const note = progressNoteFromPlex(plex);
+        if (!note) continue;
+        try {
+          const res = await fetch(`/api/media/${media.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ progressNote: note }),
+          });
+          if (res.ok) {
+            optimisticUpdate(media.id, { progressNote: note });
+            ok++;
+          }
+        } catch {
+          /* continue */
+        }
+      }
+      if (ok > 0) {
+        toast.success(`Synced ${ok} TV show${ok === 1 ? "" : "s"} from Plex`);
+      } else {
+        toast.error("Could not sync any titles");
+      }
+      await refetch();
+    } finally {
+      setBulkSyncingTv(false);
+    }
+  };
+
   const plexConfigured = !status.loading && status.configured && status.reachable;
 
   return (
@@ -478,6 +518,19 @@ export function PlexIntegrationPanel() {
             Use <span className="text-white/90">Sync from Plex</span> to copy episode or episode-count info into
             WatchBox’s progress note.
           </p>
+          {matches.length > 0 && plexConfigured && !loadingDeck && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void syncAllTvFromPlex()}
+                disabled={bulkSyncingTv || matches.every((m) => m.media.type !== "tv" || !progressNoteFromPlex(m.plex))}
+                className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-40 sm:min-h-0 sm:py-1.5"
+              >
+                {bulkSyncingTv ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
+                Sync all TV from Plex
+              </button>
+            </div>
+          )}
           {plexConfigured && loadingDeck && (
             <div className="flex items-center gap-2 py-4 text-sm text-shelf-muted">
               <Loader2 size={18} className="animate-spin shrink-0" />

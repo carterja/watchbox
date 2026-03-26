@@ -37,6 +37,8 @@ type MediaListContextValue = {
   optimisticAdd: (media: Media) => void;
   /** Move one item to the front of the list (until refetch replaces sort order). */
   optimisticMoveToFront: (id: string) => void;
+  /** Reorder list by id (full library order). Used when saving drag-and-drop before refetch. */
+  optimisticReorder: (orderedIds: string[]) => void;
 };
 
 const MediaListContext = createContext<MediaListContextValue | null>(null);
@@ -73,6 +75,19 @@ export function MediaListProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const optimisticReorder = useCallback((orderedIds: string[]) => {
+    setList((prev) => {
+      const byId = new Map(prev.map((m) => [m.id, m]));
+      const next: Media[] = [];
+      for (const id of orderedIds) {
+        const m = byId.get(id);
+        if (m) next.push(m);
+      }
+      if (next.length !== prev.length) return prev;
+      return next;
+    });
+  }, []);
+
   useEffect(() => {
     refetch().finally(() => setLoading(false));
   }, [refetch]);
@@ -86,8 +101,9 @@ export function MediaListProvider({ children }: { children: ReactNode }) {
       optimisticRemove,
       optimisticAdd,
       optimisticMoveToFront,
+      optimisticReorder,
     }),
-    [list, loading, refetch, optimisticUpdate, optimisticRemove, optimisticAdd, optimisticMoveToFront]
+    [list, loading, refetch, optimisticUpdate, optimisticRemove, optimisticAdd, optimisticMoveToFront, optimisticReorder]
   );
 
   return (
@@ -108,6 +124,7 @@ export function useMediaList(): MediaListContextValue {
       optimisticRemove: () => {},
       optimisticAdd: () => {},
       optimisticMoveToFront: () => {},
+      optimisticReorder: () => {},
     };
   }
   return ctx;
