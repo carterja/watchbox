@@ -3,5 +3,5 @@
 import { MediaListPage } from "@/components/MediaListPage";
 
 export default function AllPage() {
-  return <MediaListPage showTypeTag emptyNoun="titles" />;
+  return <MediaListPage showTypeTag={false} emptyNoun="titles" />;
 }

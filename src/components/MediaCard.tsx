@@ -152,7 +152,7 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
         )}
       </div>
 
-      {/* Type pill - only when showTypeTag (e.g. on All page) */}
+      {/* Type pill - only when showTypeTag (e.g. NOT on All page) */}
       {showTypeTag && (
         <div className="absolute top-2 left-2 z-10">
           <span className="rounded bg-shelf-bg/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
@@ -161,20 +161,20 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
         </div>
       )}
 
-      {/* Streaming icon - bottom-right corner */}
+      {/* Streaming icon - subtle top-right corner */}
       {media.streamingService && (
-        <div className="absolute bottom-2 right-2 z-10">
+        <div className="absolute top-2 right-2 z-10 opacity-70 hover:opacity-100 transition-opacity">
           {DARK_BG_ICON_SERVICES.has(media.streamingService.toLowerCase()) ? (
             <span
-              className="inline-flex w-8 h-8 rounded-lg shadow-lg overflow-hidden bg-black"
+              className="inline-flex w-7 h-7 rounded-lg shadow-md overflow-hidden bg-black/80"
               title={media.streamingService}
             >
               <StreamingIcon service={media.streamingService} className="w-full h-full" />
             </span>
           ) : (
             <span
-              className="inline-flex w-8 h-8 rounded-lg shadow-lg overflow-hidden"
-              style={{ backgroundColor: "#00d0ff9c" }}
+              className="inline-flex w-7 h-7 rounded-lg shadow-md overflow-hidden"
+              style={{ backgroundColor: "#00d0ff7a" }}
               title={media.streamingService}
             >
               <StreamingIcon service={media.streamingService} className="w-full h-full text-black" />
