@@ -19,7 +19,6 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import type { Media } from "@/types/media";
 
@@ -30,7 +29,7 @@ type Props = {
   refetch: () => Promise<void>;
   containerClass: string;
   isList: boolean;
-  renderItem: (media: Media) => React.ReactNode;
+  renderItem: (media: Media, reorderMode: boolean) => React.ReactNode;
 };
 
 function SortableItem({
@@ -42,7 +41,7 @@ function SortableItem({
   id: string;
   media: Media;
   isList: boolean;
-  renderItem: (media: Media) => React.ReactNode;
+  renderItem: (media: Media, reorderMode: boolean) => React.ReactNode;
 }) {
   const {
     attributes,
@@ -53,27 +52,25 @@ function SortableItem({
     isDragging,
   } = useSortable({ id });
 
-  const style = {
+  const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+
+  if (isDragging) {
+    style.zIndex = 50;
+    style.scale = "1.05";
+  }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative touch-none ${isDragging ? "z-50 opacity-90" : ""}`}
+      className={`touch-none ${isDragging ? "opacity-90 shadow-2xl shadow-[#8b5cf6]/30" : "reorder-jiggle"}`}
+      {...attributes}
+      {...listeners}
     >
-      <div
-        className={`cursor-grab active:cursor-grabbing rounded-lg ${isList ? "" : ""}`}
-        {...attributes}
-        {...listeners}
-      >
-        <span className="pointer-events-none absolute right-1.5 top-1.5 z-10 flex h-7 w-7 items-center justify-center rounded-md bg-black/50 text-shelf-muted md:right-2 md:top-2">
-          <GripVertical size={16} className="shrink-0" aria-hidden />
-        </span>
-        {renderItem(media)}
-      </div>
+      {renderItem(media, true)}
     </div>
   );
 }

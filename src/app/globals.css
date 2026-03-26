@@ -202,6 +202,26 @@ body {
   --color-neon-purple: #b58900;
 }
 
+/* Reorder mode — iOS-style jiggle */
+@keyframes jiggle {
+  0%  { transform: rotate(-0.7deg); }
+  25% { transform: rotate(0.7deg); }
+  50% { transform: rotate(-0.5deg); }
+  75% { transform: rotate(0.5deg); }
+  100% { transform: rotate(-0.7deg); }
+}
+.reorder-jiggle {
+  animation: jiggle 0.3s ease-in-out infinite;
+}
+.reorder-jiggle:nth-child(2n) {
+  animation-delay: 0.05s;
+  animation-duration: 0.35s;
+}
+.reorder-jiggle:nth-child(3n) {
+  animation-delay: 0.1s;
+  animation-duration: 0.28s;
+}
+
 /* What next — Swiper carousel (dark theme pagination) */
 .watching-swiper .swiper-pagination-bullet {
   background: rgba(139, 92, 246, 0.35);

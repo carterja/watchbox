@@ -73,13 +73,14 @@ export function MediaListPage({
     });
   }, [typeFiltered, statusFilter, streamingServiceFilter, viewerFilter]);
 
-  const renderItem = (m: Media) => (
+  const renderItem = (m: Media, isReordering = false) => (
     <MediaCard
       media={m}
       onDelete={handleDelete}
       onUpdate={handleUpdate}
       showTypeTag={showTypeTag}
       variant={isList ? "list" : "card"}
+      reorderMode={isReordering}
     />
   );
 
