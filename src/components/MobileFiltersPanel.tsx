@@ -15,7 +15,7 @@ const SLIDE_DURATION_MS = 280;
  */
 export function MobileFiltersPanel({ children }: { children: React.ReactNode }) {
   const { open, close } = useMobileFilters();
-  const { showOverlay, hideOverlay } = useOverlay();
+  const { showOverlay, hideOverlay, resetOverlay } = useOverlay();
   const isMobileViewport = useIsMobileViewport();
   const [mounted, setMounted] = useState(false);
   const [animatingIn, setAnimatingIn] = useState(false);
@@ -24,6 +24,11 @@ export function MobileFiltersPanel({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  /** Client navigation can unmount this panel while the shared blur overlay is still registered — clear it. */
+  useEffect(() => {
+    return () => resetOverlay();
+  }, [resetOverlay]);
 
   const startClosing = useCallback(() => {
     setIsClosing(true);

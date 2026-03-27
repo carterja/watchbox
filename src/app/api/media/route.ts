@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { mergeCreatePayloadWithTmdb } from "@/lib/enrichCreateMediaFromTmdb";
 import { CreateMediaSchema } from "@/lib/validation";
 import { z } from "zod";
 
@@ -27,10 +28,11 @@ export async function POST(request: NextRequest) {
   try {
     // Validate input
     const validated = CreateMediaSchema.parse(body);
+    const enriched = await mergeCreatePayloadWithTmdb(validated);
 
     // Check for duplicates
     const existing = await prisma.media.findFirst({
-      where: { tmdbId: validated.tmdbId, type: validated.type },
+      where: { tmdbId: enriched.tmdbId, type: enriched.type },
     });
 
     if (existing) {
@@ -42,17 +44,17 @@ export async function POST(request: NextRequest) {
 
     const media = await prisma.media.create({
       data: {
-        tmdbId: validated.tmdbId,
-        type: validated.type,
-        title: validated.title,
-        overview: validated.overview ?? null,
-        posterPath: validated.posterPath ?? null,
-        releaseDate: validated.releaseDate ?? null,
-        runtime: validated.runtime ?? null,
-        status: validated.status,
-        totalSeasons: validated.type === "tv" ? validated.totalSeasons ?? null : null,
-        streamingService: validated.streamingService && validated.streamingService.trim() ? validated.streamingService.trim() : null,
-        viewer: validated.viewer ?? null,
+        tmdbId: enriched.tmdbId,
+        type: enriched.type,
+        title: enriched.title,
+        overview: enriched.overview ?? null,
+        posterPath: enriched.posterPath ?? null,
+        releaseDate: enriched.releaseDate ?? null,
+        runtime: enriched.runtime ?? null,
+        status: enriched.status,
+        totalSeasons: enriched.type === "tv" ? enriched.totalSeasons ?? null : null,
+        streamingService: enriched.streamingService && enriched.streamingService.trim() ? enriched.streamingService.trim() : null,
+        viewer: enriched.viewer ?? null,
         sortOrder: nextSortOrder,
       },
     });

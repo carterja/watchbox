@@ -32,6 +32,11 @@ export type PlexOnDeckItem = {
   tmdbType?: "movie" | "tv";
 };
 
+/** Stable id for a Plex on-deck row (same item can appear from on-deck vs library). */
+export function plexOnDeckRowKey(item: PlexOnDeckItem): string {
+  return `${item.ratingKey}-${item.source ?? "x"}`;
+}
+
 function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, "");
 }

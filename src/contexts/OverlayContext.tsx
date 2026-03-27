@@ -14,6 +14,8 @@ type OverlayContextValue = {
   /** Show the shared blur overlay; when user clicks it or presses Escape, onClose is called. */
   showOverlay: (onClose: () => void) => void;
   hideOverlay: () => void;
+  /** Clear overlay without running onClose — use when the drawer unmounts (e.g. client navigation). */
+  resetOverlay: () => void;
   /** Call from overlay onClick to close (runs registered onClose). */
   handleBackdropClick: () => void;
   isOpen: boolean;
@@ -35,6 +37,10 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
       setOnClose(null);
     }
   }, [onClose]);
+
+  const resetOverlay = useCallback(() => {
+    setOnClose(null);
+  }, []);
 
   const handleBackdropClick = useCallback(() => {
     hideOverlay();
@@ -61,8 +67,8 @@ export function OverlayProvider({ children }: { children: ReactNode }) {
   }, [isOpen]);
 
   const value = useMemo(
-    () => ({ showOverlay, hideOverlay, handleBackdropClick, isOpen }),
-    [showOverlay, hideOverlay, handleBackdropClick, isOpen]
+    () => ({ showOverlay, hideOverlay, resetOverlay, handleBackdropClick, isOpen }),
+    [showOverlay, hideOverlay, resetOverlay, handleBackdropClick, isOpen]
   );
 
   return (
@@ -78,6 +84,7 @@ export function useOverlay(): OverlayContextValue {
     return {
       showOverlay: () => {},
       hideOverlay: () => {},
+      resetOverlay: () => {},
       handleBackdropClick: () => {},
       isOpen: false,
     };

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 type MobileFiltersContextValue = {
   open: boolean;
@@ -11,9 +12,14 @@ type MobileFiltersContextValue = {
 const MobileFiltersContext = createContext<MobileFiltersContextValue | null>(null);
 
 export function MobileFiltersProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const toggle = useCallback(() => setOpen((prev) => !prev), []);
   const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    close();
+  }, [pathname, close]);
 
   useEffect(() => {
     const handleScroll = () => setOpen(false);

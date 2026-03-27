@@ -166,6 +166,12 @@ export async function getTmdbTvDetails(tvId: number): Promise<TmdbTvDetails | nu
   return tmdbGetOrNull<TmdbTvDetails>(`/tv/${tvId}`);
 }
 
+export type TmdbMovieDetails = TmdbMovie & { runtime?: number };
+
+export async function getTmdbMovieDetails(movieId: number): Promise<TmdbMovieDetails | null> {
+  return tmdbGetOrNull<TmdbMovieDetails>(`/movie/${movieId}`);
+}
+
 export async function getTmdbTvSeason(
   tvId: number,
   seasonNumber: number

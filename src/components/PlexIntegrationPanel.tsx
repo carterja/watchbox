@@ -16,11 +16,13 @@ import {
   ArrowRight,
   Sparkles,
   Plus,
+  Info,
 } from "lucide-react";
 import { PlexMarkIcon } from "@/components/icons/PlexMarkIcon";
+import { PlexTmdbMatchModal } from "@/components/PlexTmdbMatchModal";
 import { toast } from "sonner";
 import { useMediaList } from "@/contexts/MediaListContext";
-import type { PlexOnDeckItem } from "@/lib/plex";
+import { plexOnDeckRowKey, type PlexOnDeckItem } from "@/lib/plex";
 import { posterUrl } from "@/lib/tmdb";
 import {
   computeWatchingMatches,
@@ -131,6 +133,9 @@ export function PlexIntegrationPanel() {
   const [bulkSyncingTv, setBulkSyncingTv] = useState(false);
   const [plexTab, setPlexTab] = useState<PlexPanelTab>("both");
   const [plexOnlyKind, setPlexOnlyKind] = useState<PlexOnlyKind>("tv");
+  const [matchingItem, setMatchingItem] = useState<PlexOnDeckItem | null>(null);
+  /** Rows hidden after add; Plex often has no TMDB so `plexOnly` cannot infer removal from list alone. Cleared on Refresh. */
+  const [dismissedPlexOnlyRowKeys, setDismissedPlexOnlyRowKeys] = useState<string[]>([]);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -208,10 +213,22 @@ export function PlexIntegrationPanel() {
     loadOnDeck();
   }, [status, loadOnDeck]);
 
-  const { matches, watchBoxInProgressOnly, plexOnly } = useMemo(
+  const { matches, watchBoxInProgressOnly, plexOnly: plexOnlyRaw } = useMemo(
     () => computeWatchingMatches(list, items),
     [list, items]
   );
+
+  const dismissedPlexOnlySet = useMemo(() => new Set(dismissedPlexOnlyRowKeys), [dismissedPlexOnlyRowKeys]);
+
+  const plexOnly = useMemo(
+    () => plexOnlyRaw.filter((p) => !dismissedPlexOnlySet.has(plexOnDeckRowKey(p))),
+    [plexOnlyRaw, dismissedPlexOnlySet]
+  );
+
+  const dismissPlexOnlyRow = useCallback((item: PlexOnDeckItem) => {
+    const k = plexOnDeckRowKey(item);
+    setDismissedPlexOnlyRowKeys((prev) => (prev.includes(k) ? prev : [...prev, k]));
+  }, []);
 
   const { plexOnlyTv, plexOnlyMovies } = useMemo(() => {
     const tv: PlexOnDeckItem[] = [];
@@ -223,7 +240,6 @@ export function PlexIntegrationPanel() {
     return { plexOnlyTv: tv, plexOnlyMovies: movies };
   }, [plexOnly]);
 
-  /** In Plex-only tab, show the bucket that has rows when the other is empty. */
   useEffect(() => {
     if (plexTab !== "plexonly") return;
     if (plexOnlyTv.length === 0 && plexOnlyMovies.length > 0) {
@@ -234,15 +250,16 @@ export function PlexIntegrationPanel() {
   }, [plexTab, plexOnlyTv.length, plexOnlyMovies.length]);
 
   const refreshAll = () => {
+    setDismissedPlexOnlyRowKeys([]);
     loadStatus();
     loadHealth();
     loadOnDeck();
   };
 
   const addPlexOnlyToWatchBox = async (item: PlexOnDeckItem) => {
-    const key = `${item.ratingKey}-${item.source ?? "x"}`;
+    const key = plexOnDeckRowKey(item);
     if (item.tmdbId == null || item.tmdbId < 1 || !item.tmdbType) {
-      toast.error("No TMDB id on this Plex item — add it from Discover.");
+      setMatchingItem(item);
       return;
     }
     setAddingKey(key);
@@ -257,11 +274,14 @@ export function PlexIntegrationPanel() {
           type: item.tmdbType,
           title,
           status: "in_progress",
+          streamingService: "Plex",
+          viewer: "both",
         }),
       });
       const data = await res.json();
       if (res.status === 409) {
         toast.error("Already in your list");
+        dismissPlexOnlyRow(item);
         await refetch();
         return;
       }
@@ -283,6 +303,7 @@ export function PlexIntegrationPanel() {
         }
       }
       toast.success("Added to WatchBox");
+      dismissPlexOnlyRow(item);
       await refetch();
     } catch {
       toast.error("Request failed");
@@ -317,6 +338,66 @@ export function PlexIntegrationPanel() {
     }
   };
 
+  const handleTmdbMatch = async (tmdbId: number, mediaType: "movie" | "tv") => {
+    if (!matchingItem) return;
+    if (!tmdbId || typeof tmdbId !== "number") {
+      toast.error("Invalid TMDB ID");
+      return;
+    }
+    const key = plexOnDeckRowKey(matchingItem);
+    setAddingKey(key);
+    try {
+      const title =
+        mediaType === "tv" ? (matchingItem.grandparentTitle ?? matchingItem.title) : matchingItem.title;
+      const res = await fetch("/api/media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tmdbId,
+          type: mediaType,
+          title,
+          status: "in_progress",
+          streamingService: "Plex",
+          viewer: "both",
+        }),
+      });
+      const data = await res.json();
+      if (res.status === 409) {
+        toast.error("Already in your list");
+        dismissPlexOnlyRow(matchingItem);
+        await refetch();
+        setMatchingItem(null);
+        return;
+      }
+      if (!res.ok) {
+        const errorMsg = typeof data.error === "string" ? data.error : "Could not add";
+        toast.error(errorMsg);
+        return;
+      }
+      const media = data as Media;
+      optimisticAdd(media);
+      const note = progressNoteFromPlex(matchingItem);
+      if (note) {
+        const patchRes = await fetch(`/api/media/${media.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ progressNote: note }),
+        });
+        if (patchRes.ok) {
+          optimisticUpdate(media.id, { progressNote: note });
+        }
+      }
+      toast.success("Added to WatchBox");
+      dismissPlexOnlyRow(matchingItem);
+      await refetch();
+      setMatchingItem(null);
+    } catch {
+      toast.error("Request failed");
+    } finally {
+      setAddingKey(null);
+    }
+  };
+
   const syncAllTvFromPlex = async () => {
     const tvMatches = matches.filter(
       (m) => m.media.type === "tv" && Boolean(progressNoteFromPlex(m.plex))
@@ -342,7 +423,6 @@ export function PlexIntegrationPanel() {
             ok++;
           }
         } catch {
-          /* continue */
         }
       }
       if (ok > 0) {
@@ -360,7 +440,6 @@ export function PlexIntegrationPanel() {
 
   return (
     <div className="pb-6 md:pb-8">
-      {/* Not sticky: avoids content sliding under this bar inside overflow-hidden page cards */}
       <header className="border-b border-shelf-border bg-shelf-bg/95 backdrop-blur">
         <div className="flex items-center gap-2.5 px-3 py-2 sm:gap-3 sm:px-4 md:px-6 md:py-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-shelf-border bg-gradient-to-br from-cyan-500/20 to-[#8b5cf6]/20 sm:h-9 sm:w-9 sm:rounded-xl">
@@ -370,15 +449,27 @@ export function PlexIntegrationPanel() {
             <h2 className="text-sm font-semibold leading-tight text-white sm:text-base md:text-lg">
               Plex & library sync
             </h2>
-            <p className="mt-0.5 truncate text-[10px] leading-tight text-shelf-muted sm:text-[11px] md:text-xs">
-              Connect Plex, compare On Deck with WatchBox, and sync progress notes
-            </p>
+          </div>
+          <div className="relative group">
+            <button
+              type="button"
+              className="text-shelf-muted hover:text-white transition shrink-0 p-1.5"
+              title="About Plex integration"
+            >
+              <Info size={16} />
+            </button>
+            <div className="pointer-events-none absolute right-0 bottom-full mb-2 hidden group-hover:flex z-10">
+              <div className="rounded-lg border border-shelf-border bg-shelf-bg/95 backdrop-blur px-3 py-2 text-[10px] text-shelf-muted leading-snug w-64 md:w-72">
+                Sync your Plex watching progress with WatchBox. Shows matching titles from both services and allows you to add Plex items to your WatchBox.
+              </div>
+            </div>
           </div>
           <button
             type="button"
             onClick={refreshAll}
             className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-shelf-border bg-shelf-card px-2.5 py-2 text-xs font-medium text-white hover:bg-shelf-card/80 active:scale-[0.99] sm:gap-2 sm:px-3 sm:text-sm"
             aria-label="Refresh all"
+            title="Refresh Plex data"
           >
             <RefreshCw size={15} className="shrink-0 sm:h-4 sm:w-4" />
             <span>Refresh</span>
@@ -386,50 +477,42 @@ export function PlexIntegrationPanel() {
         </div>
       </header>
 
-      <div className="space-y-5 px-3 pt-3 pb-4 sm:space-y-7 sm:px-4 sm:pt-4 md:space-y-8 md:p-6">
-        {/* Status strip */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <div className="space-y-3 px-3 pt-3 pb-4 sm:space-y-4 sm:px-4 sm:pt-3 md:space-y-6 md:p-6">
+        <div className="grid grid-cols-2 gap-1.5 md:flex md:flex-wrap md:gap-1.5">
           <div
-            className={`inline-flex min-h-[2.25rem] items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
+            className={`inline-flex items-center justify-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[10px] font-medium md:text-xs ${
               appHealth?.ok && appHealth.db
                 ? "border-green-500/40 bg-green-500/10 text-green-300"
                 : "border-amber-500/40 bg-amber-500/10 text-amber-200"
             }`}
           >
             {appHealth?.ok && appHealth.db ? (
-              <CheckCircle2 size={14} />
+              <CheckCircle2 size={12} />
             ) : (
-              <AlertCircle size={14} />
+              <AlertCircle size={12} />
             )}
-            <span className="min-w-0 break-words">
-              WatchBox {appHealth?.ok && appHealth.db ? "· DB OK" : "· check /api/health"}
-              {typeof appHealth?.plex === "boolean" && (
-                <span className="opacity-80">
-                  {" "}
-                  · Plex {appHealth.plex ? "OK" : "down"}
-                </span>
-              )}
-            </span>
+            <span className="hidden sm:inline">WatchBox {appHealth?.ok && appHealth.db ? "OK" : "error"}</span>
+            <span className="sm:hidden">WB</span>
           </div>
           {status.loading ? (
-            <div className="inline-flex items-center gap-2 rounded-full border border-shelf-border bg-shelf-card/50 px-3 py-1.5 text-xs text-shelf-muted">
-              <Loader2 size={14} className="animate-spin" />
-              Plex…
+            <div className="inline-flex items-center justify-center gap-1 rounded-full border border-shelf-border bg-shelf-card/50 px-2.5 py-1.5 text-[10px] text-shelf-muted md:text-xs">
+              <Loader2 size={11} className="animate-spin shrink-0" />
+              <span className="hidden sm:inline">Plex…</span>
             </div>
           ) : !status.configured ? (
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/5 px-3 py-1.5 text-xs text-amber-200">
-              <CloudOff size={14} />
-              Plex not configured
+            <div className="inline-flex items-center justify-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/5 px-2.5 py-1.5 text-[10px] text-amber-200 md:text-xs">
+              <CloudOff size={11} />
+              <span className="hidden sm:inline">Not configured</span>
             </div>
           ) : status.reachable ? (
-            <div className="inline-flex min-h-[2.25rem] items-center gap-2 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-200">
-              <MonitorPlay size={14} className="shrink-0" />
-              <span>Plex server reachable</span>
+            <div className="inline-flex items-center justify-center gap-1 rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1.5 text-[10px] font-medium text-cyan-200 md:text-xs">
+              <MonitorPlay size={11} className="shrink-0" />
+              <span className="hidden sm:inline">Plex OK</span>
             </div>
           ) : (
-            <div className="inline-flex items-start gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs leading-snug text-red-200 sm:items-center">
-              <AlertCircle size={14} className="mt-0.5 shrink-0 sm:mt-0" />
-              <span>Plex unreachable — check URL, token, firewall</span>
+            <div className="inline-flex items-center justify-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2.5 py-1.5 text-[10px] text-red-200 md:text-xs">
+              <AlertCircle size={11} />
+              <span className="hidden sm:inline">Unreachable</span>
             </div>
           )}
         </div>
@@ -442,9 +525,8 @@ export function PlexIntegrationPanel() {
           </p>
         )}
 
-        {/* Tab switcher — full-width stack on small screens, segmented row on md+ */}
         <div
-          className="flex flex-col gap-2 md:flex-row md:flex-wrap md:gap-1.5 md:rounded-xl md:border md:border-shelf-border md:bg-shelf-bg/50 md:p-1.5"
+          className="flex flex-col gap-2 md:gap-3"
           role="tablist"
           aria-label="Plex sections"
         >
@@ -452,27 +534,24 @@ export function PlexIntegrationPanel() {
             [
               {
                 id: "both" as const,
-                label: "In both",
-                short: "Both",
+                label: "Both",
                 count: matches.length,
                 icon: Sparkles,
               },
               {
                 id: "watchbox" as const,
-                label: "WatchBox only",
-                short: "WB only",
+                label: "WB only",
                 count: watchBoxInProgressOnly.length,
                 icon: Library,
               },
               {
                 id: "plexonly" as const,
                 label: "Plex only",
-                short: "Plex only",
                 count: plexOnly.length,
                 icon: MonitorPlay,
               },
             ] as const
-          ).map(({ id, label, short, count, icon: TabIcon }) => {
+          ).map(({ id, label, count, icon: TabIcon }) => {
             const active = plexTab === id;
             return (
               <button
@@ -481,18 +560,17 @@ export function PlexIntegrationPanel() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setPlexTab(id)}
-                className={`flex min-h-[44px] w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left text-sm font-medium transition md:min-h-0 md:min-w-0 md:flex-1 md:justify-center md:rounded-lg md:border-0 md:px-3 md:py-2.5 md:text-center md:text-xs lg:text-sm ${
+                className={`flex items-center justify-between gap-2 rounded-xl border py-3 px-4 text-sm font-medium transition ${
                   active
-                    ? "border-[#8b5cf6]/50 bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/20 md:border-0 md:shadow-md md:shadow-[#8b5cf6]/25"
-                    : "border-shelf-border bg-shelf-card/30 text-shelf-muted hover:border-shelf-border hover:bg-shelf-card hover:text-white md:border-0 md:bg-transparent md:hover:bg-shelf-card"
+                    ? "border-[#8b5cf6]/50 bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/20"
+                    : "border-shelf-border bg-shelf-card/30 text-shelf-muted hover:bg-shelf-card hover:text-white"
                 }`}
               >
-                <span className="flex min-w-0 items-center gap-2.5 md:gap-1.5">
-                  <TabIcon size={18} className="shrink-0 opacity-90 md:h-4 md:w-4" aria-hidden />
-                  <span className="truncate md:hidden">{short}</span>
-                  <span className="hidden truncate md:inline">{label}</span>
+                <span className="flex items-center gap-2">
+                  <TabIcon size={18} className="shrink-0" aria-hidden />
+                  <span className="font-semibold">{label}</span>
                 </span>
-                <span className={`shrink-0 tabular-nums text-sm md:text-xs lg:text-sm ${active ? "text-white/90" : "text-shelf-muted"}`}>
+                <span className={`tabular-nums font-semibold ${active ? "text-white/90" : "text-shelf-muted"}`}>
                   {count}
                 </span>
               </button>
@@ -500,77 +578,109 @@ export function PlexIntegrationPanel() {
           })}
         </div>
 
-        {/* Overlap */}
+        {plexTab === "plexonly" && plexOnly.length > 0 && (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={plexOnlyKind === "tv"}
+              onClick={() => setPlexOnlyKind("tv")}
+              title="TV series"
+              className={`flex-1 flex items-center justify-between gap-2 rounded-xl border py-3 px-4 text-sm font-medium transition ${
+                plexOnlyKind === "tv"
+                  ? "border-[#8b5cf6]/50 bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/20"
+                  : "border-shelf-border bg-shelf-card/30 text-shelf-muted hover:bg-shelf-card hover:text-white"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Tv size={18} className="shrink-0" aria-hidden />
+                <span className="font-semibold">TV</span>
+              </span>
+              <span className={`tabular-nums font-semibold ${plexOnlyKind === "tv" ? "text-white/90" : "text-shelf-muted"}`}>
+                {plexOnlyTv.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={plexOnlyKind === "movies"}
+              onClick={() => setPlexOnlyKind("movies")}
+              title="Movies"
+              className={`flex-1 flex items-center justify-between gap-2 rounded-xl border py-3 px-4 text-sm font-medium transition ${
+                plexOnlyKind === "movies"
+                  ? "border-[#8b5cf6]/50 bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/20"
+                  : "border-shelf-border bg-shelf-card/30 text-shelf-muted hover:bg-shelf-card hover:text-white"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Film size={18} className="shrink-0" aria-hidden />
+                <span className="font-semibold">Movies</span>
+              </span>
+              <span className={`tabular-nums font-semibold ${plexOnlyKind === "movies" ? "text-white/90" : "text-shelf-muted"}`}>
+                {plexOnlyMovies.length}
+              </span>
+            </button>
+          </div>
+        )}
+
         {plexTab === "both" && (
         <section className="space-y-3">
           <h2 className="sr-only">In both WatchBox and Plex</h2>
-          <p className="text-[13px] leading-snug text-shelf-muted sm:text-sm sm:leading-relaxed">
-            Same title (TMDB id) in your list and on Plex — including shows you started that are{" "}
-            <strong className="text-white/90">no longer on Plex’s short “Continue watching” row</strong> but still
-            partially watched in your libraries.
-          </p>
           {plexScan && plexConfigured && !loadingDeck && (
-            <p className="text-[11px] text-shelf-muted/90 sm:text-xs">
-              Plex data: {plexScan.onDeck} on deck + {plexScan.library} from library scan (started, not finished).
+            <p className="text-[10px] text-shelf-muted/80 md:text-xs">
+              Plex: {plexScan.onDeck} on deck + {plexScan.library} library (started)
             </p>
           )}
-          <p className="text-[13px] leading-snug text-shelf-muted sm:text-sm sm:leading-relaxed">
-            Use <span className="text-white/90">Sync from Plex</span> to copy episode or episode-count info into
-            WatchBox’s progress note.
-          </p>
           {matches.length > 0 && plexConfigured && !loadingDeck && (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => void syncAllTvFromPlex()}
-                disabled={bulkSyncingTv || matches.every((m) => m.media.type !== "tv" || !progressNoteFromPlex(m.plex))}
-                className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20 disabled:opacity-40 sm:min-h-0 sm:py-1.5"
-              >
-                {bulkSyncingTv ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
-                Sync all TV from Plex
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => void syncAllTvFromPlex()}
+              disabled={bulkSyncingTv || matches.every((m) => m.media.type !== "tv" || !progressNoteFromPlex(m.plex))}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-cyan-500/90 hover:bg-cyan-500 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-cyan-500/25 disabled:opacity-50 transition"
+            >
+              {bulkSyncingTv ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />}
+              Sync TV
+            </button>
           )}
           {plexConfigured && loadingDeck && (
-            <div className="flex items-center gap-2 py-4 text-sm text-shelf-muted">
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-shelf-muted">
               <Loader2 size={18} className="animate-spin shrink-0" />
               Loading Plex…
             </div>
           )}
           {matches.length === 0 && !loadingDeck && plexConfigured && (
-            <p className="rounded-xl border border-dashed border-shelf-border px-3 py-5 text-center text-[13px] text-shelf-muted sm:text-sm">
-              No overlap yet — mark something <strong className="text-white/90">In progress</strong> in WatchBox and
-              watch it on Plex (with TMDB metadata) to see it here.
+            <p className="rounded-lg border border-dashed border-shelf-border px-2.5 py-3 text-center text-[11px] text-shelf-muted md:text-sm">
+              No overlap yet — mark something in progress in WatchBox and watch on Plex.
             </p>
           )}
-          <ul className="space-y-3 md:space-y-4">
+          <ul className="space-y-2 md:space-y-3">
             {matches.map(({ media, plex }) => (
               <li
                 key={media.id}
-                className="rounded-2xl border border-shelf-border bg-gradient-to-br from-shelf-card to-shelf-card/40 p-3 sm:p-4 md:p-5"
+                className="rounded-lg border border-shelf-border bg-shelf-card/50 p-2.5 md:p-4"
               >
-                <div className="flex gap-4">
+                <div className="flex gap-2 md:gap-4">
                   <MediaThumb media={media} />
-                  <div className="min-w-0 flex-1 space-y-3">
+                  <div className="min-w-0 flex-1 space-y-1.5 md:space-y-3">
                     <div>
                       <Link
                         href={media.type === "movie" ? "/movies" : "/series"}
-                        className="font-semibold text-white hover:text-shelf-accent transition line-clamp-2"
+                        className="text-sm font-semibold text-white hover:text-shelf-accent transition line-clamp-1 md:line-clamp-2"
                       >
                         {media.title}
                       </Link>
-                      <p className="text-xs text-shelf-muted mt-0.5">
-                        WatchBox: <span className="text-shelf-muted/90">{media.progressNote || "—"}</span>
+                      <p className="text-[10px] text-shelf-muted/90">
+                        {media.progressNote ? `${media.progressNote}` : "—"}
                       </p>
                     </div>
-                    <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="hidden md:grid md:grid-cols-2 gap-2 md:gap-4">
                       <div>
                         <p className="text-[10px] uppercase tracking-wide text-shelf-muted mb-1">WatchBox</p>
                         <p className="text-xs text-cyan-200/90 mb-1">In progress</p>
                       </div>
                       <div>
                         <p className="text-[10px] uppercase tracking-wide text-shelf-muted mb-1 flex items-center gap-1">
-                          <MonitorPlay size={12} /> Plex playback
+                          <MonitorPlay size={12} /> Plex
                         </p>
                         <PlexPlayback item={plex} />
                         <p className="text-xs text-shelf-muted mt-1 truncate">
@@ -579,26 +689,22 @@ export function PlexIntegrationPanel() {
                             : plex.type === "show"
                               ? "TV series"
                               : "Movie"}
-                          {plex.source === "library" && (
-                            <span className="text-amber-200/80"> · library</span>
-                          )}
                         </p>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <div className="flex gap-1 pt-1 md:pt-0">
                       <button
                         type="button"
                         onClick={() => syncFromPlex({ media, plex })}
                         disabled={syncingId === media.id || !progressNoteFromPlex(plex)}
-                        className="inline-flex min-h-[40px] items-center gap-1.5 rounded-lg bg-shelf-accent px-3 py-2 text-xs font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-40 sm:min-h-0 sm:py-1.5"
+                        className="inline-flex min-h-[32px] flex-1 items-center justify-center gap-1 rounded-lg bg-shelf-accent px-2 py-1 text-xs font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-40 md:min-h-0 md:flex-initial md:gap-1.5 md:px-3 md:py-2"
                       >
                         {syncingId === media.id ? (
-                          <Loader2 size={14} className="animate-spin" />
+                          <Loader2 size={13} className="animate-spin" />
                         ) : (
-                          <ArrowRight size={14} />
+                          <ArrowRight size={13} />
                         )}
-                        <span className="sm:hidden">Sync from Plex</span>
-                        <span className="hidden sm:inline">Sync progress from Plex</span>
+                        <span className="hidden sm:inline">Sync</span>
                       </button>
                     </div>
                   </div>
@@ -609,19 +715,14 @@ export function PlexIntegrationPanel() {
         </section>
         )}
 
-        {/* WatchBox in progress only */}
         {plexTab === "watchbox" && (
         <section className="space-y-3">
           <h2 className="sr-only">In WatchBox only</h2>
-          <p className="text-[13px] leading-snug text-shelf-muted sm:text-sm sm:leading-relaxed">
-            Marked <strong className="text-white/90">In progress</strong> here but Plex didn’t return a matching title
-            (On Deck + library scan), or TMDB couldn’t be matched.
-          </p>
           {listLoading && (
             <Loader2 className="animate-spin text-shelf-muted" size={20} />
           )}
           {!listLoading && watchBoxInProgressOnly.length === 0 && (
-            <p className="text-shelf-muted text-sm">Nothing here — you’re all synced or nothing is in progress.</p>
+            <p className="text-shelf-muted text-sm">Nothing here &mdash; you&rsquo;re all synced or nothing is in progress.</p>
           )}
           <ul className="space-y-2">
             {watchBoxInProgressOnly.map((media) => (
@@ -646,214 +747,160 @@ export function PlexIntegrationPanel() {
         </section>
         )}
 
-        {/* Plex only — split TV vs movies + add to WatchBox */}
         {plexTab === "plexonly" && (
-        <section className="space-y-5 md:space-y-8">
-          <div>
-            <h2 className="sr-only">On Plex only</h2>
-            <p className="text-[13px] leading-snug text-shelf-muted sm:text-sm sm:leading-relaxed">
-              Continue watching on Plex for titles you haven’t added to WatchBox (or TMDB didn’t match). Use{" "}
-              <span className="text-white/90">Add to WatchBox</span> when TMDB metadata is present.
+        <section className="space-y-2 md:space-y-3">
+          <h2 className="sr-only">On Plex only</h2>
+          {deckError && (
+            <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200 mb-4">
+              {deckError}
+            </div>
+          )}
+          {plexConfigured && !loadingDeck && plexOnly.length === 0 && !deckError && (
+            <p className="text-shelf-muted text-sm">
+              Nothing here &mdash; everything Plex reported is already in WatchBox, or there&rsquo;s nothing in progress on Plex.
             </p>
-            {deckError && (
-              <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200 mb-4">
-                {deckError}
-              </div>
-            )}
-            {plexConfigured && !loadingDeck && plexOnly.length === 0 && !deckError && (
-              <p className="text-shelf-muted text-sm">
-                Nothing here — everything Plex reported is already in WatchBox, or there’s nothing in progress on Plex.
-              </p>
-            )}
-          </div>
+          )}
 
-          {plexOnly.length > 0 && (
-            <>
-              <div
-                className="mb-2 flex flex-col gap-2 md:mb-4 md:flex-row md:flex-wrap md:gap-1.5 md:rounded-xl md:border md:border-shelf-border md:bg-shelf-bg/50 md:p-1.5"
-                role="tablist"
-                aria-label="Plex only: TV or movies"
-              >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={plexOnlyKind === "tv"}
-                  onClick={() => setPlexOnlyKind("tv")}
-                  className={`flex min-h-[44px] w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium transition md:min-h-0 md:min-w-0 md:flex-1 md:justify-center md:rounded-lg md:border-0 md:py-2 md:text-xs lg:text-sm ${
-                    plexOnlyKind === "tv"
-                      ? "border-[#8b5cf6]/50 bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/20 md:border-0 md:shadow-md md:shadow-[#8b5cf6]/25"
-                      : "border-shelf-border bg-shelf-card/30 text-shelf-muted hover:border-shelf-border hover:bg-shelf-card hover:text-white md:border-0 md:bg-transparent md:hover:bg-shelf-card"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Tv size={18} className="shrink-0 opacity-90 md:h-4 md:w-4" aria-hidden />
-                    <span>TV series</span>
-                  </span>
-                  <span
-                    className={`tabular-nums ${plexOnlyKind === "tv" ? "text-white/90" : "text-shelf-muted"}`}
-                  >
-                    {plexOnlyTv.length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={plexOnlyKind === "movies"}
-                  onClick={() => setPlexOnlyKind("movies")}
-                  className={`flex min-h-[44px] w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium transition md:min-h-0 md:min-w-0 md:flex-1 md:justify-center md:rounded-lg md:border-0 md:py-2 md:text-xs lg:text-sm ${
-                    plexOnlyKind === "movies"
-                      ? "border-[#8b5cf6]/50 bg-[#8b5cf6] text-white shadow-md shadow-[#8b5cf6]/20 md:border-0 md:shadow-md md:shadow-[#8b5cf6]/25"
-                      : "border-shelf-border bg-shelf-card/30 text-shelf-muted hover:border-shelf-border hover:bg-shelf-card hover:text-white md:border-0 md:bg-transparent md:hover:bg-shelf-card"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Film size={18} className="shrink-0 opacity-90 md:h-4 md:w-4" aria-hidden />
-                    <span>Movies</span>
-                  </span>
-                  <span
-                    className={`tabular-nums ${plexOnlyKind === "movies" ? "text-white/90" : "text-shelf-muted"}`}
-                  >
-                    {plexOnlyMovies.length}
-                  </span>
-                </button>
-              </div>
-
-              {plexOnlyKind === "tv" && (
-              <div>
-                {plexOnlyTv.length === 0 ? (
-                  <p className="text-sm text-shelf-muted">No TV items in this list.</p>
-                ) : (
-                  <ul className="space-y-3">
-                    {plexOnlyTv.map((item) => {
-                      const rowKey = `${item.ratingKey}-${item.source ?? "x"}`;
-                      const sub =
-                        item.type === "episode"
-                          ? `${item.grandparentTitle ?? "Show"} · S${(item.parentIndex ?? 0) + 1} E${item.index ?? "—"}`
-                          : item.type === "show"
-                            ? "TV series"
-                            : item.title;
-                      const canAdd =
-                        item.tmdbId != null && item.tmdbId > 0 && item.tmdbType === "tv";
-                      return (
-                        <li
-                          key={rowKey}
-                          className="rounded-xl border border-shelf-border bg-shelf-card/30 p-4 flex flex-col sm:flex-row gap-3 sm:items-start"
-                        >
-                          <div className="flex gap-3 min-w-0 flex-1">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-shelf-bg text-shelf-muted">
-                              <Tv size={20} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-white truncate">{item.title}</p>
-                              <p className="text-sm text-shelf-muted truncate">
-                                {sub}
-                                {item.source === "library" && (
-                                  <span className="text-amber-200/80"> · library</span>
-                                )}
-                              </p>
-                              <div className="mt-2">
-                                <PlexPlayback item={item} />
-                              </div>
-                            </div>
+          {plexOnlyKind === "tv" && (
+            <div>
+              {plexOnlyTv.length === 0 ? (
+                <p className="text-sm text-shelf-muted">No TV items in this list.</p>
+              ) : (
+                <ul className="space-y-2 md:space-y-3">
+                  {plexOnlyTv.map((item) => {
+                    const rowKey = plexOnDeckRowKey(item);
+                    const isEpisode = item.type === "episode";
+                    const seriesName = item.grandparentTitle || item.title;
+                    const episodeInfo = isEpisode
+                      ? `${item.grandparentTitle || "Show"} · S${(item.parentIndex ?? 0) + 1} E${item.index ?? "—"}`
+                      : "TV";
+                    const canAdd =
+                      item.tmdbId != null && item.tmdbId > 0 && item.tmdbType === "tv";
+                    return (
+                      <li
+                        key={rowKey}
+                        className="rounded-lg border border-shelf-border bg-shelf-card/50 p-2.5 flex gap-2 md:gap-3 md:p-3"
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-shelf-bg text-shelf-muted md:h-10 md:w-10">
+                          <Tv size={18} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-white truncate text-sm">{seriesName}</p>
+                          <p className="text-[10px] text-shelf-muted truncate">
+                            {episodeInfo}
+                            {item.source === "library" && (
+                              <span className="text-amber-200/80"> · lib</span>
+                            )}
+                          </p>
+                          <div className="mt-1 hidden md:block">
+                            <PlexPlayback item={item} />
                           </div>
-                          <div className="flex flex-col gap-2 shrink-0 sm:items-end sm:pt-0.5">
+                        </div>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => void addPlexOnlyToWatchBox(item)}
+                            disabled={!canAdd || addingKey === rowKey}
+                            className="inline-flex items-center justify-center gap-0.5 rounded-lg border border-shelf-border bg-shelf-card px-2 py-1.5 text-xs font-medium text-white hover:bg-shelf-card/80 disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap md:gap-1.5 md:px-3 md:py-2"
+                            title={canAdd ? "Add to WatchBox" : "No TMDB match"}
+                          >
+                            {addingKey === rowKey ? (
+                              <Loader2 size={13} className="animate-spin md:h-4 md:w-4" />
+                            ) : (
+                              <Plus size={13} className="md:h-4 md:w-4" />
+                            )}
+                            <span className="hidden sm:inline">Add</span>
+                          </button>
+                          {!canAdd && (
                             <button
                               type="button"
-                              onClick={() => void addPlexOnlyToWatchBox(item)}
-                              disabled={!canAdd || addingKey === rowKey}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-shelf-border bg-shelf-card px-3 py-2 text-xs font-medium text-white hover:bg-shelf-card/80 disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap"
+                              onClick={() => setMatchingItem(item)}
+                              className="inline-flex items-center justify-center text-[10px] text-shelf-accent hover:underline whitespace-nowrap md:text-xs"
                             >
-                              {addingKey === rowKey ? (
-                                <Loader2 size={14} className="animate-spin" />
-                              ) : (
-                                <Plus size={14} />
-                              )}
-                              Add to WatchBox
+                              Find
                             </button>
-                            {!canAdd && (
-                              <p className="text-[10px] text-shelf-muted max-w-[12rem] sm:text-right">
-                                TMDB missing —{" "}
-                                <Link href="/discover" className="text-shelf-accent hover:underline">
-                                  Discover
-                                </Link>
-                              </p>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
+            </div>
+          )}
 
-              {plexOnlyKind === "movies" && (
-              <div>
-                {plexOnlyMovies.length === 0 ? (
-                  <p className="text-sm text-shelf-muted">No movies in this list.</p>
-                ) : (
-                  <ul className="space-y-3">
-                    {plexOnlyMovies.map((item) => {
-                      const rowKey = `${item.ratingKey}-${item.source ?? "x"}`;
-                      const canAdd =
-                        item.tmdbId != null && item.tmdbId > 0 && item.tmdbType === "movie";
-                      return (
-                        <li
-                          key={rowKey}
-                          className="rounded-xl border border-shelf-border bg-shelf-card/30 p-4 flex flex-col sm:flex-row gap-3 sm:items-start"
-                        >
-                          <div className="flex gap-3 min-w-0 flex-1">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-shelf-bg text-shelf-muted">
-                              <Film size={20} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-medium text-white truncate">{item.title}</p>
-                              <p className="text-sm text-shelf-muted truncate">
-                                Movie
-                                {item.source === "library" && (
-                                  <span className="text-amber-200/80"> · library</span>
-                                )}
-                              </p>
-                              <div className="mt-2">
-                                <PlexPlayback item={item} />
-                              </div>
-                            </div>
+          {plexOnlyKind === "movies" && (
+            <div>
+              {plexOnlyMovies.length === 0 ? (
+                <p className="text-sm text-shelf-muted">No movies in this list.</p>
+              ) : (
+                <ul className="space-y-2 md:space-y-3">
+                  {plexOnlyMovies.map((item) => {
+                    const rowKey = plexOnDeckRowKey(item);
+                    const canAdd =
+                      item.tmdbId != null && item.tmdbId > 0 && item.tmdbType === "movie";
+                    return (
+                      <li
+                        key={rowKey}
+                        className="rounded-lg border border-shelf-border bg-shelf-card/50 p-2.5 flex gap-2 md:gap-3 md:p-3"
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-shelf-bg text-shelf-muted md:h-10 md:w-10">
+                          <Film size={18} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-white truncate text-sm">{item.title}</p>
+                          <p className="text-[10px] text-shelf-muted truncate">
+                            Movie
+                            {item.source === "library" && (
+                              <span className="text-amber-200/80"> · lib</span>
+                            )}
+                          </p>
+                          <div className="mt-1 hidden md:block">
+                            <PlexPlayback item={item} />
                           </div>
-                          <div className="flex flex-col gap-2 shrink-0 sm:items-end sm:pt-0.5">
+                        </div>
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => void addPlexOnlyToWatchBox(item)}
+                            disabled={!canAdd || addingKey === rowKey}
+                            className="inline-flex items-center justify-center gap-0.5 rounded-lg border border-shelf-border bg-shelf-card px-2 py-1.5 text-xs font-medium text-white hover:bg-shelf-card/80 disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap md:gap-1.5 md:px-3 md:py-2"
+                            title={canAdd ? "Add to WatchBox" : "No TMDB match"}
+                          >
+                            {addingKey === rowKey ? (
+                              <Loader2 size={13} className="animate-spin md:h-4 md:w-4" />
+                            ) : (
+                              <Plus size={13} className="md:h-4 md:w-4" />
+                            )}
+                            <span className="hidden sm:inline">Add</span>
+                          </button>
+                          {!canAdd && (
                             <button
                               type="button"
-                              onClick={() => void addPlexOnlyToWatchBox(item)}
-                              disabled={!canAdd || addingKey === rowKey}
-                              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-shelf-border bg-shelf-card px-3 py-2 text-xs font-medium text-white hover:bg-shelf-card/80 disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap"
+                              onClick={() => setMatchingItem(item)}
+                              className="inline-flex items-center justify-center text-[10px] text-shelf-accent hover:underline whitespace-nowrap md:text-xs"
                             >
-                              {addingKey === rowKey ? (
-                                <Loader2 size={14} className="animate-spin" />
-                              ) : (
-                                <Plus size={14} />
-                              )}
-                              Add to WatchBox
+                              Find
                             </button>
-                            {!canAdd && (
-                              <p className="text-[10px] text-shelf-muted max-w-[12rem] sm:text-right">
-                                TMDB missing —{" "}
-                                <Link href="/discover" className="text-shelf-accent hover:underline">
-                                  Discover
-                                </Link>
-                              </p>
-                            )}
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
-            </>
+            </div>
           )}
         </section>
         )}
       </div>
+      {matchingItem && (
+        <PlexTmdbMatchModal
+          item={matchingItem}
+          onMatch={handleTmdbMatch}
+          onClose={() => setMatchingItem(null)}
+        />
+      )}
     </div>
   );
 }

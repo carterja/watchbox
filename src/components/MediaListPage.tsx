@@ -168,7 +168,6 @@ export function MediaListPage({
             items={filtered}
             renderItem={renderItem}
             containerClass={containerClass}
-            isList={isList}
           />
         )}
       </div>

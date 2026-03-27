@@ -222,12 +222,3 @@ body {
   animation-duration: 0.28s;
 }
 
-/* What next — Swiper carousel (dark theme pagination) */
-.watching-swiper .swiper-pagination-bullet {
-  background: rgba(139, 92, 246, 0.35);
-  opacity: 1;
-}
-.watching-swiper .swiper-pagination-bullet-active {
-  background: #8b5cf6;
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
-}

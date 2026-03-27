@@ -10,7 +10,26 @@ export async function GET(request: NextRequest) {
   const typeFilter = typeParam === "movie" || typeParam === "tv" ? typeParam : "all";
   try {
     const results = await searchTmdb(q.trim(), typeFilter);
-    return NextResponse.json(results, {
+    const transformed = results.map((result) => {
+      if (result.type === "movie") {
+        return {
+          id: result.data.id,
+          title: result.data.title,
+          posterPath: result.data.poster_path ?? null,
+          releaseYear: result.data.release_date?.slice(0, 4),
+          mediaType: "movie" as const,
+        };
+      } else {
+        return {
+          id: result.data.id,
+          title: result.data.name,
+          posterPath: result.data.poster_path ?? null,
+          releaseYear: result.data.first_air_date?.slice(0, 4),
+          mediaType: "tv" as const,
+        };
+      }
+    });
+    return NextResponse.json(transformed, {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
       },

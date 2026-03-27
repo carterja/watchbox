@@ -95,7 +95,7 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
                 {media.type === "movie" ? "Movie" : "Series"}
               </span>
             )}
-            <h3 className="font-semibold text-white truncate">{media.title}</h3>
+            <h3 className="font-semibold text-white line-clamp-2 leading-snug break-words">{media.title}</h3>
             <div className="flex items-center gap-2 text-xs text-shelf-muted">
               {year && <span>{year}</span>}
               {runtimeStr && <span>{runtimeStr}</span>}
