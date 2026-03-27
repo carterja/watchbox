@@ -24,6 +24,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@prisma/client": "6.19.2",
+    "@tanstack/react-virtual": "^3.13.23",
     "fast-xml-parser": "^5.5.9",
     "framer-motion": "^12.38.0",
     "lucide-react": "^0.460.0",

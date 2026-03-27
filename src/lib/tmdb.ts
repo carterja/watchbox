@@ -2,6 +2,8 @@ import { TMDB_PROVIDER_TO_SERVICE } from "@/lib/constants";
 
 const TMDB_BASE = "https://api.themoviedb.org/3";
 const IMAGE_BASE = "https://image.tmdb.org/t/p";
+const MAX_RETRIES = 3;
+const INITIAL_BACKOFF_MS = 1000;
 
 function getApiKey(): string {
   const key = process.env.TMDB_API_KEY?.trim();
@@ -9,18 +11,32 @@ function getApiKey(): string {
   return key;
 }
 
-/** Shared fetch helper for TMDB endpoints — handles api_key injection and error checking. */
+/** Shared fetch helper for TMDB endpoints — handles api_key injection, error checking, and 429 rate-limit retries. */
 async function tmdbGet<T = Record<string, unknown>>(
   path: string,
-  params?: Record<string, string>
+  params?: Record<string, string>,
+  attempt = 0
 ): Promise<T> {
   const url = new URL(`${TMDB_BASE}${path}`);
   url.searchParams.set("api_key", getApiKey());
   if (params) {
     for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   }
+  
   const res = await fetch(url);
   const json = await res.json();
+  
+  // Handle 429 rate limit with exponential backoff
+  if (res.status === 429 && attempt < MAX_RETRIES) {
+    const retryAfter = res.headers.get("retry-after");
+    const waitMs = retryAfter 
+      ? parseInt(retryAfter) * 1000 
+      : INITIAL_BACKOFF_MS * Math.pow(2, attempt);
+    
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+    return tmdbGet<T>(path, params, attempt + 1);
+  }
+  
   if (json.status_code) {
     throw new Error(json.status_message || `TMDB error ${json.status_code}`);
   }

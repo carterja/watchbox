@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Image from "next/image";
 import { X, Search, Film, Tv, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -148,18 +148,46 @@ export function AddMediaModal({ onClose, onAdded, defaultStatus, typeFilter }: P
     });
   };
 
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  // Handle Escape key to close
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [onClose]);
+
+  // Focus management: focus search input on mount
+  useEffect(() => {
+    const searchInput = dialogRef.current?.querySelector('input[type="text"]') as HTMLInputElement | null;
+    searchInput?.focus();
+  }, []);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+      onClick={onClose}
+      role="presentation"
+    >
       <div
+        ref={dialogRef}
         className="w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-2xl border border-shelf-border bg-shelf-bg shadow-2xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="add-media-title"
       >
         <div className="flex items-center justify-between p-4 border-b border-shelf-border">
-          <h2 className="text-xl font-semibold">Add movie or TV show</h2>
+          <h2 id="add-media-title" className="text-xl font-semibold">Add movie or TV show</h2>
           <button
             type="button"
             onClick={onClose}
             className="rounded-lg p-2 text-shelf-muted hover:bg-shelf-card hover:text-white"
+            aria-label="Close dialog"
           >
             <X size={20} />
           </button>
@@ -225,6 +253,9 @@ export function AddMediaModal({ onClose, onAdded, defaultStatus, typeFilter }: P
                             alt={title}
                             fill
                             className="object-cover"
+                            sizes="48px"
+                            loading="lazy"
+                            quality={75}
                           />
                         ) : (
                           <div className="absolute inset-0 flex items-center justify-center text-shelf-muted">

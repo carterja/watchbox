@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { MediaCard } from "@/components/MediaCard";
+import { VirtualizedMediaGrid } from "@/components/VirtualizedMediaGrid";
 import { type StatusFilterValue } from "@/components/UnifiedCategoryBar";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { MediaListPageHeader } from "@/components/MediaListPageHeader";
@@ -34,13 +36,36 @@ export function MediaListPage({
   showTypeTag = false,
   emptyNoun = "titles",
 }: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { list, loading, refetch, optimisticReorder } = useMediaList();
   const { handleDelete, handleUpdate } = useMediaMutations();
-  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>("all");
-  const [streamingServiceFilter, setStreamingServiceFilter] = useState<
-    string | null
-  >(null);
-  const [viewerFilter, setViewerFilter] = useState<Viewer | null>(null);
+  
+  // Initialize from URL params, fallback to defaults
+  const [statusFilter, setStatusFilter] = useState<StatusFilterValue>(() => {
+    const param = searchParams.get("status");
+    return (param as StatusFilterValue) || "all";
+  });
+  const [streamingServiceFilter, setStreamingServiceFilter] = useState<string | null>(() => {
+    return searchParams.get("service") || null;
+  });
+  const [viewerFilter, setViewerFilter] = useState<Viewer | null>(() => {
+    const param = searchParams.get("viewer");
+    return (param as Viewer) || null;
+  });
+
+  // Sync filters to URL on change
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (streamingServiceFilter) params.set("service", streamingServiceFilter);
+    if (viewerFilter) params.set("viewer", viewerFilter);
+    
+    const query = params.toString();
+    const url = query ? `?${query}` : window.location.pathname;
+    router.replace(url, { scroll: false });
+  }, [statusFilter, streamingServiceFilter, viewerFilter, router]);
+
   const { reorderMode, setReorderMode } = useReorderMode();
   const { displayMode } = useDisplayMode();
   const containerClass = getMediaListContainerClass(displayMode);
@@ -74,14 +99,14 @@ export function MediaListPage({
   }, [typeFiltered, statusFilter, streamingServiceFilter, viewerFilter]);
 
   const renderItem = useCallback(
-    (m: Media, isReordering = false) => (
+    (m: Media) => (
       <MediaCard
         media={m}
         onDelete={handleDelete}
         onUpdate={handleUpdate}
         showTypeTag={showTypeTag}
         variant={isList ? "list" : "card"}
-        reorderMode={isReordering}
+        reorderMode={false}
       />
     ),
     [handleDelete, handleUpdate, showTypeTag, isList]
@@ -139,18 +164,12 @@ export function MediaListPage({
             renderItem={renderItem}
           />
         ) : (
-          <div className={containerClass}>
-            {filtered.map((m) => (
-              <MediaCard
-                key={m.id}
-                media={m}
-                onDelete={handleDelete}
-                onUpdate={handleUpdate}
-                showTypeTag={showTypeTag}
-                variant={isList ? "list" : "card"}
-              />
-            ))}
-          </div>
+          <VirtualizedMediaGrid
+            items={filtered}
+            renderItem={renderItem}
+            containerClass={containerClass}
+            isList={isList}
+          />
         )}
       </div>
     </div>

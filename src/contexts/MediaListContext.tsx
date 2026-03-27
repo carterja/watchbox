@@ -9,11 +9,13 @@ import {
   useMemo,
   type ReactNode,
 } from "react";
+import { toast } from "sonner";
 import type { Media, MediaUpdatePatch } from "@/types/media";
 
 type MediaListContextValue = {
   list: Media[];
   loading: boolean;
+  error: string | null;
   refetch: () => Promise<void>;
   optimisticUpdate: (id: string, patch: MediaUpdatePatch) => void;
   optimisticRemove: (id: string) => void;
@@ -29,11 +31,22 @@ const MediaListContext = createContext<MediaListContextValue | null>(null);
 export function MediaListProvider({ children }: { children: ReactNode }) {
   const [list, setList] = useState<Media[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const refetch = useCallback(async () => {
-    const res = await fetch("/api/media");
-    const data = await res.json();
-    setList(Array.isArray(data) ? data : []);
+    try {
+      const res = await fetch("/api/media");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(typeof data.error === "string" ? data.error : "Failed to load library");
+      }
+      setList(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not load library";
+      setError(message);
+      toast.error(message);
+    }
   }, []);
 
   const optimisticUpdate = useCallback((id: string, patch: MediaUpdatePatch) => {
@@ -79,6 +92,7 @@ export function MediaListProvider({ children }: { children: ReactNode }) {
     () => ({
       list,
       loading,
+      error,
       refetch,
       optimisticUpdate,
       optimisticRemove,
@@ -86,7 +100,7 @@ export function MediaListProvider({ children }: { children: ReactNode }) {
       optimisticMoveToFront,
       optimisticReorder,
     }),
-    [list, loading, refetch, optimisticUpdate, optimisticRemove, optimisticAdd, optimisticMoveToFront, optimisticReorder]
+    [list, loading, error, refetch, optimisticUpdate, optimisticRemove, optimisticAdd, optimisticMoveToFront, optimisticReorder]
   );
 
   return (
@@ -102,6 +116,7 @@ export function useMediaList(): MediaListContextValue {
     return {
       list: [],
       loading: false,
+      error: null,
       refetch: async () => {},
       optimisticUpdate: () => {},
       optimisticRemove: () => {},

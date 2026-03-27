@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getTmdbPopularMovies, getTmdbPopularTv, getTmdbTrending, getTmdbNowPlaying, getTmdbTopMovies, getTmdbTopTv, getTmdbAiringToday } from "@/lib/tmdb";
 
@@ -27,8 +28,9 @@ export async function GET(request: NextRequest) {
       airingToday,
     };
 
-    // Generate ETag for cache validation
-    const etag = `"lists-${Date.now()}"`;
+    // Generate ETag based on content hash (not timestamp, so cache can validate correctly)
+    const contentHash = crypto.createHash("sha256").update(JSON.stringify(data)).digest("hex");
+    const etag = `"lists-${contentHash.slice(0, 8)}"`;
     
     if (ifNoneMatch === etag) {
       return new NextResponse(null, { status: 304 });

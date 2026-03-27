@@ -1,16 +1,25 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Loader2, Settings, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useMediaList } from "@/contexts/MediaListContext";
 import { useWhatNextCache } from "@/contexts/WhatNextCacheContext";
 import type { WhatNextRow } from "@/lib/whatNext";
-import { WatchingNextCarousel } from "@/components/WatchingNextCarousel";
 import { FilterBar } from "@/components/FilterBar";
 import { MobileFiltersPanel } from "@/components/MobileFiltersPanel";
 import { Tooltip } from "@/components/Tooltip";
+
+const WatchingNextCarousel = dynamic(() => import("@/components/WatchingNextCarousel").then((m) => ({ default: m.WatchingNextCarousel })), {
+  ssr: false,
+  loading: () => (
+    <div className="flex justify-center py-12">
+      <Loader2 size={32} className="animate-spin text-cyan-400/90" />
+    </div>
+  ),
+});
 
 export default function WatchingPage() {
   const { list, loading: listLoading, refetch, optimisticUpdate, optimisticMoveToFront } = useMediaList();

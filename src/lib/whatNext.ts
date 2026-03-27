@@ -4,6 +4,35 @@ import type { SeasonProgressItem } from "@/types/media";
 
 export type EpisodeRef = { season: number; episode: number };
 
+// Simple in-memory cache for TMDB TV season details (cleared on process restart)
+const seasonCache = new Map<string, Awaited<ReturnType<typeof getTmdbTvSeason>>>();
+const detailsCache = new Map<number, Awaited<ReturnType<typeof getTmdbTvDetails>>>();
+
+function getCacheKey(tmdbId: number, season: number): string {
+  return `${tmdbId}-s${season}`;
+}
+
+/** Get TMDB TV season, with in-memory caching to avoid redundant API calls. */
+async function getTmdbTvSeasonCached(tmdbId: number, season: number) {
+  const key = getCacheKey(tmdbId, season);
+  if (seasonCache.has(key)) {
+    return seasonCache.get(key);
+  }
+  const result = await getTmdbTvSeason(tmdbId, season);
+  seasonCache.set(key, result);
+  return result;
+}
+
+/** Get TMDB TV details, with in-memory caching. */
+async function getTmdbTvDetailsCached(tmdbId: number) {
+  if (detailsCache.has(tmdbId)) {
+    return detailsCache.get(tmdbId);
+  }
+  const result = await getTmdbTvDetails(tmdbId);
+  detailsCache.set(tmdbId, result);
+  return result;
+}
+
 export type NextEpisodeInfo = EpisodeRef & {
   name: string;
   airDate: string | null;
@@ -94,13 +123,13 @@ export async function lastFinishedFromSeasonProgress(
     const st = map.get(s) ?? "not_started";
     if (st === "completed") continue;
     if (s === 1) return null;
-    const prev = await getTmdbTvSeason(tmdbId, s - 1);
+    const prev = await getTmdbTvSeasonCached(tmdbId, s - 1);
     const cnt = prev?.episode_count ?? 0;
     if (cnt < 1) return null;
     return { season: s - 1, episode: cnt };
   }
 
-  const lastSeason = await getTmdbTvSeason(tmdbId, numberOfSeasons);
+  const lastSeason = await getTmdbTvSeasonCached(tmdbId, numberOfSeasons);
   const cnt = lastSeason?.episode_count ?? 0;
   if (cnt < 1) return null;
   return { season: numberOfSeasons, episode: cnt };
@@ -115,13 +144,13 @@ export async function nextEpisodeAfter(
   if (numberOfSeasons < 1) return null;
 
   if (last === null) {
-    const s1 = await getTmdbTvSeason(tmdbId, 1);
+    const s1 = await getTmdbTvSeasonCached(tmdbId, 1);
     if (!s1?.episodes.length) return null;
     const e = s1.episodes[0];
     return nextInfoFromTmdbEpisode(1, e);
   }
 
-  const cur = await getTmdbTvSeason(tmdbId, last.season);
+  const cur = await getTmdbTvSeasonCached(tmdbId, last.season);
   if (!cur) return null;
 
   if (last.episode < cur.episode_count) {
@@ -131,7 +160,7 @@ export async function nextEpisodeAfter(
   }
 
   if (last.season < numberOfSeasons) {
-    const nextS = await getTmdbTvSeason(tmdbId, last.season + 1);
+    const nextS = await getTmdbTvSeasonCached(tmdbId, last.season + 1);
     if (!nextS?.episodes.length) return null;
     const e = nextS.episodes[0];
     return nextInfoFromTmdbEpisode(last.season + 1, e);

@@ -2,14 +2,14 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   eslint: {
-    // Avoid Docker/CI build failures due to lint; run `npm run lint` separately.
-    ignoreDuringBuilds: true,
+    // Lint errors will fail CI builds; run `npm run lint` to check locally
+    ignoreDuringBuilds: false,
   },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "image.tmdb.org", pathname: "/t/p/**" },
     ],
-    formats: ["image/webp"],
+    formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 86400, // 24 hours
     deviceSizes: [384, 640, 828, 1080],
     imageSizes: [48, 96, 128, 256],
