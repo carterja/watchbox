@@ -13,8 +13,9 @@ export function plexItemMatchKey(item: PlexOnDeckItem): string | null {
 
 /** Human-readable progress from Plex for WatchBox `progressNote`. */
 export function progressNoteFromPlex(item: PlexOnDeckItem): string | null {
+  // Plex `parentIndex` is already the season number (1-based; 0 = specials). Do not add 1.
   if (item.type === "episode" && item.parentIndex != null && item.index != null) {
-    return `S${item.parentIndex + 1} E${item.index}`;
+    return `S${item.parentIndex} E${item.index}`;
   }
   if (
     item.type === "show" &&

@@ -7,6 +7,10 @@
  *
  * Tests that genuinely require a TMDB key (search, sync, image lookup) are guarded
  * by a `tmdbAvailable` flag derived from GET /api/health.
+ *
+ * Plex webhook tests POST multipart `payload` like a real Plex server; when
+ * `PLEX_WEBHOOK_SECRET` is set (e.g. in `.env.local`), `playwright.config.ts` passes
+ * it to the webServer so `plexWebhookPath()` can add `?secret=` to match.
  */
 import { test, expect } from "@playwright/test";
 
@@ -38,7 +42,20 @@ const TEST_TV = {
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-type MediaItem = { id: string; tmdbId: number; type: string; title: string; status: string; streamingService: string | null; viewer: string | null; sortOrder: number; manualLastWatchedSeason: number | null; manualLastWatchedEpisode: number | null };
+type MediaItem = {
+  id: string;
+  tmdbId: number;
+  type: string;
+  title: string;
+  status: string;
+  streamingService: string | null;
+  viewer: string | null;
+  sortOrder: number;
+  manualLastWatchedSeason: number | null;
+  manualLastWatchedEpisode: number | null;
+  progressNote?: string | null;
+  seasonProgress?: { season: number; status: string }[] | null;
+};
 
 async function createOrFind(
   request: Parameters<Parameters<typeof test>[1]>[0]["request"],
@@ -65,6 +82,23 @@ async function cleanup(
       .filter((id): id is string => !!id)
       .map((id) => request.delete(`/api/media/${id}`))
   );
+}
+
+/** Matches route + optional ?secret= for POST /api/plex/webhook (server must get same env). */
+function plexWebhookPath(): string {
+  const s = process.env.PLEX_WEBHOOK_SECRET?.trim();
+  return s
+    ? `/api/plex/webhook?secret=${encodeURIComponent(s)}`
+    : "/api/plex/webhook";
+}
+
+async function postPlexWebhook(
+  request: Parameters<Parameters<typeof test>[1]>[0]["request"],
+  payload: Record<string, unknown>
+) {
+  return request.post(plexWebhookPath(), {
+    multipart: { payload: JSON.stringify(payload) },
+  });
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────────
@@ -330,6 +364,91 @@ test.describe("API: what-next", () => {
     } finally {
       await cleanup(request, yetToStartTv.id);
     }
+  });
+});
+
+test.describe("API: Plex webhook", () => {
+  let webhookMovieId = "";
+  let webhookTvId = "";
+
+  test.afterAll(async ({ request }) => {
+    await cleanup(request, webhookMovieId, webhookTvId);
+  });
+
+  test("POST ignored for non-scrobble events", async ({ request }) => {
+    const res = await postPlexWebhook(request, {
+      event: "media.play",
+      Metadata: { type: "movie", title: "x", Guid: [{ id: "tmdb://1" }] },
+    });
+    expect(res.ok()).toBeTruthy();
+    const body = (await res.json()) as { ignored?: boolean };
+    expect(body.ignored).toBe(true);
+  });
+
+  test("POST media.scrobble movie → finishes linked media + progress note", async ({ request }) => {
+    const movie = await createOrFind(request, TEST_MOVIE);
+    webhookMovieId = movie.id;
+
+    const res = await postPlexWebhook(request, {
+      event: "media.scrobble",
+      Metadata: {
+        type: "movie",
+        title: TEST_MOVIE.title,
+        Guid: [{ id: `tmdb://${TEST_MOVIE.tmdbId}` }],
+      },
+    });
+    expect(res.ok()).toBeTruthy();
+    const wb = (await res.json()) as { recorded?: boolean };
+    expect(wb.recorded).toBe(true);
+
+    const list = (await (await request.get("/api/media")).json()) as MediaItem[];
+    const updated = list.find((m) => m.id === webhookMovieId);
+    expect(updated).toBeDefined();
+    expect(updated!.status).toBe("finished");
+    expect(updated!.progressNote).toBe("Watched on Plex");
+  });
+
+  test("POST media.scrobble episode → TV manual + progress + season grid", async ({ request }) => {
+    const tv = await createOrFind(request, { ...TEST_TV, status: "yet_to_start" });
+    webhookTvId = tv.id;
+
+    const res = await postPlexWebhook(request, {
+      event: "media.scrobble",
+      Metadata: {
+        type: "episode",
+        title: "Pilot",
+        grandparentTitle: TEST_TV.title,
+        parentIndex: 2,
+        index: 5,
+        Guid: [{ id: `tmdb://${TEST_TV.tmdbId}` }],
+      },
+    });
+    expect(res.ok()).toBeTruthy();
+
+    const list = (await (await request.get("/api/media")).json()) as MediaItem[];
+    const updated = list.find((m) => m.id === webhookTvId);
+    expect(updated).toBeDefined();
+    expect(updated!.status).toBe("in_progress");
+    expect(updated!.manualLastWatchedSeason).toBe(2);
+    expect(updated!.manualLastWatchedEpisode).toBe(5);
+    expect(updated!.progressNote).toBe("S2 E5");
+    const sp = updated!.seasonProgress ?? [];
+    expect(sp.find((s) => s.season === 1)?.status).toBe("completed");
+    expect(sp.find((s) => s.season === 2)?.status).toBe("in_progress");
+  });
+
+  test("POST rejects wrong secret when PLEX_WEBHOOK_SECRET is set", async ({ request }) => {
+    const secret = process.env.PLEX_WEBHOOK_SECRET?.trim();
+    test.skip(!secret, "PLEX_WEBHOOK_SECRET not set");
+    const res = await request.post("/api/plex/webhook?secret=wrong", {
+      multipart: {
+        payload: JSON.stringify({
+          event: "media.scrobble",
+          Metadata: { type: "movie", Guid: [{ id: "tmdb://1" }] },
+        }),
+      },
+    });
+    expect(res.status()).toBe(401);
   });
 });
 

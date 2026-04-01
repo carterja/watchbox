@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { backfillSeasonProgressAfterEpisodeWatched } from "@/lib/seasonProgress";
+import {
+  backfillSeasonProgressAfterEpisodeWatched,
+  mergeManualLastWatchedWithPlex,
+} from "@/lib/seasonProgress";
 
 describe("backfillSeasonProgressAfterEpisodeWatched", () => {
   it("marks seasons before current as completed and current as in_progress", () => {
@@ -35,5 +38,20 @@ describe("backfillSeasonProgressAfterEpisodeWatched", () => {
   it("returns null for invalid season/episode", () => {
     expect(backfillSeasonProgressAfterEpisodeWatched(null, 10, 0, 1)).toBeNull();
     expect(backfillSeasonProgressAfterEpisodeWatched(null, 10, 1, 0)).toBeNull();
+  });
+});
+
+describe("mergeManualLastWatchedWithPlex", () => {
+  it("uses Plex when manual is null", () => {
+    expect(mergeManualLastWatchedWithPlex(null, null, 2, 5)).toEqual({ season: 2, episode: 5 });
+  });
+
+  it("keeps the lexicographically later episode", () => {
+    expect(mergeManualLastWatchedWithPlex(3, 10, 2, 1)).toEqual({ season: 3, episode: 10 });
+    expect(mergeManualLastWatchedWithPlex(2, 1, 3, 1)).toEqual({ season: 3, episode: 1 });
+  });
+
+  it("returns manual when Plex season is invalid for merge", () => {
+    expect(mergeManualLastWatchedWithPlex(1, 1, 0, 5)).toEqual({ season: 1, episode: 1 });
   });
 });

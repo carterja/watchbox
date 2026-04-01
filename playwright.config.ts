@@ -43,6 +43,10 @@ export default defineConfig({
           ...(process.env.TMDB_API_KEY?.trim()
             ? { TMDB_API_KEY: process.env.TMDB_API_KEY }
             : {}),
+          // Webhook e2e must use the same secret as tests (when set in .env.local).
+          ...(process.env.PLEX_WEBHOOK_SECRET?.trim()
+            ? { PLEX_WEBHOOK_SECRET: process.env.PLEX_WEBHOOK_SECRET }
+            : {}),
         },
       },
 });

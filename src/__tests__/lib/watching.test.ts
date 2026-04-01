@@ -68,7 +68,7 @@ describe("progressNoteFromPlex", () => {
       parentIndex: 2,
       index: 4,
     };
-    expect(progressNoteFromPlex(p)).toBe("S3 E4");
+    expect(progressNoteFromPlex(p)).toBe("S2 E4");
   });
 });
 

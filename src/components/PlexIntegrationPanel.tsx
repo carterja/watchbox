@@ -685,7 +685,7 @@ export function PlexIntegrationPanel() {
                         <PlexPlayback item={plex} />
                         <p className="text-xs text-shelf-muted mt-1 truncate">
                           {plex.type === "episode"
-                            ? `${plex.grandparentTitle ?? ""} · S${(plex.parentIndex ?? 0) + 1} E${plex.index ?? "—"}`
+                            ? `${plex.grandparentTitle ?? ""} · S${plex.parentIndex ?? "—"} E${plex.index ?? "—"}`
                             : plex.type === "show"
                               ? "TV series"
                               : "Movie"}
@@ -772,7 +772,7 @@ export function PlexIntegrationPanel() {
                     const isEpisode = item.type === "episode";
                     const seriesName = item.grandparentTitle || item.title;
                     const episodeInfo = isEpisode
-                      ? `${item.grandparentTitle || "Show"} · S${(item.parentIndex ?? 0) + 1} E${item.index ?? "—"}`
+                      ? `${item.grandparentTitle || "Show"} · S${item.parentIndex ?? "—"} E${item.index ?? "—"}`
                       : "TV";
                     const canAdd =
                       item.tmdbId != null && item.tmdbId > 0 && item.tmdbType === "tv";

@@ -1,13 +1,16 @@
 import { prisma } from "@/lib/db";
 import { extractTmdbFromWebhookMetadata, parseWebhookPayload } from "@/lib/plex";
-import { applyEpisodeWatchedFromPlexWebhook } from "@/lib/seasonProgress";
+import {
+  applyEpisodeWatchedFromPlexWebhook,
+  applyMovieScrobbleFromPlexWebhook,
+} from "@/lib/seasonProgress";
 
 /**
  * POST /api/plex/webhook — Plex Pass webhooks (Settings → Webhooks on the server).
  * Add a shared secret in the URL: /api/plex/webhook?secret=YOUR_SECRET and set PLEX_WEBHOOK_SECRET.
  *
- * Persists `media.scrobble` to `PlaybackEvent` (append-only) so watch history survives deleting
- * files or library entries in Plex.
+ * On `media.scrobble` (past watch threshold): appends `PlaybackEvent`, then updates linked WatchBox
+ * rows — TV: season grid, manual last-watched, progress note; movies: status → finished + note.
  */
 export const dynamic = "force-dynamic";
 
@@ -105,15 +108,19 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "persist_failed" }, { status: 500 });
   }
 
-  if (kind === "episode" && mediaId) {
-    const season = num(meta.parentIndex);
-    const episode = num(meta.index);
-    if (season != null && episode != null) {
-      try {
-        await applyEpisodeWatchedFromPlexWebhook(mediaId, season, episode);
-      } catch (e) {
-        console.error("season progress backfill failed:", e);
+  if (mediaId) {
+    try {
+      if (kind === "episode") {
+        const season = num(meta.parentIndex);
+        const episode = num(meta.index);
+        if (season != null && episode != null) {
+          await applyEpisodeWatchedFromPlexWebhook(mediaId, season, episode);
+        }
+      } else if (kind === "movie") {
+        await applyMovieScrobbleFromPlexWebhook(mediaId);
       }
+    } catch (e) {
+      console.error("plex webhook media sync failed:", e);
     }
   }
 
