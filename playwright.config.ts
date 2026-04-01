@@ -1,13 +1,19 @@
 import path from "node:path";
+import { loadEnvConfig } from "@next/env";
 import { defineConfig, devices } from "@playwright/test";
+
+// Load .env / .env.local so TMDB and other secrets apply to this process and the webServer child.
+loadEnvConfig(process.cwd());
 
 process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(process.cwd(), ".pw-browsers");
 
 const port = Number(process.env.PLAYWRIGHT_PORT ?? process.env.PORT) || 3333;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
 
-const DATABASE_URL =
-  process.env.DATABASE_URL ?? `file:${path.join(process.cwd(), "prisma", "e2e.db")}`;
+// Never use the repo .env DATABASE_URL for Playwright: it breaks e2e (wrong DB, relative paths from standalone cwd).
+const e2eDbUrl = `file:${path.join(process.cwd(), "prisma", "e2e.db")}`;
+const DATABASE_URL = process.env.PLAYWRIGHT_DATABASE_URL ?? e2eDbUrl;
+process.env.DATABASE_URL = DATABASE_URL;
 
 export default defineConfig({
   testDir: "e2e",
@@ -33,6 +39,10 @@ export default defineConfig({
         env: {
           PORT: String(port),
           DATABASE_URL,
+          // Standalone server may not read .env; ensure TMDB health + discover tests see the key.
+          ...(process.env.TMDB_API_KEY?.trim()
+            ? { TMDB_API_KEY: process.env.TMDB_API_KEY }
+            : {}),
         },
       },
 });

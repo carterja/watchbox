@@ -112,10 +112,12 @@ test.describe("Discover: search tab", () => {
     test.skip(!tmdbAvailable, "TMDB not configured");
 
     await openDiscoverSearchTab(page);
+    await page.getByTestId("discover-search-type-movie").click();
     await page.getByPlaceholder(/Search movies/i).fill("Inception");
+    await expect(page.getByTestId("discover-query-submit")).toBeEnabled({ timeout: 5_000 });
     await page.getByTestId("discover-query-submit").click();
 
-    await expect(page.getByText("Inception").first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId("discover-search-result-movie-27205")).toBeVisible({ timeout: 20_000 });
   });
 
   test("No-results state shown for obscure query (TMDB required)", async ({ page }) => {
@@ -147,6 +149,9 @@ test.describe("Discover: add from search results (TMDB required)", () => {
 
   test.beforeAll(async ({ request }) => {
     tmdbAvailable = await isTmdbAvailable(request);
+  });
+
+  test.beforeEach(async ({ request }) => {
     if (tmdbAvailable) await deleteByTmdbId(request, INCEPTION_TMDB_ID, "movie");
   });
 
@@ -158,12 +163,15 @@ test.describe("Discover: add from search results (TMDB required)", () => {
     test.skip(!tmdbAvailable, "TMDB not configured");
 
     await openDiscoverSearchTab(page);
+    await page.getByTestId("discover-search-type-movie").click();
     await page.getByPlaceholder(/Search movies/i).fill("Inception");
+    await expect(page.getByTestId("discover-query-submit")).toBeEnabled({ timeout: 5_000 });
     await page.getByTestId("discover-query-submit").click();
 
-    await expect(page.getByText("Inception").first()).toBeVisible({ timeout: 20_000 });
+    const inceptionRow = page.getByTestId("discover-search-result-movie-27205");
+    await expect(inceptionRow).toBeVisible({ timeout: 20_000 });
 
-    const addBtn = page.getByRole("button", { name: "Add to list" }).first();
+    const addBtn = inceptionRow.getByRole("button", { name: "Add to list" });
     await expect(addBtn).toBeVisible({ timeout: 10_000 });
     await addBtn.click();
 
@@ -175,22 +183,28 @@ test.describe("Discover: add from search results (TMDB required)", () => {
     await modal.getByRole("button", { name: "Both" }).click();
     await modal.getByRole("button", { name: "Finished" }).click();
 
+    const postPromise = page.waitForResponse(
+      (res) => res.url().includes("/api/media") && res.request().method() === "POST"
+    );
     await modal.getByRole("button", { name: /Save & Continue/i }).click();
+    const postRes = await postPromise;
+    expect(postRes.ok(), `POST /api/media failed: ${postRes.status()}`).toBeTruthy();
     await expect(modal).not.toBeVisible({ timeout: 8_000 });
-
-    await page.goto("/movies");
-    await expect(page.getByText("Inception").first()).toBeVisible({ timeout: 15_000 });
 
     const list = (await (await request.get("/api/media")).json()) as {
       tmdbId: number;
       type: string;
       streamingService: string | null;
       status: string;
+      title: string;
     }[];
     const inception = list.find((m) => m.tmdbId === INCEPTION_TMDB_ID && m.type === "movie");
     expect(inception).toBeTruthy();
     expect(inception?.streamingService).toBe("Netflix");
     expect(inception?.status).toBe("finished");
+
+    await page.goto("/movies");
+    await expect(page.getByText(inception!.title).first()).toBeVisible({ timeout: 20_000 });
   });
 
   test("Added item shows 'In collection' badge on second visit", async ({ page, request }) => {
@@ -205,11 +219,15 @@ test.describe("Discover: add from search results (TMDB required)", () => {
     }
 
     await openDiscoverSearchTab(page);
+    await page.getByTestId("discover-search-type-movie").click();
     await page.getByPlaceholder(/Search movies/i).fill("Inception");
+    await expect(page.getByTestId("discover-query-submit")).toBeEnabled({ timeout: 5_000 });
     await page.getByTestId("discover-query-submit").click();
 
-    await expect(page.getByText("Inception").first()).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(/In collection/i).first()).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByTestId("discover-search-result-movie-27205")).toBeVisible({ timeout: 20_000 });
+    await expect(
+      page.getByTestId("discover-search-result-movie-27205").getByText(/In collection/i)
+    ).toBeVisible({ timeout: 8_000 });
   });
 });
 

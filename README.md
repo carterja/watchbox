@@ -159,7 +159,7 @@ This repository includes automated deployment to your Portainer instance via web
 - `npm run test` - Run tests
 - `npm run test:coverage` - Run tests with coverage
 - `npm run playwright:install` - Download Playwright Chromium into `.pw-browsers` (once per clone, or after upgrading `@playwright/test`)
-- `npm run test:e2e` - Browser smoke tests against a production build (starts the app on port 3333; use `PLAYWRIGHT_SKIP_WEBSERVER=1` if you already have a server running and set `PLAYWRIGHT_BASE_URL`)
+- `npm run test:e2e` - Playwright E2E tests (loads `.env` for `TMDB_API_KEY`; always uses `prisma/e2e.db`, not your `.env` `DATABASE_URL`). Override DB with `PLAYWRIGHT_DATABASE_URL` if needed. Use `PLAYWRIGHT_SKIP_WEBSERVER=1` and `PLAYWRIGHT_BASE_URL` when a server is already running.
 - `npm run db:push` - Push Prisma schema to database
 - `npm run db:studio` - Open Prisma Studio
 

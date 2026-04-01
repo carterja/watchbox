@@ -191,12 +191,11 @@ export default function DiscoverPage() {
   }, []);
 
   // Load lists when switching to browse tab
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (tab === "browse" && !lists && !loading) {
       loadLists();
     }
-  }, [tab, lists, loading]); // loadLists is stable (useCallback with no deps) - intentionally excluded
+  }, [tab, lists, loading, loadLists]);
 
   const [watchProvidersByKey, setWatchProvidersByKey] = useState<Record<string, string[]>>({});
 
@@ -489,13 +488,28 @@ export default function DiscoverPage() {
             {searchMode === "title" && (
               <div className="flex flex-wrap items-center gap-2">
                 <div className="flex rounded-lg border border-shelf-border bg-shelf-card p-0.5">
-                  <TabButton size="sm" active={searchType === "all"} onClick={() => setSearchType("all")}>
+                  <TabButton
+                    size="sm"
+                    active={searchType === "all"}
+                    onClick={() => setSearchType("all")}
+                    data-testid="discover-search-type-all"
+                  >
                     All
                   </TabButton>
-                  <TabButton size="sm" active={searchType === "movie"} onClick={() => setSearchType("movie")}>
+                  <TabButton
+                    size="sm"
+                    active={searchType === "movie"}
+                    onClick={() => setSearchType("movie")}
+                    data-testid="discover-search-type-movie"
+                  >
                     Movies
                   </TabButton>
-                  <TabButton size="sm" active={searchType === "tv"} onClick={() => setSearchType("tv")}>
+                  <TabButton
+                    size="sm"
+                    active={searchType === "tv"}
+                    onClick={() => setSearchType("tv")}
+                    data-testid="discover-search-type-tv"
+                  >
                     TV
                   </TabButton>
                 </div>
@@ -525,6 +539,7 @@ export default function DiscoverPage() {
               return (
                 <div
                   key={key}
+                  data-testid={`discover-search-result-${key}`}
                   className="flex gap-4 rounded-xl border border-shelf-border bg-shelf-card p-4 items-center max-w-2xl"
                 >
                   <div className="relative w-16 h-24 rounded-lg overflow-hidden bg-shelf-border shrink-0">
