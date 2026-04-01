@@ -715,7 +715,7 @@ export function PlexIntegrationPanel() {
                         {media.title}
                       </Link>
                       <p className="text-[10px] text-shelf-muted/90">
-                        {media.progressNote ? `${media.progressNote}` : "—"}
+                        {progressNoteFromPlex(plex) ?? media.progressNote ?? "—"}
                       </p>
                     </div>
                     <div className="hidden md:grid md:grid-cols-2 gap-2 md:gap-4">
@@ -737,12 +737,12 @@ export function PlexIntegrationPanel() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-1 pt-1 md:pt-0">
+                    <div className="flex justify-start pt-1 md:pt-0">
                       <button
                         type="button"
                         onClick={() => syncFromPlex({ media, plex })}
                         disabled={syncingId === media.id || !progressNoteFromPlex(plex)}
-                        className="inline-flex min-h-[32px] flex-1 items-center justify-center gap-1 rounded-lg bg-shelf-accent px-2 py-1 text-xs font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-40 md:min-h-0 md:flex-initial md:gap-1.5 md:px-3 md:py-2"
+                        className="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-lg bg-shelf-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-40 md:gap-1.5 md:py-2"
                       >
                         {syncingId === media.id ? (
                           <Loader2 size={13} className="animate-spin" />
