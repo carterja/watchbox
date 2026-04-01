@@ -6,7 +6,7 @@ import { fetchSeasonEpisodeCountsFromTmdb, parseSeasonEpisodeCountsJson } from "
 /**
  * GET /api/media/[id]/tv-season-episodes
  * Returns TMDB episode counts per season for dropdowns (set last watched, etc.).
- * Uses DB cache (`seasonEpisodeCounts`) when valid; otherwise fetches TMDB and persists.
+ * Caches in DB but revalidates against TMDB `number_of_seasons` so new seasons are picked up.
  */
 export async function GET(
   _request: NextRequest,
@@ -26,16 +26,28 @@ export async function GET(
       return Response.json({ error: "Not a TV series" }, { status: 400 });
     }
 
+    const details = await getTmdbTvDetails(media.tmdbId);
+    const tmdbSeasonTotal =
+      details?.number_of_seasons != null && details.number_of_seasons >= 1
+        ? details.number_of_seasons
+        : null;
+
     const cached = parseSeasonEpisodeCountsJson(media.seasonEpisodeCounts, media.totalSeasons);
     if (cached && cached.length > 0) {
-      return Response.json({ seasons: cached });
+      const inSyncWithTmdb =
+        tmdbSeasonTotal != null &&
+        tmdbSeasonTotal === media.totalSeasons &&
+        cached.length === tmdbSeasonTotal;
+      if (inSyncWithTmdb) {
+        return Response.json({ seasons: cached });
+      }
+      // TMDB added seasons (or our row is stale): fall through and refresh. If TMDB failed, keep cache.
+      if (tmdbSeasonTotal == null) {
+        return Response.json({ seasons: cached });
+      }
     }
 
-    let seasonTotal = media.totalSeasons;
-    if (seasonTotal == null || seasonTotal < 1) {
-      const details = await getTmdbTvDetails(media.tmdbId);
-      seasonTotal = details?.number_of_seasons ?? null;
-    }
+    let seasonTotal = tmdbSeasonTotal ?? media.totalSeasons;
     if (seasonTotal == null || seasonTotal < 1) {
       return Response.json({ error: "Season count unknown — sync seasons from Settings or Series." }, { status: 400 });
     }

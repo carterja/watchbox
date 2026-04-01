@@ -14,7 +14,14 @@ export default function SettingsPage() {
     setSyncingSeasons(true);
     try {
       const res = await fetch("/api/sync-seasons", { method: "POST" });
-      const data = (await res.json()) as { error?: string; details?: string; updated?: number; failed?: number; total?: number };
+      const data = (await res.json()) as {
+        error?: string;
+        details?: string;
+        updated?: number;
+        failed?: number;
+        skipped?: number;
+        total?: number;
+      };
       if (!res.ok) {
         const extra = typeof data.details === "string" ? ` ${data.details}` : "";
         toast.error((data.error || "Sync failed") + extra);
@@ -24,7 +31,9 @@ export default function SettingsPage() {
       const updated = data.updated ?? 0;
       const failed = data.failed ?? 0;
       if (total === 0) {
-        toast.success("All series already have season and episode counts.");
+        toast.success("No TV series in your library.");
+      } else if (updated === 0 && failed === 0) {
+        toast.success("All series already match TMDB season counts.");
       } else {
         toast.success(
           `Updated ${updated} series.${failed > 0 ? ` ${failed} failed.` : ""}`

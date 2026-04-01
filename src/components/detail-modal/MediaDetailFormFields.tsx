@@ -118,6 +118,15 @@ export function MediaDetailFormFields({ media, currentTmdbId, state, onChange }:
     return () => { cancelled = true; };
   }, [isSeries, media.id]);
 
+  // TMDB season count can increase after we first saved the show; API refreshes DB — align form grid + count input.
+  useEffect(() => {
+    if (!seasonsData?.length) return;
+    const maxSeason = Math.max(...seasonsData.map((s) => s.season));
+    if (maxSeason > totalSeasons) {
+      onChange({ totalSeasons: maxSeason });
+    }
+  }, [seasonsData, totalSeasons, onChange]);
+
   const episodeMaxForSeason = useMemo(() => {
     if (!seasonsData?.length || manualLastWatchedSeason == null) return null;
     const row = seasonsData.find((s) => s.season === manualLastWatchedSeason);

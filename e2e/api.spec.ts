@@ -385,9 +385,10 @@ test.describe("API: TMDB (requires TMDB key)", () => {
     test.skip(!tmdbAvailable, "TMDB not configured");
     const res = await request.post("/api/sync-seasons");
     expect(res.ok()).toBeTruthy();
-    const body = await res.json() as { updated: number; failed: number; total: number };
+    const body = await res.json() as { updated: number; failed: number; total: number; skipped?: number };
     expect(typeof body.updated).toBe("number");
     expect(typeof body.failed).toBe("number");
     expect(typeof body.total).toBe("number");
+    if (body.skipped !== undefined) expect(typeof body.skipped).toBe("number");
   });
 });
