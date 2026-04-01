@@ -345,10 +345,14 @@ test.describe("API: TMDB (requires TMDB key)", () => {
     test.skip(!tmdbAvailable, "TMDB not configured");
     const res = await request.get("/api/tmdb/search?q=Inception");
     expect(res.ok()).toBeTruthy();
-    const results = await res.json() as { id: number; title: string; mediaType: string }[];
+    const results = await res.json() as
+      | { type: "movie"; data: { title: string } }[]
+      | { type: "tv"; data: { name: string } }[];
     expect(Array.isArray(results)).toBe(true);
     expect(results.length).toBeGreaterThan(0);
-    expect(results[0].title).toBeTruthy();
+    const first = results[0] as { type: string; data: { title?: string; name?: string } };
+    const label = first.type === "movie" ? first.data.title : first.data.name;
+    expect(label).toBeTruthy();
   });
 
   test("GET /api/tmdb/search → empty q returns empty array", async ({ request }) => {

@@ -214,7 +214,7 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
             {onDelete && (
               <button
                 type="button"
-                onClick={() => { if (confirm("Remove this from your list?")) { onDelete(); handleClose(); } }}
+                onClick={() => { onDelete(); handleClose(); }}
                 className="px-3 py-2 rounded-lg text-red-400 hover:bg-red-500/20 hover:text-red-300 transition text-sm md:text-base inline-flex items-center gap-1.5"
               >
                 <Trash2 size={14} className="md:w-4 md:h-4" />

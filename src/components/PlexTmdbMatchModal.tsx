@@ -42,7 +42,48 @@ export function PlexTmdbMatchModal({ item, onMatch, onClose }: Props) {
         toast.error("Search failed");
         return;
       }
-      setResults(data.slice(0, 12));
+      const flat: TmdbSearchResult[] = data
+        .map((row: unknown) => {
+          const item = row as
+            | {
+                type: "movie";
+                data: {
+                  id: number;
+                  title: string;
+                  poster_path: string | null;
+                  release_date: string | null;
+                };
+              }
+            | {
+                type: "tv";
+                data: {
+                  id: number;
+                  name: string;
+                  poster_path: string | null;
+                  first_air_date: string | null;
+                };
+              };
+          if (item.type === "movie") {
+            const y = item.data.release_date?.slice(0, 4);
+            return {
+              id: item.data.id,
+              title: item.data.title,
+              posterPath: item.data.poster_path,
+              releaseYear: y ? Number(y) : undefined,
+              mediaType: "movie" as const,
+            };
+          }
+          const y = item.data.first_air_date?.slice(0, 4);
+          return {
+            id: item.data.id,
+            title: item.data.name,
+            posterPath: item.data.poster_path,
+            releaseYear: y ? Number(y) : undefined,
+            mediaType: "tv" as const,
+          };
+        })
+        .filter((r) => Number.isFinite(r.id));
+      setResults(flat.slice(0, 12));
     } catch {
       toast.error("Search failed");
       setResults([]);
