@@ -158,6 +158,8 @@ This repository includes automated deployment to your Portainer instance via web
 - `npm run lint` - Run ESLint
 - `npm run test` - Run tests
 - `npm run test:coverage` - Run tests with coverage
+- `npm run playwright:install` - Download Playwright Chromium into `.pw-browsers` (once per clone, or after upgrading `@playwright/test`)
+- `npm run test:e2e` - Browser smoke tests against a production build (starts the app on port 3333; use `PLAYWRIGHT_SKIP_WEBSERVER=1` if you already have a server running and set `PLAYWRIGHT_BASE_URL`)
 - `npm run db:push` - Push Prisma schema to database
 - `npm run db:studio` - Open Prisma Studio
 
@@ -175,6 +177,7 @@ watchbox/
 │   ├── components/       # React components
 │   ├── lib/              # Utility functions
 │   └── types/            # TypeScript types
+├── e2e/                  # Playwright end-to-end specs
 ├── prisma/               # Database schema
 ├── scripts/              # Utility scripts
 └── public/               # Static assets

@@ -104,6 +104,7 @@ function DiscoverCardComponent({
     <>
       <button
         type="button"
+        data-testid="discover-browse-card"
         onClick={handleClick}
         disabled={adding || inCollection}
         className="group rounded-xl border border-shelf-border bg-shelf-card overflow-hidden hover:border-[#8b5cf6]/50 hover:shadow-lg hover:shadow-[#8b5cf6]/20 disabled:opacity-50 transition relative"

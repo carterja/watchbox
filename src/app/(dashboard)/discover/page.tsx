@@ -363,10 +363,20 @@ export default function DiscoverPage() {
         <div className="sticky top-14 md:top-0 z-10 -mx-4 -mt-4 px-4 pt-4 md:-mx-6 md:-mt-6 md:px-6 md:pt-6 pb-3 md:pb-4 mb-3 md:mb-4 bg-shelf-bg border-b border-shelf-border">
           <div className="flex flex-nowrap items-center gap-2 md:gap-3 overflow-x-auto min-w-0">
             <div className="flex rounded-lg border border-shelf-border bg-shelf-card p-0.5 shrink-0">
-              <TabButton size="sm" active={tab === "browse"} onClick={() => setTab("browse")}>
+              <TabButton
+                size="sm"
+                active={tab === "browse"}
+                onClick={() => setTab("browse")}
+                data-testid="discover-tab-browse"
+              >
                 Browse
               </TabButton>
-              <TabButton size="sm" active={tab === "search"} onClick={() => setTab("search")}>
+              <TabButton
+                size="sm"
+                active={tab === "search"}
+                onClick={() => setTab("search")}
+                data-testid="discover-tab-search"
+              >
                 Search
               </TabButton>
             </div>
@@ -394,13 +404,28 @@ export default function DiscoverPage() {
             {tab === "search" && (
               <div className="ml-auto flex flex-nowrap items-center gap-1 shrink-0">
                 <div className="flex rounded-lg border border-shelf-border bg-shelf-card p-0.5">
-                  <TabButton size="sm" active={searchMode === "title"} onClick={() => setSearchMode("title")}>
+                  <TabButton
+                    size="sm"
+                    active={searchMode === "title"}
+                    onClick={() => setSearchMode("title")}
+                    data-testid="discover-search-mode-title"
+                  >
                     Movies & TV
                   </TabButton>
-                  <TabButton size="sm" active={searchMode === "actor"} onClick={() => setSearchMode("actor")}>
+                  <TabButton
+                    size="sm"
+                    active={searchMode === "actor"}
+                    onClick={() => setSearchMode("actor")}
+                    data-testid="discover-search-mode-actor"
+                  >
                     Actor
                   </TabButton>
-                  <TabButton size="sm" active={searchMode === "imdb"} onClick={() => setSearchMode("imdb")}>
+                  <TabButton
+                    size="sm"
+                    active={searchMode === "imdb"}
+                    onClick={() => setSearchMode("imdb")}
+                    data-testid="discover-search-mode-imdb"
+                  >
                     IMDb
                   </TabButton>
                 </div>
@@ -444,6 +469,7 @@ export default function DiscoverPage() {
               {(searchMode === "title" || searchMode === "imdb") && (
                 <button
                   type="button"
+                  data-testid="discover-query-submit"
                   onClick={searchMode === "title" ? runSearch : lookupByImdb}
                   disabled={searchMode === "title" ? loading : imdbLoading || !searchQuery.trim()}
                   className="rounded-lg bg-shelf-accent px-4 py-2.5 text-sm font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-50 flex items-center gap-2 shrink-0"

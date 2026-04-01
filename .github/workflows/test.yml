@@ -34,6 +34,15 @@ jobs:
       - name: Run tests with coverage
         run: npm run test:coverage -- --run
 
+      - name: Install Playwright Chromium
+        run: npm run playwright:install
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          DATABASE_URL: "file:${{ github.workspace }}/prisma/e2e.db"
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         if: always()

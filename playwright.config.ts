@@ -1,5 +1,6 @@
 import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+import fs from "fs";
 
 /** Project-local browsers (always; some tools pre-set a broken PLAYWRIGHT_BROWSERS_PATH). */
 process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(process.cwd(), ".pw-browsers");
@@ -15,6 +16,25 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
  */
 const DATABASE_URL =
   process.env.DATABASE_URL ?? `file:${path.join(process.cwd(), "prisma", "e2e.db")}`;
+
+/**
+ * Verify browser binaries exist before running tests.
+ * This fails fast with a clear error instead of mysterious browser launch failures.
+ */
+function checkBrowsersInstalled() {
+  const browsersPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
+  if (!browsersPath) return; // Skip if using system browsers
+
+  if (!fs.existsSync(browsersPath)) {
+    console.error(`\n❌ Playwright browsers not found at: ${browsersPath}`);
+    console.error("Run: npm run playwright:install\n");
+    process.exit(1);
+  }
+}
+
+if (!process.env.CI && process.argv.some(arg => arg.includes("test"))) {
+  checkBrowsersInstalled();
+}
 
 export default defineConfig({
   testDir: "e2e",
@@ -35,7 +55,7 @@ export default defineConfig({
     : {
         command: `sh -c "${process.env.CI ? "rm -rf .next && " : ""}npx prisma db push --skip-generate && npm run build && HOSTNAME=127.0.0.1 node .next/standalone/server.js"`,
         url: baseURL,
-        reuseExistingServer: true,
+        reuseExistingServer: !process.env.CI,
         timeout: 180_000,
         env: {
           PORT: String(port),
