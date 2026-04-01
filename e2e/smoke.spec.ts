@@ -12,7 +12,7 @@ const dashboardRoutes = [
 
 const listLibraryPaths = new Set(["/all", "/movies", "/series"]);
 
-test.describe("Smoke", () => {
+test.describe("Smoke", { tag: "@smoke" }, () => {
   test("root redirects to discover", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveURL(/\/discover/);

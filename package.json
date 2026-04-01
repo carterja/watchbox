@@ -14,6 +14,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "test:e2e": "bash scripts/run-e2e.sh",
+    "test:e2e:smoke": "bash scripts/run-e2e.sh --grep @smoke",
     "test:e2e:ui": "bash scripts/run-e2e.sh --ui",
     "test:e2e:debug": "bash scripts/run-e2e.sh --debug",
     "playwright:install": "PLAYWRIGHT_BROWSERS_PATH=.pw-browsers playwright install --with-deps chromium",

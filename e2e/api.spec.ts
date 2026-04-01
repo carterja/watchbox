@@ -104,12 +104,19 @@ async function postPlexWebhook(
 // ─── tests ────────────────────────────────────────────────────────────────────
 
 test.describe("API: health", () => {
-  test("GET /api/health → ok and db:true", async ({ request }) => {
+  test("GET /api/health → ok and db:true", { tag: "@smoke" }, async ({ request }) => {
     const res = await request.get("/api/health");
     expect(res.ok()).toBeTruthy();
     const body = (await res.json()) as { ok: boolean; db: boolean };
     expect(body.ok).toBe(true);
     expect(body.db).toBe(true);
+  });
+
+  test("GET /api/plex/status → JSON with configured flag", { tag: "@smoke" }, async ({ request }) => {
+    const res = await request.get("/api/plex/status");
+    expect(res.ok()).toBeTruthy();
+    const body = (await res.json()) as { configured: boolean };
+    expect(typeof body.configured).toBe("boolean");
   });
 });
 
@@ -364,6 +371,18 @@ test.describe("API: what-next", () => {
     } finally {
       await cleanup(request, yetToStartTv.id);
     }
+  });
+});
+
+test.describe("API: Plex sync-watched", () => {
+  test("POST /api/plex/sync-watched → 503 when Plex not configured", async ({ request }) => {
+    const hasPlex =
+      Boolean(process.env.PLEX_SERVER_URL?.trim()) && Boolean(process.env.PLEX_TOKEN?.trim());
+    test.skip(hasPlex, "Plex env set — server may be configured");
+    const res = await request.post("/api/plex/sync-watched");
+    expect(res.status()).toBe(503);
+    const body = (await res.json()) as { error?: string };
+    expect(body.error).toMatch(/not configured/i);
   });
 });
 

@@ -131,6 +131,7 @@ export function PlexIntegrationPanel() {
   const [plexScan, setPlexScan] = useState<{ onDeck: number; library: number } | null>(null);
   const [addingKey, setAddingKey] = useState<string | null>(null);
   const [bulkSyncingTv, setBulkSyncingTv] = useState(false);
+  const [syncingWatchedPoll, setSyncingWatchedPoll] = useState(false);
   const [plexTab, setPlexTab] = useState<PlexPanelTab>("both");
   const [plexOnlyKind, setPlexOnlyKind] = useState<PlexOnlyKind>("tv");
   const [matchingItem, setMatchingItem] = useState<PlexOnDeckItem | null>(null);
@@ -254,6 +255,32 @@ export function PlexIntegrationPanel() {
     loadStatus();
     loadHealth();
     loadOnDeck();
+  };
+
+  /** Poll Plex (On Deck + partials) and apply WatchBox updates past ~90% — fallback if webhooks missed. */
+  const syncWatchedFromPlexPoll = async () => {
+    setSyncingWatchedPoll(true);
+    try {
+      const res = await fetch("/api/plex/sync-watched", { method: "POST" });
+      const data = (await res.json()) as { error?: string; updated?: number };
+      if (res.status === 503) {
+        toast.error("Plex is not configured.");
+        return;
+      }
+      if (!res.ok) {
+        toast.error(typeof data.error === "string" ? data.error : "Sync failed");
+        return;
+      }
+      toast.success(
+        `Applied ${data.updated ?? 0} update(s) from Plex (past watch threshold).`
+      );
+      await refetch();
+      loadOnDeck();
+    } catch {
+      toast.error("Request failed");
+    } finally {
+      setSyncingWatchedPoll(false);
+    }
   };
 
   const addPlexOnlyToWatchBox = async (item: PlexOnDeckItem) => {
@@ -460,10 +487,28 @@ export function PlexIntegrationPanel() {
             </button>
             <div className="pointer-events-none absolute right-0 bottom-full mb-2 hidden group-hover:flex z-10">
               <div className="rounded-lg border border-shelf-border bg-shelf-bg/95 backdrop-blur px-3 py-2 text-[10px] text-shelf-muted leading-snug w-64 md:w-72">
-                Sync your Plex watching progress with WatchBox. Shows matching titles from both services and allows you to add Plex items to your WatchBox.
+                Sync your Plex watching progress with WatchBox. Webhooks update WatchBox when you finish an episode
+                (recommended). Use &quot;Apply watched&quot; to poll Plex if a webhook was missed. Both use the same
+                ~90% watch threshold as Plex scrobble.
               </div>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => void syncWatchedFromPlexPoll()}
+            disabled={!plexConfigured || syncingWatchedPoll}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-2 text-xs font-medium text-cyan-100 hover:bg-cyan-500/20 active:scale-[0.99] disabled:opacity-40 sm:gap-2 sm:px-3 sm:text-sm"
+            aria-label="Apply watched from Plex"
+            title="Poll Plex and update WatchBox for titles past ~90% watched (webhook fallback)"
+          >
+            {syncingWatchedPoll ? (
+              <Loader2 size={15} className="shrink-0 animate-spin sm:h-4 sm:w-4" />
+            ) : (
+              <ArrowRight size={15} className="shrink-0 sm:h-4 sm:w-4" />
+            )}
+            <span className="hidden sm:inline">Apply watched</span>
+            <span className="sm:hidden">Sync</span>
+          </button>
           <button
             type="button"
             onClick={refreshAll}
