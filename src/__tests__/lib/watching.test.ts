@@ -23,6 +23,8 @@ const baseMedia = (over: Partial<Media>): Media => ({
   streamingService: null,
   viewer: null,
   sortOrder: 0,
+  personalNotes: null,
+  lastProgressSource: null,
   createdAt: "",
   updatedAt: "",
   ...over,

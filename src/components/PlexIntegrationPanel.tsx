@@ -350,13 +350,13 @@ export function PlexIntegrationPanel() {
       const res = await fetch(`/api/media/${m.media.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ progressNote: note }),
+        body: JSON.stringify({ progressNote: note, progressSource: "plex" }),
       });
       if (!res.ok) {
         toast.error("Could not update WatchBox");
         return;
       }
-      optimisticUpdate(m.media.id, { progressNote: note });
+      optimisticUpdate(m.media.id, { progressNote: note, lastProgressSource: "plex" });
       toast.success("WatchBox progress updated from Plex");
     } catch {
       toast.error("Update failed");
@@ -476,6 +476,12 @@ export function PlexIntegrationPanel() {
             <h2 className="text-sm font-semibold leading-tight text-white sm:text-base md:text-lg">
               Plex & library sync
             </h2>
+            <Link
+              href="/overview"
+              className="text-[11px] text-shelf-accent hover:underline mt-0.5 inline-block"
+            >
+              Queue &amp; stats — webhook health &amp; merge rules
+            </Link>
           </div>
           <div className="relative group">
             <button

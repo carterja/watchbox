@@ -36,6 +36,10 @@ model Media {
   viewer String?
   // Custom sort order (lower = first). Default 0; reorder updates this.
   sortOrder Int @default(0)
+  // Free-form notes (not the same as progressNote / Plex line).
+  personalNotes String?
+  // Who last updated watch position: Plex webhook/sync-watched vs WatchBox UI.
+  lastProgressSource String?
 
   playbackEvents PlaybackEvent[]
 

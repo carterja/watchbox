@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Heart, UsersRound, User, History, Loader2 } from "lucide-react";
+import { AlertTriangle, Heart, UsersRound, User, History, Loader2 } from "lucide-react";
 import type { Media, MediaStatus, SeasonProgressItem, Viewer } from "@/types/media";
 import { STREAMING_SERVICES } from "@/lib/constants";
 
@@ -45,6 +45,7 @@ export type FormState = {
   manualLastWatchedSeason: number | null;
   manualLastWatchedEpisode: number | null;
   progressNote: string;
+  personalNotes: string;
 };
 
 type Props = {
@@ -54,10 +55,89 @@ type Props = {
   onChange: (patch: Partial<FormState>) => void;
 };
 
+type ProgressInsight = {
+  tv: boolean;
+  plexMax: { season: number; episode: number } | null;
+  manualMax: { season: number; episode: number } | null;
+  merged: { season: number; episode: number } | null;
+  hasConflict: boolean;
+  lastProgressSource: string | null;
+};
+
+function formatEp(ref: { season: number; episode: number } | null): string {
+  if (!ref) return "—";
+  return `S${ref.season} E${ref.episode}`;
+}
+
+function ProgressInsightPanel({ mediaId, isSeries }: { mediaId: string; isSeries: boolean }) {
+  const [data, setData] = useState<ProgressInsight | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isSeries) return;
+    let cancelled = false;
+    setLoading(true);
+    void fetch(`/api/media/${encodeURIComponent(mediaId)}/progress-insight`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: ProgressInsight | null) => {
+        if (!cancelled && j) setData(j);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mediaId, isSeries]);
+
+  if (!isSeries) return null;
+  if (loading && !data) {
+    return (
+      <div className="rounded-lg border border-shelf-border bg-shelf-card/40 p-3">
+        <p className="text-xs text-shelf-muted">Loading position info…</p>
+      </div>
+    );
+  }
+  if (!data?.tv) return null;
+
+  return (
+    <div className="space-y-2">
+      {data.hasConflict && data.plexMax && data.manualMax && (
+        <div className="rounded-lg border border-amber-500/35 bg-amber-500/10 p-3">
+          <p className="text-xs font-medium text-amber-100 flex items-center gap-1.5 mb-1.5">
+            <AlertTriangle size={14} className="shrink-0" />
+            Plex vs manual differ
+          </p>
+          <p className="text-xs text-shelf-muted leading-relaxed">
+            Plex max: <span className="text-white/90">{formatEp(data.plexMax)}</span>
+            {" · "}
+            Manual: <span className="text-white/90">{formatEp(data.manualMax)}</span>
+            {data.merged && (
+              <>
+                {" "}
+                · Merged “up next” uses <span className="text-cyan-200/90">{formatEp(data.merged)}</span> (later
+                episode).
+              </>
+            )}
+          </p>
+        </div>
+      )}
+      {!data.hasConflict && data.lastProgressSource && (
+        <p className="text-[11px] text-shelf-muted">
+          Last progress update:{" "}
+          <span className="text-white/80">
+            {data.lastProgressSource === "plex" ? "Plex (webhook or sync)" : "WatchBox (manual)"}
+          </span>
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function MediaDetailFormFields({ media, currentTmdbId, state, onChange }: Props) {
   const {
     status, streamingService, viewer, totalSeasons,
-    seasonProgress, manualLastWatchedSeason, manualLastWatchedEpisode, progressNote,
+    seasonProgress, manualLastWatchedSeason, manualLastWatchedEpisode, progressNote, personalNotes,
   } = state;
   const isSeries = media.type === "tv";
 
@@ -173,6 +253,20 @@ export function MediaDetailFormFields({ media, currentTmdbId, state, onChange }:
             </button>
           ))}
         </div>
+      </div>
+
+      {isSeries && <ProgressInsightPanel mediaId={media.id} isSeries={isSeries} />}
+
+      {/* Personal notes */}
+      <div>
+        <label className="block text-xs md:text-sm font-medium text-white mb-2">Personal notes</label>
+        <textarea
+          value={personalNotes}
+          onChange={(e) => onChange({ personalNotes: e.target.value })}
+          placeholder="Thoughts, where you heard about it, who to watch with…"
+          rows={4}
+          className="w-full px-3 md:px-4 py-2 rounded-lg bg-shelf-card border border-shelf-border text-sm md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] resize-y min-h-[88px]"
+        />
       </div>
 
       {/* Streaming Service */}
@@ -431,14 +525,14 @@ export function MediaDetailFormFields({ media, currentTmdbId, state, onChange }:
         )}
       </div>
 
-      {/* Note */}
+      {/* Progress line (short) */}
       <div>
-        <label className="block text-xs md:text-sm font-medium text-white mb-2">Note</label>
+        <label className="block text-xs md:text-sm font-medium text-white mb-2">Progress line</label>
         <input
           type="text"
           value={progressNote}
           onChange={(e) => onChange({ progressNote: e.target.value })}
-          placeholder="Optional note about your progress..."
+          placeholder="Short progress label (e.g. S2 E5)…"
           className="w-full px-3 md:px-4 py-2 rounded-lg bg-shelf-card border border-shelf-border text-sm md:text-base text-white placeholder-shelf-muted focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]"
         />
       </div>

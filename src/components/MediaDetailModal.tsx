@@ -41,20 +41,29 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
     manualLastWatchedSeason: media.manualLastWatchedSeason ?? null,
     manualLastWatchedEpisode: media.manualLastWatchedEpisode ?? null,
     progressNote: media.progressNote || "",
+    personalNotes: media.personalNotes ?? "",
   });
 
   const handleFormChange = useCallback((patch: Partial<FormState>) => {
     setFormState((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  // Sync manual position if parent media changes
+  // Sync fields when parent media changes
   useEffect(() => {
     setFormState((prev) => ({
       ...prev,
       manualLastWatchedSeason: media.manualLastWatchedSeason ?? null,
       manualLastWatchedEpisode: media.manualLastWatchedEpisode ?? null,
+      personalNotes: media.personalNotes ?? "",
+      progressNote: media.progressNote || "",
     }));
-  }, [media.id, media.manualLastWatchedSeason, media.manualLastWatchedEpisode]);
+  }, [
+    media.id,
+    media.manualLastWatchedSeason,
+    media.manualLastWatchedEpisode,
+    media.personalNotes,
+    media.progressNote,
+  ]);
 
   const handleClose = useCallback(() => {
     if (closeDoneRef.current) return;
@@ -118,6 +127,7 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
           manualLastWatchedEpisode: formState.manualLastWatchedEpisode,
         }),
         progressNote: formState.progressNote.trim() || undefined,
+        personalNotes: formState.personalNotes.trim() || null,
       });
       handleClose();
     } catch (error) {

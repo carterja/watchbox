@@ -95,7 +95,8 @@ export async function getPlexMaxFinished(mediaId: string, tmdbId: number): Promi
   return best;
 }
 
-function manualRef(
+/** Last-watched position from WatchBox manual fields (not season grid inference). */
+export function manualEpisodeRef(
   manualSeason: number | null | undefined,
   manualEpisode: number | null | undefined
 ): EpisodeRef | null {
@@ -228,7 +229,7 @@ export async function resolveWhatNextForMedia(
   }
 
   const plexMax = await getPlexMaxFinished(m.id, m.tmdbId);
-  const manualMax = manualRef(m.manualLastWatchedSeason, m.manualLastWatchedEpisode);
+  const manualMax = manualEpisodeRef(m.manualLastWatchedSeason, m.manualLastWatchedEpisode);
   const spMax = await lastFinishedFromSeasonProgress(sp, m.tmdbId, numberOfSeasons);
 
   const lastFinished = maxEpisodeRef(maxEpisodeRef(plexMax, manualMax), spMax);

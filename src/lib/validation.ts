@@ -41,6 +41,9 @@ export const UpdateMediaSchema = z.object({
   streamingService: z.string().max(100).nullable().optional(),
   viewer: ViewerSchema.nullable().optional(),
   posterPath: z.string().max(500).nullable().optional(),
+  personalNotes: z.string().max(8000).nullable().optional(),
+  /** Set when updating progress; Plex panel sync sends "plex", UI changes are inferred or "manual". */
+  progressSource: z.enum(["plex", "manual"]).optional(),
 });
 
 // TMDB search validation

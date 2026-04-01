@@ -92,7 +92,7 @@ export async function applyEpisodeWatchedFromPlexWebhook(
   if (season === 0 && episode >= 1) {
     await prisma.media.update({
       where: { id: mediaId },
-      data: { progressNote: `Specials E${episode} (Plex)` },
+      data: { progressNote: `Specials E${episode} (Plex)`, lastProgressSource: "plex" },
     });
     return;
   }
@@ -121,6 +121,7 @@ export async function applyEpisodeWatchedFromPlexWebhook(
     data: {
       seasonProgress: parsed.seasonProgress as Prisma.InputJsonValue,
       totalSeasons: parsed.totalSeasons,
+      lastProgressSource: "plex",
       ...(nextStatus !== media.status ? { status: nextStatus } : {}),
       ...(merged
         ? {
@@ -148,6 +149,7 @@ export async function applyMovieScrobbleFromPlexWebhook(mediaId: string): Promis
   await prisma.media.update({
     where: { id: mediaId },
     data: {
+      lastProgressSource: "plex",
       ...(nextStatus !== cur ? { status: nextStatus } : {}),
       progressNote: "Watched on Plex",
     },

@@ -1,8 +1,9 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
 import {
   Sparkles,
   LayoutGrid,
@@ -15,8 +16,11 @@ import {
   MonitorPlay,
   ChevronLeft,
   ChevronRight,
+  ListOrdered,
+  MoreHorizontal,
 } from "lucide-react";
 import { WatchBoxLogo } from "./WatchBoxLogo";
+import { MobileMoreSheet } from "./MobileMoreSheet";
 import { useMobileFilters } from "@/contexts/MobileFiltersContext";
 import { useMediaList } from "@/contexts/MediaListContext";
 import { useReorderMode } from "@/contexts/ReorderModeContext";
@@ -24,14 +28,61 @@ import { useSidebarCollapse } from "@/contexts/SidebarCollapseContext";
 import { DisplayModeToggle } from "./DisplayModeToggle";
 import { Tooltip } from "./Tooltip";
 
-const nav = [
+/** Full list — desktop sidebar only (comfortable width). */
+const desktopNav = [
   { href: "/discover", label: "Discover", icon: Sparkles },
   { href: "/all", label: "All", icon: LayoutGrid },
   { href: "/movies", label: "Movies", icon: Film },
   { href: "/series", label: "Series", icon: Tv },
   { href: "/watching", label: "Watching", icon: MonitorPlay },
+  { href: "/overview", label: "Queue", icon: ListOrdered },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
+
+function isLibrarySection(pathname: string): boolean {
+  return pathname === "/all" || pathname === "/movies" || pathname === "/series";
+}
+
+function isMoreDestinations(pathname: string): boolean {
+  return pathname === "/settings" || pathname === "/plex";
+}
+
+type MobileTab =
+  | { kind: "link"; href: string; label: string; icon: LucideIcon; isActive: (pathname: string) => boolean }
+  | { kind: "more"; label: string; icon: LucideIcon; isActive: (pathname: string) => boolean };
+
+/** Five slots + “More” sheet — no horizontal scroll on small screens. */
+const mobileTabs: MobileTab[] = [
+  {
+    kind: "link",
+    href: "/discover",
+    label: "Discover",
+    icon: Sparkles,
+    isActive: (p) => p === "/discover",
+  },
+  {
+    kind: "link",
+    href: "/all",
+    label: "Library",
+    icon: LayoutGrid,
+    isActive: (p) => isLibrarySection(p),
+  },
+  {
+    kind: "link",
+    href: "/watching",
+    label: "Watching",
+    icon: MonitorPlay,
+    isActive: (p) => p === "/watching",
+  },
+  {
+    kind: "link",
+    href: "/overview",
+    label: "Queue",
+    icon: ListOrdered,
+    isActive: (p) => p === "/overview",
+  },
+  { kind: "more", label: "More", icon: MoreHorizontal, isActive: (p) => isMoreDestinations(p) },
+];
 
 function navItemIsActive(pathname: string, href: string): boolean {
   if (pathname === href) return true;
@@ -58,7 +109,12 @@ function isMobileFiltersPage(pathname: string): boolean {
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
   const { toggle } = useMobileFilters();
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
   const { list, loading } = useMediaList();
   const { reorderMode, setReorderMode } = useReorderMode();
   const showReorder = isListPage(pathname);
@@ -118,7 +174,7 @@ export function Sidebar() {
               {inProgress > 0 && <span>{inProgress} in progress</span>}
             </div>
           )}
-          {nav.map(({ href, label, icon: Icon }) => {
+          {desktopNav.map(({ href, label, icon: Icon }) => {
             const isActive = navItemIsActive(pathname, href);
             const link = (
               <Link
@@ -252,29 +308,52 @@ export function Sidebar() {
         )}
       </header>
 
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-shelf-sidebar border-t border-shelf-border safe-area-pb">
-        <div className="grid grid-cols-6 gap-0.5 p-2">
-          {nav.map(({ href, label, icon: Icon }) => {
-            const isActive = navItemIsActive(pathname, href);
+      {/* Mobile Bottom Navigation — 5 fixed tabs; Movies/Series/Settings/Plex live under “More”. */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-shelf-sidebar border-t border-shelf-border safe-area-pb"
+        aria-label="Main navigation"
+      >
+        <div className="grid grid-cols-5 gap-0 px-1 pt-1.5 pb-2">
+          {mobileTabs.map((tab) => {
+            if (tab.kind === "link") {
+              const active = tab.isActive(pathname);
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  prefetch={true}
+                  className={`flex flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] transition ${
+                    active ? "bg-[#8b5cf6]/20 text-[#8b5cf6]" : "text-shelf-muted hover:text-white"
+                  }`}
+                >
+                  <tab.icon size={22} className="shrink-0" aria-hidden />
+                  <span className="text-[10px] font-medium leading-tight text-center max-w-full truncate px-0.5">
+                    {tab.label}
+                  </span>
+                </Link>
+              );
+            }
+            const active = moreOpen || tab.isActive(pathname);
             return (
-              <Link
-                key={href}
-                href={href}
-                prefetch={true}
-                className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 transition ${
-                  isActive
-                    ? "bg-[#8b5cf6]/20 text-[#8b5cf6]"
-                    : "text-shelf-muted hover:text-white"
+              <button
+                key="more"
+                type="button"
+                onClick={() => setMoreOpen(true)}
+                aria-expanded={moreOpen}
+                aria-controls="mobile-more-sheet"
+                className={`flex flex-col items-center justify-center gap-0.5 rounded-lg py-2 min-h-[52px] transition ${
+                  active ? "bg-[#8b5cf6]/20 text-[#8b5cf6]" : "text-shelf-muted hover:text-white"
                 }`}
               >
-                <Icon size={20} className="shrink-0" />
-                <span className="text-[10px] font-medium">{label}</span>
-              </Link>
+                <tab.icon size={22} className="shrink-0" aria-hidden />
+                <span className="text-[10px] font-medium leading-tight">{tab.label}</span>
+              </button>
             );
           })}
         </div>
       </nav>
+
+      <MobileMoreSheet open={moreOpen} onClose={() => setMoreOpen(false)} />
     </>
   );
 }

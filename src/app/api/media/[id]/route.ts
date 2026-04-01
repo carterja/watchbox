@@ -52,6 +52,26 @@ export async function PATCH(
     if (validated.manualLastWatchedEpisode !== undefined) {
       data.manualLastWatchedEpisode = validated.manualLastWatchedEpisode;
     }
+    if (validated.personalNotes !== undefined) {
+      data.personalNotes = validated.personalNotes;
+    }
+
+    if (validated.progressSource !== undefined) {
+      data.lastProgressSource = validated.progressSource;
+    } else {
+      const progressChanged =
+        (validated.progressNote !== undefined && validated.progressNote !== existing.progressNote) ||
+        (validated.manualLastWatchedSeason !== undefined &&
+          validated.manualLastWatchedSeason !== existing.manualLastWatchedSeason) ||
+        (validated.manualLastWatchedEpisode !== undefined &&
+          validated.manualLastWatchedEpisode !== existing.manualLastWatchedEpisode) ||
+        (validated.seasonProgress !== undefined &&
+          JSON.stringify(validated.seasonProgress ?? null) !==
+            JSON.stringify(existing.seasonProgress ?? null));
+      if (progressChanged) {
+        data.lastProgressSource = "manual";
+      }
+    }
 
     // Update media
     const media = await prisma.media.update({

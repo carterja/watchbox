@@ -35,6 +35,8 @@ export type Media = {
   streamingService: string | null;
   viewer: Viewer | null;
   sortOrder: number;
+  personalNotes: string | null;
+  lastProgressSource: "plex" | "manual" | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -54,5 +56,7 @@ export type MediaUpdatePatch = Partial<
     | "viewer"
     | "posterPath"
     | "sortOrder"
+    | "personalNotes"
+    | "lastProgressSource"
   >
 >;
