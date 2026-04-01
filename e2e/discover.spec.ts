@@ -40,7 +40,7 @@ async function deleteByTmdbId(
 }
 
 async function openDiscoverSearchTab(page: Page) {
-  await page.goto("/discover");
+  await page.goto("/discover", { waitUntil: "networkidle" });
   await page.getByTestId("discover-tab-search").click();
 }
 
@@ -54,7 +54,7 @@ test.describe("Discover: browse tab", () => {
   });
 
   test("Browse tab is active on load and shows category buttons", async ({ page }) => {
-    await page.goto("/discover");
+    await page.goto("/discover", { waitUntil: "networkidle" });
     await expect(page.getByTestId("discover-tab-browse")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId("discover-tab-search")).toBeVisible();
   });
@@ -62,14 +62,14 @@ test.describe("Discover: browse tab", () => {
   test("Popular category loads movie/TV cards (TMDB required)", async ({ page }) => {
     test.skip(!tmdbAvailable, "TMDB not configured");
 
-    await page.goto("/discover");
+    await page.goto("/discover", { waitUntil: "networkidle" });
     await expect(page.getByTestId("discover-browse-card").first()).toBeVisible({ timeout: 30_000 });
   });
 
   test("Switching to Trending category loads content (TMDB required)", async ({ page }) => {
     test.skip(!tmdbAvailable, "TMDB not configured");
 
-    await page.goto("/discover");
+    await page.goto("/discover", { waitUntil: "networkidle" });
     await expect(page.getByTestId("discover-browse-card").first()).toBeVisible({ timeout: 30_000 });
 
     await page.getByRole("button", { name: "Trending" }).first().click();
@@ -79,7 +79,7 @@ test.describe("Discover: browse tab", () => {
   test("Switching to Top Rated category loads content (TMDB required)", async ({ page }) => {
     test.skip(!tmdbAvailable, "TMDB not configured");
 
-    await page.goto("/discover");
+    await page.goto("/discover", { waitUntil: "networkidle" });
     await expect(page.getByTestId("discover-browse-card").first()).toBeVisible({ timeout: 30_000 });
 
     await page.getByRole("button", { name: /Top/i }).first().click();
@@ -178,7 +178,7 @@ test.describe("Discover: add from search results (TMDB required)", () => {
     await modal.getByRole("button", { name: /Save & Continue/i }).click();
     await expect(modal).not.toBeVisible({ timeout: 8_000 });
 
-    await page.goto("/movies");
+    await page.goto("/movies", { waitUntil: "networkidle" });
     await expect(page.getByText("Inception").first()).toBeVisible({ timeout: 15_000 });
 
     const list = (await (await request.get("/api/media")).json()) as {
@@ -233,7 +233,7 @@ test.describe("Discover: add from browse grid (TMDB required)", () => {
   test("Click a card in browse grid → QuickSetup → item saved (TMDB required)", async ({ page, request }) => {
     test.skip(!tmdbAvailable, "TMDB not configured");
 
-    await page.goto("/discover");
+    await page.goto("/discover", { waitUntil: "networkidle" });
 
     const firstCard = page.getByTestId("discover-browse-card").first();
     await expect(firstCard).toBeVisible({ timeout: 30_000 });
