@@ -18,7 +18,7 @@ type MediaItem = {
 };
 
 function uniqueTmdbId(): number {
-  return 8_000_000 + randomInt(0, 9_999_999);
+  return 9_100_000 + randomInt(0, 9_999);
 }
 
 function moviePayload(overrides: Partial<Record<string, unknown>> = {}) {
