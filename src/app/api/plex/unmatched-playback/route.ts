@@ -1,41 +1,15 @@
 import { prisma } from "@/lib/db";
+import {
+  inferUnmatchedKind,
+  unmatchedPlaybackDedupeKey,
+} from "@/lib/unmatchedPlaybackDedupe";
+import { withPlaybackAccountFilter } from "@/lib/plexWebhookAccountFilter";
 
 export const dynamic = "force-dynamic";
 
-function inferKind(row: {
-  mediaKind: string | null;
-  showTitle: string | null;
-  grandparentRatingKey: string | null;
-}): "movie" | "tv" {
-  if (row.mediaKind === "movie" || row.mediaKind === "tv") return row.mediaKind;
-  if (row.showTitle || row.grandparentRatingKey) return "tv";
-  return "movie";
-}
-
-function dedupeKey(row: {
-  mediaKind: string | null;
-  showTitle: string | null;
-  title: string | null;
-  ratingKey: string | null;
-  grandparentRatingKey: string | null;
-  tmdbId: number | null;
-  id: string;
-}): string {
-  const kind = inferKind(row);
-  if (kind === "movie") {
-    const id = row.ratingKey ?? (row.tmdbId != null ? `tmdb-${row.tmdbId}` : null) ?? row.title ?? row.id;
-    return `m:${id}`;
-  }
-  const gp = row.grandparentRatingKey?.trim();
-  if (gp) return `tv:gp:${gp}`;
-  const show = row.showTitle?.trim();
-  if (show) return `tv:show:${show.toLowerCase()}`;
-  return `tv:fb:${row.tmdbId ?? row.title ?? row.id}`;
-}
-
 /**
  * GET /api/plex/unmatched-playback — Recent Plex activity not linked to any WatchBox title (mediaId null).
- * Deduped per series/movie for “add to library” hints.
+ * Deduped per series/movie for “add to library” hints. Respects dismissals and account filter.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -44,18 +18,24 @@ export async function GET(request: Request) {
 
   const since = new Date(Date.now() - days * 86_400_000);
 
-  const rows = await prisma.playbackEvent.findMany({
-    where: {
-      mediaId: null,
-      createdAt: { gte: since },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 500,
-  });
+  const [rows, dismissedRows] = await Promise.all([
+    prisma.playbackEvent.findMany({
+      where: withPlaybackAccountFilter({
+        mediaId: null,
+        createdAt: { gte: since },
+      }),
+      orderBy: { createdAt: "desc" },
+      take: 500,
+    }),
+    prisma.unmatchedPlaybackDismissal.findMany({ select: { dedupeKey: true } }),
+  ]);
+
+  const dismissed = new Set(dismissedRows.map((d) => d.dedupeKey));
 
   const merged = new Map<
     string,
     {
+      dedupeKey: string;
       lastActivityAt: Date;
       lastEvent: string;
       mediaKind: "movie" | "tv";
@@ -70,10 +50,12 @@ export async function GET(request: Request) {
     const hasName = Boolean(r.showTitle?.trim() || r.title?.trim());
     if (!hasName) continue;
 
-    const key = dedupeKey(r);
-    if (merged.has(key)) continue;
+    const dedupeKey = unmatchedPlaybackDedupeKey(r);
+    if (dismissed.has(dedupeKey)) continue;
 
-    const kind = inferKind(r);
+    if (merged.has(dedupeKey)) continue;
+
+    const kind = inferUnmatchedKind(r);
     const displayTitle =
       kind === "tv"
         ? (r.showTitle?.trim() || r.title?.trim() || "Unknown show")
@@ -89,7 +71,8 @@ export async function GET(request: Request) {
       subtitle = String(r.year);
     }
 
-    merged.set(key, {
+    merged.set(dedupeKey, {
+      dedupeKey,
       lastActivityAt: r.createdAt,
       lastEvent: r.event,
       mediaKind: kind,
@@ -103,6 +86,7 @@ export async function GET(request: Request) {
     .sort((a, b) => b.lastActivityAt.getTime() - a.lastActivityAt.getTime())
     .slice(0, limit)
     .map((m) => ({
+      dedupeKey: m.dedupeKey,
       mediaKind: m.mediaKind,
       displayTitle: m.displayTitle,
       subtitle: m.subtitle,

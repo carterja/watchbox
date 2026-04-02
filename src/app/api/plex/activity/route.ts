@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/db";
 import { fetchPlex, isPlexConfigured } from "@/lib/plex";
+import {
+  getAllowedPlexWebhookAccountTitles,
+  withPlaybackAccountFilter,
+} from "@/lib/plexWebhookAccountFilter";
 
 /** GET /api/plex/activity — webhook / scrobble health from PlaybackEvent + Plex reachability. */
 export const dynamic = "force-dynamic";
@@ -11,17 +15,17 @@ export async function GET() {
   const now = Date.now();
 
   const [totalPlaybackEvents, latest, last24h, last7d, plexConfigured] = await Promise.all([
-    prisma.playbackEvent.count(),
+    prisma.playbackEvent.count({ where: withPlaybackAccountFilter() ?? {} }),
     prisma.playbackEvent.findFirst({
-      where: { event: "media.scrobble" },
+      where: withPlaybackAccountFilter({ event: "media.scrobble" }),
       orderBy: { createdAt: "desc" },
       select: { createdAt: true },
     }),
     prisma.playbackEvent.count({
-      where: { createdAt: { gte: new Date(now - day) } },
+      where: withPlaybackAccountFilter({ createdAt: { gte: new Date(now - day) } }),
     }),
     prisma.playbackEvent.count({
-      where: { createdAt: { gte: new Date(now - 7 * day) } },
+      where: withPlaybackAccountFilter({ createdAt: { gte: new Date(now - 7 * day) } }),
     }),
     Promise.resolve(isPlexConfigured()),
   ]);
@@ -45,6 +49,7 @@ export async function GET() {
       playbackEventsTotal: totalPlaybackEvents,
       playbackEventsLast24h: last24h,
       playbackEventsLast7d: last7d,
+      webhookAccountFilterActive: getAllowedPlexWebhookAccountTitles() != null,
     },
     { headers: { "Cache-Control": "no-store" } }
   );

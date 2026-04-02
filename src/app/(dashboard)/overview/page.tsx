@@ -11,11 +11,14 @@ import {
   ExternalLink,
   Film,
   Loader2,
+  Link2,
   PlusCircle,
   Radio,
   RefreshCw,
   Tv,
+  X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useMediaList } from "@/contexts/MediaListContext";
 import { useWhatNextCache } from "@/contexts/WhatNextCacheContext";
 import type { WhatNextRow } from "@/lib/whatNext";
@@ -38,9 +41,11 @@ type ActivityPayload = {
   playbackEventsTotal: number;
   playbackEventsLast24h: number;
   playbackEventsLast7d: number;
+  webhookAccountFilterActive: boolean;
 };
 
 type UnmatchedPlaybackItem = {
+  dedupeKey: string;
   mediaKind: "movie" | "tv";
   displayTitle: string;
   subtitle: string | null;
@@ -142,6 +147,8 @@ export default function OverviewPage() {
   const [activityLoading, setActivityLoading] = useState(true);
   const [unmatched, setUnmatched] = useState<UnmatchedPlaybackItem[] | null>(null);
   const [unmatchedLoading, setUnmatchedLoading] = useState(true);
+  const [relinking, setRelinking] = useState(false);
+  const [dismissingKey, setDismissingKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setStatsLoading(true);
@@ -167,6 +174,49 @@ export default function OverviewPage() {
       setUnmatchedLoading(false);
     }
   }, []);
+
+  const relinkPastPlayback = useCallback(async () => {
+    setRelinking(true);
+    try {
+      const res = await fetch("/api/plex/relink-playback", { method: "POST" });
+      const data = (await res.json()) as { playbackEventsUpdated?: number; error?: string };
+      if (!res.ok) {
+        toast.error(data.error || "Relink failed");
+        return;
+      }
+      const n = data.playbackEventsUpdated ?? 0;
+      toast.success(n > 0 ? `Linked ${n} past playback event${n === 1 ? "" : "s"} to your library` : "Nothing to relink");
+      await load();
+    } catch {
+      toast.error("Relink failed");
+    } finally {
+      setRelinking(false);
+    }
+  }, [load]);
+
+  const dismissUnmatched = useCallback(
+    async (dedupeKey: string) => {
+      setDismissingKey(dedupeKey);
+      try {
+        const res = await fetch("/api/plex/unmatched-playback/dismiss", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dedupeKey }),
+        });
+        if (!res.ok) {
+          toast.error("Could not dismiss");
+          return;
+        }
+        setUnmatched((prev) => (prev ? prev.filter((i) => i.dedupeKey !== dedupeKey) : prev));
+        toast.success("Hidden — won’t show here again");
+      } catch {
+        toast.error("Could not dismiss");
+      } finally {
+        setDismissingKey(null);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     void load();
@@ -289,6 +339,22 @@ export default function OverviewPage() {
           Recent Plex plays we couldn&apos;t attach to a library title (add the show or movie here, then it will
           sync on future scrobbles). Based on webhook history — Plex Pass required.
         </p>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-shelf-muted max-w-xl">
+          <button
+            type="button"
+            onClick={() => void relinkPastPlayback()}
+            disabled={relinking}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-shelf-border bg-shelf-card/50 px-2.5 py-1.5 text-shelf-muted hover:text-white hover:bg-shelf-card disabled:opacity-50"
+          >
+            {relinking ? <Loader2 size={12} className="animate-spin" /> : <Link2 size={12} />}
+            Relink past events
+          </button>
+          <span className="text-[11px] leading-snug">
+            If you already added a title (or used <strong className="text-white/80">Rematch</strong> on the detail
+            card to fix the TMDB id), this attaches older webhook rows that had the right TMDB but no library link
+            — e.g. &quot;Bluey (2018)&quot; vs <strong className="text-white/80">Bluey</strong>.
+          </span>
+        </div>
         {unmatchedLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="animate-spin text-shelf-muted" size={24} />
@@ -299,10 +365,10 @@ export default function OverviewPage() {
           </p>
         ) : (
           <ul className="space-y-2">
-            {unmatched.map((item, idx) => {
+            {unmatched.map((item) => {
               const discoverHref = `/discover?q=${encodeURIComponent(item.discoverQuery)}&type=${item.discoverType}`;
               return (
-                <li key={`${item.mediaKind}-${item.displayTitle}-${item.lastActivityAt}-${idx}`}>
+                <li key={item.dedupeKey}>
                   <div className="flex flex-col gap-2 rounded-xl border border-shelf-border bg-shelf-card/40 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex gap-3 min-w-0">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-shelf-border bg-shelf-card text-shelf-muted">
@@ -318,14 +384,30 @@ export default function OverviewPage() {
                         </p>
                       </div>
                     </div>
-                    <Link
-                      href={discoverHref}
-                      prefetch={true}
-                      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#8b5cf6]/50 bg-[#8b5cf6]/15 px-3 py-2 text-xs font-medium text-[#c4b5fd] hover:bg-[#8b5cf6]/25 sm:self-center"
-                    >
-                      Add in Discover
-                      <ExternalLink size={12} />
-                    </Link>
+                    <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => void dismissUnmatched(item.dedupeKey)}
+                        disabled={dismissingKey === item.dedupeKey}
+                        className="inline-flex items-center justify-center gap-1 rounded-lg border border-shelf-border bg-shelf-card/30 px-2.5 py-2 text-xs text-shelf-muted hover:text-white hover:bg-shelf-card disabled:opacity-50"
+                        title="Hide this row — not shown again"
+                      >
+                        {dismissingKey === item.dedupeKey ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : (
+                          <X size={14} />
+                        )}
+                        Dismiss
+                      </button>
+                      <Link
+                        href={discoverHref}
+                        prefetch={true}
+                        className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#8b5cf6]/50 bg-[#8b5cf6]/15 px-3 py-2 text-xs font-medium text-[#c4b5fd] hover:bg-[#8b5cf6]/25 sm:self-center"
+                      >
+                        Add in Discover
+                        <ExternalLink size={12} />
+                      </Link>
+                    </div>
                   </div>
                 </li>
               );
@@ -361,6 +443,13 @@ export default function OverviewPage() {
                   ? "Set — use ?secret= on your Plex webhook URL"
                   : "Optional — add PLEX_WEBHOOK_SECRET for URL verification"}
               </li>
+              {activity.webhookAccountFilterActive ? (
+                <li>
+                  <span className="text-white/90">Account filter:</span> Only Plex accounts listed in{" "}
+                  <code className="text-[11px] text-white/80">PLEX_WEBHOOK_ALLOWED_ACCOUNTS</code> are counted
+                  (other home users are ignored).
+                </li>
+              ) : null}
               <li>
                 <span className="text-white/90">Last scrobble recorded:</span> {formatWhen(activity.lastScrobbleAt)}
               </li>

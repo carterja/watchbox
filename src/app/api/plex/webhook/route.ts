@@ -12,6 +12,10 @@ import {
   applyEpisodeWatchedFromPlexWebhook,
   applyMovieScrobbleFromPlexWebhook,
 } from "@/lib/seasonProgress";
+import {
+  getAllowedPlexWebhookAccountTitles,
+  plexWebhookAccountTitleAllowed,
+} from "@/lib/plexWebhookAccountFilter";
 
 /**
  * POST /api/plex/webhook — Plex Pass webhooks (Settings → Webhooks on the server).
@@ -24,6 +28,9 @@ import {
  *
  * Episode → WatchBox TV row: TMDB id match, then IMDb / TVDB TMDB `/find`, then Plex show metadata
  * (`grandparentRatingKey`) when `PLEX_SERVER_URL` + `PLEX_TOKEN` are set.
+ *
+ * Optional `PLEX_WEBHOOK_ALLOWED_ACCOUNTS` — comma-separated Plex `Account.title` values; other users’
+ * playback is not stored.
  */
 export const dynamic = "force-dynamic";
 
@@ -169,6 +176,10 @@ export async function POST(request: Request) {
   const payload = parseWebhookPayload(formData);
   if (!payload) {
     return Response.json({ ok: true, ignored: true });
+  }
+
+  if (getAllowedPlexWebhookAccountTitles() != null && !plexWebhookAccountTitleAllowed(payload.Account?.title)) {
+    return Response.json({ ok: true, ignored: true, reason: "account_not_allowed" });
   }
 
   const ev = payload.event;

@@ -39,22 +39,30 @@ export default function PlexLogsSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(30);
+  const [accountFilterActive, setAccountFilterActive] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch(`/api/plex/playback-logs?days=${days}&limit=300`);
-      const data = (await res.json()) as { events?: PlexPlaybackLogRow[]; error?: string };
+      const data = (await res.json()) as {
+        events?: PlexPlaybackLogRow[];
+        error?: string;
+        webhookAccountFilterActive?: boolean;
+      };
       if (!res.ok) {
         setError(data.error || "Failed to load");
         setEvents([]);
+        setAccountFilterActive(false);
         return;
       }
       setEvents(Array.isArray(data.events) ? data.events : []);
+      setAccountFilterActive(Boolean(data.webhookAccountFilterActive));
     } catch {
       setError("Failed to load");
       setEvents([]);
+      setAccountFilterActive(false);
     } finally {
       setLoading(false);
     }
@@ -118,6 +126,13 @@ export default function PlexLogsSettingsPage() {
             Plex sync page
           </Link>
         </div>
+
+        {accountFilterActive ? (
+          <p className="text-xs text-shelf-muted rounded-lg border border-shelf-border/80 bg-shelf-card/40 px-3 py-2">
+            Showing only accounts in <code className="text-[10px]">PLEX_WEBHOOK_ALLOWED_ACCOUNTS</code>. Other Plex home
+            users are hidden.
+          </p>
+        ) : null}
 
         {loading && !events ? (
           <div className="flex justify-center py-16">

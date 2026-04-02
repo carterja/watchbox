@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { withPlaybackAccountFilter } from "@/lib/plexWebhookAccountFilter";
 import { getTmdbTvDetails, getTmdbTvSeason, type TmdbSeasonEpisode } from "@/lib/tmdb";
 import type { SeasonProgressItem } from "@/types/media";
 
@@ -79,11 +80,11 @@ export function maxEpisodeRef(a: EpisodeRef | null, b: EpisodeRef | null): Episo
 /** Max (season, episode) from Plex PlaybackEvent rows for this show. */
 export async function getPlexMaxFinished(mediaId: string, tmdbId: number): Promise<EpisodeRef | null> {
   const rows = await prisma.playbackEvent.findMany({
-    where: {
+    where: withPlaybackAccountFilter({
       OR: [{ mediaId }, { tmdbId, mediaKind: "tv" }],
       season: { gte: 1 },
       episode: { gte: 1 },
-    },
+    }),
     select: { season: true, episode: true },
   });
   let best: EpisodeRef | null = null;

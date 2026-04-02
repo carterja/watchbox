@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/db";
+import {
+  getAllowedPlexWebhookAccountTitles,
+  withPlaybackAccountFilter,
+} from "@/lib/plexWebhookAccountFilter";
 import type { PlexPlaybackLogRow } from "@/types/plexPlaybackLog";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +23,7 @@ export async function GET(request: Request) {
   const since = days != null ? new Date(Date.now() - days * 86_400_000) : undefined;
 
   const rows = await prisma.playbackEvent.findMany({
-    where: since ? { createdAt: { gte: since } } : undefined,
+    where: withPlaybackAccountFilter(since ? { createdAt: { gte: since } } : undefined),
     orderBy: { createdAt: "desc" },
     take: limit,
     include: {
@@ -46,7 +50,12 @@ export async function GET(request: Request) {
   }));
 
   return Response.json(
-    { events, limit, days: days ?? null },
+    {
+      events,
+      limit,
+      days: days ?? null,
+      webhookAccountFilterActive: getAllowedPlexWebhookAccountTitles() != null,
+    },
     { headers: { "Cache-Control": "no-store" } }
   );
 }

@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { withPlaybackAccountFilter } from "@/lib/plexWebhookAccountFilter";
 
 /**
  * GET /api/media/[id]/playback — Plex scrobble history for this title (append-only; survives Plex deletions).
@@ -27,9 +28,9 @@ export async function GET(
     const kind = media.type === "movie" ? "movie" : "tv";
 
     const events = await prisma.playbackEvent.findMany({
-      where: {
+      where: withPlaybackAccountFilter({
         OR: [{ mediaId: id }, { tmdbId: media.tmdbId, mediaKind: kind }],
-      },
+      }),
       orderBy: { createdAt: "desc" },
       take: 200,
       select: {

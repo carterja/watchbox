@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { withPlaybackAccountFilter } from "@/lib/plexWebhookAccountFilter";
 
 /** GET /api/stats — aggregate counts for the Overview page. */
 export const dynamic = "force-dynamic";
@@ -28,10 +29,10 @@ export async function GET() {
       },
     }),
     prisma.playbackEvent.count({
-      where: {
+      where: withPlaybackAccountFilter({
         event: "media.scrobble",
         createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) },
-      },
+      }) ?? {},
     }),
   ]);
 

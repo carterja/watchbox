@@ -17,6 +17,8 @@ services:
       - PLEX_WEBHOOK_SECRET=${PLEX_WEBHOOK_SECRET:-}
       # Set to true to log full Plex webhook JSON to container stdout (docker logs)
       - PLEX_WEBHOOK_LOG_RAW=${PLEX_WEBHOOK_LOG_RAW:-}
+      # Comma-separated Plex Account.title — ignore other home users’ playback (optional)
+      - PLEX_WEBHOOK_ALLOWED_ACCOUNTS=${PLEX_WEBHOOK_ALLOWED_ACCOUNTS:-}
       # Cap Node heap to reduce memory use on small servers (tune or remove if you have RAM)
       - NODE_OPTIONS=--max-old-space-size=384
     volumes:

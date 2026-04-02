@@ -82,3 +82,9 @@ model PlaybackEvent {
   @@index([tmdbId, mediaKind])
   @@index([createdAt])
 }
+
+/// User dismissed a “Not in WatchBox” row; future list queries hide this dedupe key.
+model UnmatchedPlaybackDismissal {
+  dedupeKey String   @id
+  createdAt DateTime @default(now())
+}
