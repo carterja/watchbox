@@ -1,12 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   BarChart3,
-  Calendar,
-  CheckCircle2,
   Clapperboard,
   ExternalLink,
   Film,
@@ -14,15 +11,11 @@ import {
   Link2,
   PlusCircle,
   Radio,
-  RefreshCw,
   Tv,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useMediaList } from "@/contexts/MediaListContext";
-import { useWhatNextCache } from "@/contexts/WhatNextCacheContext";
-import type { WhatNextRow } from "@/lib/whatNext";
-import { posterUrl } from "@/lib/tmdb";
 
 type StatsPayload = {
   total: number;
@@ -81,65 +74,8 @@ function StatCard({
   );
 }
 
-function QueueRow({ row }: { row: WhatNextRow }) {
-  const href = `/series?open=${encodeURIComponent(row.mediaId)}`;
-  const next = row.next;
-
-  return (
-    <li>
-      <Link
-        href={href}
-        prefetch={true}
-        className="flex gap-3 rounded-xl border border-shelf-border bg-shelf-card/40 p-3 transition hover:border-shelf-accent/40 hover:bg-shelf-card/60"
-      >
-        <div className="relative h-[72px] w-[48px] shrink-0 overflow-hidden rounded-lg border border-shelf-border bg-shelf-card">
-          {row.posterPath ? (
-            <Image
-              src={posterUrl(row.posterPath)!}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="48px"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-shelf-muted">
-              <Tv size={22} />
-            </div>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-white truncate">{row.title}</p>
-          {row.caughtUp ? (
-            <p className="text-xs text-emerald-300/90 flex items-center gap-1 mt-0.5">
-              <CheckCircle2 size={14} /> Caught up (or awaiting next season)
-            </p>
-          ) : next ? (
-            <p className="text-sm text-cyan-200/90 mt-0.5">
-              Next: S{next.season} E{next.episode}
-              {next.name ? ` · ${next.name}` : ""}
-            </p>
-          ) : (
-            <p className="text-xs text-shelf-muted mt-0.5">Set progress to see what&apos;s next</p>
-          )}
-          {next?.airDate && (
-            <p className="text-[11px] text-shelf-muted mt-1 flex items-center gap-1">
-              <Calendar size={12} className="shrink-0" />
-              Air {next.airDate}
-            </p>
-          )}
-        </div>
-        <span className="self-center shrink-0 inline-flex items-center gap-1 rounded-lg border border-shelf-border px-2.5 py-1.5 text-xs text-shelf-accent">
-          Manage
-          <ExternalLink size={12} />
-        </span>
-      </Link>
-    </li>
-  );
-}
-
 export default function OverviewPage() {
   const { list } = useMediaList();
-  const { rows, status: queueStatus, error: queueError, refresh: refreshQueue } = useWhatNextCache();
 
   const [stats, setStats] = useState<StatsPayload | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -222,23 +158,21 @@ export default function OverviewPage() {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    void refreshQueue({ silent: true });
-  }, [refreshQueue]);
-
-  const queueRows = rows ?? [];
-  const showQueueLoading = queueStatus === "loading" && rows === null;
+  const inProgressTvCount = list.filter((m) => m.type === "tv" && m.status === "in_progress").length;
 
   return (
     <div className="pb-24 md:pb-8 pt-4 md:pt-6 px-4 md:px-8 max-w-4xl mx-auto space-y-10">
       <header className="space-y-1">
         <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2">
           <BarChart3 className="text-[#8b5cf6]" size={28} />
-          Queue &amp; stats
+          Overview &amp; stats
         </h1>
         <p className="text-sm text-shelf-muted max-w-xl">
-          Up next for in-progress series, library totals, and Plex webhook health. Conflict rules explain how
-          manual progress merges with Plex.
+          Library totals, Plex health, and titles Plex couldn&apos;t match. Open{" "}
+          <Link href="/watching" className="text-shelf-accent hover:underline">
+            Watching
+          </Link>{" "}
+          for your up-next queue (carousel or list).
         </p>
       </header>
 
@@ -283,50 +217,28 @@ export default function OverviewPage() {
         )}
       </section>
 
-      {/* Up next */}
+      {/* Watching shortcut */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Clapperboard size={18} className="text-shelf-muted" />
-            Up next
-          </h2>
-          <button
-            type="button"
-            onClick={() => void refreshQueue()}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-shelf-border px-2.5 py-1 text-xs text-shelf-muted hover:text-white hover:bg-shelf-card"
-          >
-            <RefreshCw size={14} />
-            Refresh
-          </button>
-        </div>
-        <p className="text-xs text-shelf-muted">
-          Same queue as the Watching page — next episode from TMDB after your merged Plex + manual position.
-        </p>
-        {showQueueLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="animate-spin text-cyan-400/80" size={28} />
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <Clapperboard size={18} className="text-shelf-muted" />
+          Watching
+        </h2>
+        <div className="rounded-xl border border-shelf-border bg-shelf-card/40 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-sm text-white/90">
+              {inProgressTvCount} in-progress series · next episodes from TMDB (merged with Plex + manual progress)
+            </p>
+            <p className="text-xs text-shelf-muted mt-1">Use the Watching page for the full queue and controls.</p>
           </div>
-        ) : queueError && queueRows.length === 0 ? (
-          <p className="text-sm text-amber-200/90">{queueError}</p>
-        ) : queueRows.length === 0 ? (
-          <p className="text-sm text-shelf-muted rounded-xl border border-dashed border-shelf-border p-6 text-center">
-            Nothing in progress with a resolvable next episode. Mark a series{" "}
-            <Link href="/watching" className="text-shelf-accent hover:underline">
-              in progress on Watching
-            </Link>
-            .
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {queueRows.map((row) => (
-              <QueueRow key={row.mediaId} row={row} />
-            ))}
-          </ul>
-        )}
-        <p className="text-[11px] text-shelf-muted">
-          {list.filter((m) => m.type === "tv" && m.status === "in_progress").length} in-progress series in your
-          library.
-        </p>
+          <Link
+            href="/watching"
+            prefetch={true}
+            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#8b5cf6]/50 bg-[#8b5cf6]/15 px-4 py-2.5 text-sm font-medium text-[#c4b5fd] hover:bg-[#8b5cf6]/25"
+          >
+            Open Watching
+            <ExternalLink size={14} />
+          </Link>
+        </div>
       </section>
 
       {/* Plex activity not linked to a WatchBox title */}
@@ -465,7 +377,7 @@ export default function OverviewPage() {
             href="/plex"
             className="inline-flex items-center gap-1 text-xs text-shelf-accent hover:underline"
           >
-            Open Plex settings <ExternalLink size={12} />
+            Open Plex hub <ExternalLink size={12} />
           </Link>
         </div>
 

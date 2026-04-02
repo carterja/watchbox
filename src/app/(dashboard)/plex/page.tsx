@@ -1,15 +1,17 @@
-"use client";
-
-import { PlexIntegrationPanel } from "@/components/PlexIntegrationPanel";
+import { Suspense } from "react";
+import { Loader2 } from "lucide-react";
+import { PlexHubClient } from "@/components/plex/PlexHubClient";
 
 export default function PlexPage() {
   return (
-    <div className="min-h-screen">
-      <div className="mx-auto max-w-4xl px-3 pt-2 pb-6 sm:px-4 md:p-6">
-        <div className="overflow-hidden rounded-xl border border-shelf-border bg-shelf-bg/40 sm:rounded-2xl">
-          <PlexIntegrationPanel />
+    <Suspense
+      fallback={
+        <div className="flex min-h-[40vh] items-center justify-center p-8">
+          <Loader2 className="h-8 w-8 animate-spin text-shelf-muted" aria-hidden />
         </div>
-      </div>
-    </div>
+      }
+    >
+      <PlexHubClient />
+    </Suspense>
   );
 }

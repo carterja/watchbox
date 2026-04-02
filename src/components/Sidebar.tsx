@@ -36,7 +36,7 @@ const desktopNav = [
   { href: "/movies", label: "Movies", icon: Film },
   { href: "/series", label: "Series", icon: Tv },
   { href: "/watching", label: "Watching", icon: MonitorPlay },
-  { href: "/overview", label: "Queue", icon: ListOrdered },
+  { href: "/overview", label: "Overview", icon: ListOrdered },
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -78,7 +78,7 @@ const mobileTabs: MobileTab[] = [
   {
     kind: "link",
     href: "/overview",
-    label: "Queue",
+    label: "Overview",
     icon: ListOrdered,
     isActive: (p) => p === "/overview",
   },

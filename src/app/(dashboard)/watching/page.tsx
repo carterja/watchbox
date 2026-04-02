@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Loader2, Settings, Sparkles } from "lucide-react";
+import { GalleryHorizontal, List, Loader2, Settings, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useMediaList } from "@/contexts/MediaListContext";
 import { useWhatNextCache } from "@/contexts/WhatNextCacheContext";
@@ -11,6 +11,9 @@ import type { WhatNextRow } from "@/lib/whatNext";
 import { FilterBar } from "@/components/FilterBar";
 import { MobileFiltersPanel } from "@/components/MobileFiltersPanel";
 import { Tooltip } from "@/components/Tooltip";
+import { WhatNextQueueRow } from "@/components/WhatNextQueueRow";
+
+const WATCHING_VIEW_KEY = "watchingQueueView";
 
 const WatchingNextCarousel = dynamic(() => import("@/components/WatchingNextCarousel").then((m) => ({ default: m.WatchingNextCarousel })), {
   ssr: false,
@@ -38,6 +41,24 @@ export default function WatchingPage() {
   const [seasonsData, setSeasonsData] = useState<{ season: number; episodeCount: number }[] | null>(null);
   const [seasonsLoading, setSeasonsLoading] = useState(false);
   const [seasonsError, setSeasonsError] = useState<string | null>(null);
+
+  const [queueView, setQueueView] = useState<"carousel" | "list">("carousel");
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(WATCHING_VIEW_KEY);
+      if (v === "list" || v === "carousel") setQueueView(v);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const setQueueViewPersist = useCallback((m: "carousel" | "list") => {
+    setQueueView(m);
+    try {
+      localStorage.setItem(WATCHING_VIEW_KEY, m);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     void refresh({ silent: true });
@@ -213,14 +234,14 @@ export default function WatchingPage() {
                   </p>
                 )}
               </div>
-              <Tooltip content="Open Plex sync" placement="bottom">
+              <Tooltip content="Plex hub (sync, activity, logs)" placement="bottom">
                 <Link
                   href="/plex"
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-shelf-border bg-shelf-card/50 px-2.5 py-2 text-xs font-medium text-white/90 hover:bg-shelf-card transition"
-                  aria-label="Plex sync"
+                  aria-label="Plex hub"
                 >
                   <Settings size={16} className="text-cyan-400/90 shrink-0" aria-hidden />
-                  <span className="max-[380px]:sr-only">Plex sync</span>
+                  <span className="max-[380px]:sr-only">Plex</span>
                 </Link>
               </Tooltip>
             </div>
@@ -229,6 +250,39 @@ export default function WatchingPage() {
       </header>
 
       <div className="p-4 md:p-6">
+        {!showFullLoading && !loadError && filteredRows.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-end gap-2 mb-4">
+            <span className="text-[11px] uppercase tracking-wide text-shelf-muted mr-auto">Queue view</span>
+            <div className="inline-flex rounded-lg border border-shelf-border p-0.5 bg-shelf-card/30">
+              <button
+                type="button"
+                onClick={() => setQueueViewPersist("carousel")}
+                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
+                  queueView === "carousel"
+                    ? "bg-shelf-card text-white shadow-sm"
+                    : "text-shelf-muted hover:text-white"
+                }`}
+                aria-pressed={queueView === "carousel"}
+              >
+                <GalleryHorizontal size={14} aria-hidden />
+                Carousel
+              </button>
+              <button
+                type="button"
+                onClick={() => setQueueViewPersist("list")}
+                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
+                  queueView === "list"
+                    ? "bg-shelf-card text-white shadow-sm"
+                    : "text-shelf-muted hover:text-white"
+                }`}
+                aria-pressed={queueView === "list"}
+              >
+                <List size={14} aria-hidden />
+                List
+              </button>
+            </div>
+          </div>
+        ) : null}
         {showFullLoading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <Loader2 className="animate-spin text-cyan-400/90" size={40} aria-hidden />
@@ -260,6 +314,12 @@ export default function WatchingPage() {
               Go to Series
             </Link>
           </div>
+        ) : queueView === "list" ? (
+          <ul className="space-y-2 max-w-4xl">
+            {filteredRows.map((row) => (
+              <WhatNextQueueRow key={row.mediaId} row={row} />
+            ))}
+          </ul>
         ) : (
           <WatchingNextCarousel
             rows={filteredRows}

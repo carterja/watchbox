@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { promoteMediaToFrontOfList } from "@/lib/promoteMediaSort";
 import { maxEpisodeRef, type EpisodeRef } from "@/lib/whatNext";
 import type { MediaStatus, SeasonProgressItem } from "@/types/media";
 
@@ -90,9 +91,12 @@ export async function applyEpisodeWatchedFromPlexWebhook(
 
   // Plex "Season 0" = specials — no season grid row; only note.
   if (season === 0 && episode >= 1) {
-    await prisma.media.update({
-      where: { id: mediaId },
-      data: { progressNote: `Specials E${episode} (Plex)`, lastProgressSource: "plex" },
+    await prisma.$transaction(async (tx) => {
+      await tx.media.update({
+        where: { id: mediaId },
+        data: { progressNote: `Specials E${episode} (Plex)`, lastProgressSource: "plex" },
+      });
+      await promoteMediaToFrontOfList(tx, mediaId);
     });
     return;
   }
@@ -116,21 +120,24 @@ export async function applyEpisodeWatchedFromPlexWebhook(
   );
   const progressNote = merged ? `S${merged.season} E${merged.episode}` : undefined;
 
-  await prisma.media.update({
-    where: { id: mediaId },
-    data: {
-      seasonProgress: parsed.seasonProgress as Prisma.InputJsonValue,
-      totalSeasons: parsed.totalSeasons,
-      lastProgressSource: "plex",
-      ...(nextStatus !== media.status ? { status: nextStatus } : {}),
-      ...(merged
-        ? {
-            manualLastWatchedSeason: merged.season,
-            manualLastWatchedEpisode: merged.episode,
-          }
-        : {}),
-      ...(progressNote ? { progressNote } : {}),
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.media.update({
+      where: { id: mediaId },
+      data: {
+        seasonProgress: parsed.seasonProgress as Prisma.InputJsonValue,
+        totalSeasons: parsed.totalSeasons,
+        lastProgressSource: "plex",
+        ...(nextStatus !== media.status ? { status: nextStatus } : {}),
+        ...(merged
+          ? {
+              manualLastWatchedSeason: merged.season,
+              manualLastWatchedEpisode: merged.episode,
+            }
+          : {}),
+        ...(progressNote ? { progressNote } : {}),
+      },
+    });
+    await promoteMediaToFrontOfList(tx, mediaId);
   });
 }
 

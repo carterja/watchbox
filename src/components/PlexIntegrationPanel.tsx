@@ -538,12 +538,12 @@ export function PlexIntegrationPanel() {
             </h2>
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
               <Link href="/overview" className="text-[11px] text-shelf-accent hover:underline">
-                Queue &amp; stats — webhook health &amp; merge rules
+                Overview &amp; stats
               </Link>
-              <Link href="/overview#outside-library" className="text-[11px] text-shelf-muted hover:text-cyan-200/90 hover:underline">
+              <Link href="/plex?tab=unmatched" className="text-[11px] text-shelf-muted hover:text-cyan-200/90 hover:underline">
                 Not in WatchBox
               </Link>
-              <Link href="/settings/plex-logs" className="text-[11px] text-shelf-muted hover:text-cyan-200/90 hover:underline">
+              <Link href="/plex?tab=logs" className="text-[11px] text-shelf-muted hover:text-cyan-200/90 hover:underline">
                 Webhook log
               </Link>
             </div>

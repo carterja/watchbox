@@ -75,12 +75,12 @@ export default function SettingsPage() {
             <ChevronRight className="h-5 w-5 shrink-0 text-shelf-muted" aria-hidden />
           </Link>
           <Link
-            href="/settings/plex-logs"
+            href="/plex?tab=logs"
             className="mt-2 flex items-center gap-3 rounded-xl border border-shelf-border bg-shelf-card/40 px-4 py-3 transition hover:border-shelf-accent/40 hover:bg-shelf-card/70"
           >
             <div className="min-w-0 flex-1 pl-1">
               <p className="text-sm font-medium text-white">Plex webhook activity log</p>
-              <p className="text-xs text-shelf-muted">Play, pause, stop, and scrobble events from Plex</p>
+              <p className="text-xs text-shelf-muted">Play, pause, stop, and scrobble events (Plex hub)</p>
             </div>
             <ChevronRight className="h-5 w-5 shrink-0 text-shelf-muted" aria-hidden />
           </Link>
