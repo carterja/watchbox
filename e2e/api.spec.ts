@@ -107,9 +107,11 @@ test.describe("API: health", () => {
   test("GET /api/health → ok and db:true", { tag: "@smoke" }, async ({ request }) => {
     const res = await request.get("/api/health");
     expect(res.ok()).toBeTruthy();
-    const body = (await res.json()) as { ok: boolean; db: boolean };
+    const body = (await res.json()) as { ok: boolean; db: boolean; version: string };
     expect(body.ok).toBe(true);
     expect(body.db).toBe(true);
+    expect(typeof body.version).toBe("string");
+    expect(body.version.length).toBeGreaterThan(0);
   });
 
   test("GET /api/plex/status → JSON with configured flag", { tag: "@smoke" }, async ({ request }) => {

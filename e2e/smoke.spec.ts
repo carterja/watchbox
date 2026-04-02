@@ -34,8 +34,10 @@ test.describe("Smoke", { tag: "@smoke" }, () => {
   test("GET /api/health returns ok with database", async ({ request }) => {
     const res = await request.get("/api/health");
     expect(res.ok()).toBeTruthy();
-    const body = (await res.json()) as { ok: boolean; db: boolean };
+    const body = (await res.json()) as { ok: boolean; db: boolean; version: string };
     expect(body.ok).toBe(true);
     expect(body.db).toBe(true);
+    expect(typeof body.version).toBe("string");
+    expect(body.version.length).toBeGreaterThan(0);
   });
 });

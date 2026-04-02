@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { APP_VERSION } from "@/lib/version";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 /** GET /api/health - for Docker healthcheck and monitoring. Checks DB; optionally TMDB. */
 export async function GET() {
-  const result: { ok: boolean; db: boolean; tmdb?: boolean; plex?: boolean } = {
+  const result: {
+    ok: boolean;
+    version: string;
+    db: boolean;
+    tmdb?: boolean;
+    plex?: boolean;
+  } = {
     ok: true,
+    version: APP_VERSION,
     db: false,
   };
 

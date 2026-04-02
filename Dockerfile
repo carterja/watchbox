@@ -23,7 +23,9 @@ RUN mkdir -p /app/scripts
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Build Next.js
+# Build Next.js (optional GIT_SHA → version string like 0.1.0+abc1234 in next.config)
+ARG GIT_SHA=
+ENV GIT_SHA=${GIT_SHA}
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 

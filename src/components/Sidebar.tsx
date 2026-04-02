@@ -27,6 +27,7 @@ import { useReorderMode } from "@/contexts/ReorderModeContext";
 import { useSidebarCollapse } from "@/contexts/SidebarCollapseContext";
 import { DisplayModeToggle } from "./DisplayModeToggle";
 import { Tooltip } from "./Tooltip";
+import { APP_VERSION } from "@/lib/version";
 
 /** Full list — desktop sidebar only (comfortable width). */
 const desktopNav = [
@@ -233,10 +234,16 @@ export function Sidebar() {
                   Flaticon
                 </a>
               </p>
+              <p
+                className="text-[10px] font-mono text-shelf-muted/50 tabular-nums"
+                title="Current deploy build"
+              >
+                {APP_VERSION}
+              </p>
             </div>
           ) : (
             <Tooltip
-              content="Carter Family"
+              content={`Carter Family · ${APP_VERSION}`}
               placement="bottom"
               className="flex w-full justify-center"
             >

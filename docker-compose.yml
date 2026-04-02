@@ -1,6 +1,9 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        GIT_SHA: ${GIT_SHA:-}
     ports:
       - "9516:9516"   # host:container — reverse proxy to https://watch.carterfamily.top
     environment:
