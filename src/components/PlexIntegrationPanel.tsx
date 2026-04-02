@@ -26,6 +26,7 @@ import { plexOnDeckRowKey, type PlexOnDeckItem } from "@/lib/plex";
 import { posterUrl } from "@/lib/tmdb";
 import {
   computeWatchingMatches,
+  canSyncLastWatchedFromPlexOnDeckEpisode,
   progressNoteFromPlex,
   type WatchingMatch,
 } from "@/lib/watching";
@@ -342,11 +343,45 @@ export function PlexIntegrationPanel() {
   const syncFromPlex = async (m: WatchingMatch) => {
     const note = progressNoteFromPlex(m.plex);
     if (!note) {
-      toast.error("No episode progress to sync from Plex for this item.");
+      toast.error("No progress to sync from Plex for this item.");
       return;
     }
+
     setSyncingId(m.media.id);
     try {
+      if (
+        m.media.type === "tv" &&
+        m.plex.type === "episode" &&
+        m.plex.parentIndex != null &&
+        m.plex.index != null
+      ) {
+        if (canSyncLastWatchedFromPlexOnDeckEpisode(m.plex)) {
+          const res = await fetch(
+            `/api/media/${encodeURIComponent(m.media.id)}/sync-from-plex-on-deck`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                season: m.plex.parentIndex,
+                episode: m.plex.index,
+              }),
+            }
+          );
+          const data = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
+          if (!res.ok) {
+            toast.error(
+              typeof data.message === "string"
+                ? data.message
+                : "Could not sync last watched from Plex"
+            );
+            return;
+          }
+          optimisticUpdate(m.media.id, data as Media);
+          toast.success("Last watched set to the episode before Plex’s current");
+          return;
+        }
+      }
+
       const res = await fetch(`/api/media/${m.media.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -357,7 +392,11 @@ export function PlexIntegrationPanel() {
         return;
       }
       optimisticUpdate(m.media.id, { progressNote: note, lastProgressSource: "plex" });
-      toast.success("WatchBox progress updated from Plex");
+      toast.success(
+        m.media.type === "tv"
+          ? "Progress note updated (full episode sync needs a specific episode on Plex On Deck)"
+          : "WatchBox progress updated from Plex"
+      );
     } catch {
       toast.error("Update failed");
     } finally {
@@ -440,13 +479,34 @@ export function PlexIntegrationPanel() {
         const note = progressNoteFromPlex(plex);
         if (!note) continue;
         try {
+          if (
+            plex.type === "episode" &&
+            plex.parentIndex != null &&
+            plex.index != null &&
+            canSyncLastWatchedFromPlexOnDeckEpisode(plex)
+          ) {
+            const res = await fetch(
+              `/api/media/${encodeURIComponent(media.id)}/sync-from-plex-on-deck`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ season: plex.parentIndex, episode: plex.index }),
+              }
+            );
+            if (res.ok) {
+              const data = (await res.json()) as Media;
+              optimisticUpdate(media.id, data);
+              ok++;
+            }
+            continue;
+          }
           const res = await fetch(`/api/media/${media.id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ progressNote: note }),
+            body: JSON.stringify({ progressNote: note, progressSource: "plex" }),
           });
           if (res.ok) {
-            optimisticUpdate(media.id, { progressNote: note });
+            optimisticUpdate(media.id, { progressNote: note, lastProgressSource: "plex" });
             ok++;
           }
         } catch {
@@ -493,9 +553,9 @@ export function PlexIntegrationPanel() {
             </button>
             <div className="pointer-events-none absolute right-0 bottom-full mb-2 hidden group-hover:flex z-10">
               <div className="rounded-lg border border-shelf-border bg-shelf-bg/95 backdrop-blur px-3 py-2 text-[10px] text-shelf-muted leading-snug w-64 md:w-72">
-                Sync your Plex watching progress with WatchBox. Webhooks update WatchBox when you finish an episode
-                (recommended). Use &quot;Apply watched&quot; to poll Plex if a webhook was missed. Both use the same
-                ~90% watch threshold as Plex scrobble.
+                Webhooks record plays/stops and update WatchBox on <strong className="text-white/90">media.scrobble</strong>
+                (finished). <strong className="text-white/90">Sync</strong> sets your last watched to the episode
+                <em> before</em> Plex&apos;s current On Deck episode. Use &quot;Apply watched&quot; to poll Plex past ~90%.
               </div>
             </div>
           </div>
@@ -753,6 +813,7 @@ export function PlexIntegrationPanel() {
                         type="button"
                         onClick={() => syncFromPlex({ media, plex })}
                         disabled={syncingId === media.id || !progressNoteFromPlex(plex)}
+                        title="Sets last watched to the episode before Plex’s current (On Deck); uses TMDB for season boundaries."
                         className="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-lg bg-shelf-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-shelf-accent-hover disabled:opacity-40 md:gap-1.5 md:py-2"
                       >
                         {syncingId === media.id ? (

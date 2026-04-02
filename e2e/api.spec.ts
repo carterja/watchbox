@@ -394,14 +394,25 @@ test.describe("API: Plex webhook", () => {
     await cleanup(request, webhookMovieId, webhookTvId);
   });
 
-  test("POST ignored for non-scrobble events", async ({ request }) => {
+  test("POST ignored for unsupported webhook events", async ({ request }) => {
     const res = await postPlexWebhook(request, {
-      event: "media.play",
+      event: "media.rating",
       Metadata: { type: "movie", title: "x", Guid: [{ id: "tmdb://1" }] },
     });
     expect(res.ok()).toBeTruthy();
     const body = (await res.json()) as { ignored?: boolean };
     expect(body.ignored).toBe(true);
+  });
+
+  test("POST media.play records playback (no WatchBox media update)", async ({ request }) => {
+    const res = await postPlexWebhook(request, {
+      event: "media.play",
+      Metadata: { type: "movie", title: "x", Guid: [{ id: "tmdb://1" }] },
+    });
+    expect(res.ok()).toBeTruthy();
+    const body = (await res.json()) as { recorded?: boolean; ignored?: boolean };
+    expect(body.recorded).toBe(true);
+    expect(body.ignored).toBeUndefined();
   });
 
   test("POST media.scrobble movie → finishes linked media + progress note", async ({ request }) => {

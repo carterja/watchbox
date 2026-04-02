@@ -12,6 +12,17 @@ export function plexItemMatchKey(item: PlexOnDeckItem): string | null {
 }
 
 /** Human-readable progress from Plex for WatchBox `progressNote`. */
+/** True when Plex reports an episode and we can map “last watched” to the prior episode (not S1E1 / S0E1). */
+export function canSyncLastWatchedFromPlexOnDeckEpisode(plex: PlexOnDeckItem): boolean {
+  if (plex.type !== "episode") return false;
+  const s = plex.parentIndex;
+  const e = plex.index;
+  if (s == null || e == null) return false;
+  if (s === 1 && e === 1) return false;
+  if (s === 0 && e === 1) return false;
+  return true;
+}
+
 export function progressNoteFromPlex(item: PlexOnDeckItem): string | null {
   // Plex `parentIndex` is already the season number (1-based; 0 = specials). Do not add 1.
   if (item.type === "episode" && item.parentIndex != null && item.index != null) {

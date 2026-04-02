@@ -28,6 +28,7 @@ type CastMember = {
 type PlexLogEntry = {
   id: string;
   createdAt: string;
+  event: string;
   title: string | null;
   showTitle: string | null;
   season: number | null;
@@ -500,8 +501,8 @@ export function MediaDetailFormFields({ media, currentTmdbId, state, onChange }:
           <p className="text-xs text-shelf-muted">Loading…</p>
         ) : plexLog.length === 0 ? (
           <p className="text-xs text-shelf-muted">
-            No Plex scrobbles recorded yet. Add a webhook on your server and finish an episode
-            or movie past the threshold — history is stored here even if you remove files from Plex later.
+            No Plex activity logged yet. Add a webhook URL in Plex; WatchBox records scrobbles, plays, and stops.
+            Finishing past the threshold updates your list; plays are history only.
           </p>
         ) : (
           <ul className="max-h-40 overflow-y-auto space-y-1.5 text-xs md:text-sm rounded-lg border border-shelf-border bg-shelf-card/50 p-2">
@@ -515,6 +516,9 @@ export function MediaDetailFormFields({ media, currentTmdbId, state, onChange }:
                 ? [epLabel, e.title].filter(Boolean).join(" · ") : e.title ?? media.title;
               return (
                 <li key={e.id} className="text-shelf-muted">
+                  <span className="text-[10px] uppercase tracking-wide text-shelf-muted/90 mr-1">
+                    {e.event?.replace("media.", "") ?? "?"}
+                  </span>
                   <span className="text-white/90">{primary}</span>
                   {dateStr && <span className="text-shelf-muted"> · {dateStr}</span>}
                   {e.accountTitle && <span className="text-shelf-muted"> · {e.accountTitle}</span>}

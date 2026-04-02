@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { mergeOnDeckWithLibrary } from "@/lib/plex";
-import { computeWatchingMatches, progressNoteFromPlex, tmdbMatchKey } from "@/lib/watching";
+import {
+  canSyncLastWatchedFromPlexOnDeckEpisode,
+  computeWatchingMatches,
+  progressNoteFromPlex,
+  tmdbMatchKey,
+} from "@/lib/watching";
 import type { Media } from "@/types/media";
 import type { PlexOnDeckItem } from "@/lib/plex";
 
@@ -58,6 +63,40 @@ describe("computeWatchingMatches", () => {
     const { matches, watchBoxInProgressOnly } = computeWatchingMatches(list, plex);
     expect(matches).toHaveLength(0);
     expect(watchBoxInProgressOnly).toHaveLength(1);
+  });
+});
+
+describe("canSyncLastWatchedFromPlexOnDeckEpisode", () => {
+  it("is false for S1E1 and S0E1", () => {
+    expect(
+      canSyncLastWatchedFromPlexOnDeckEpisode({
+        ratingKey: "1",
+        type: "episode",
+        title: "x",
+        parentIndex: 1,
+        index: 1,
+      })
+    ).toBe(false);
+    expect(
+      canSyncLastWatchedFromPlexOnDeckEpisode({
+        ratingKey: "1",
+        type: "episode",
+        title: "x",
+        parentIndex: 0,
+        index: 1,
+      })
+    ).toBe(false);
+  });
+  it("is true for S1E2", () => {
+    expect(
+      canSyncLastWatchedFromPlexOnDeckEpisode({
+        ratingKey: "1",
+        type: "episode",
+        title: "x",
+        parentIndex: 1,
+        index: 2,
+      })
+    ).toBe(true);
   });
 });
 

@@ -9,12 +9,18 @@ import {
  * POST /api/plex/webhook — Plex Pass webhooks (Settings → Webhooks on the server).
  * Add a shared secret in the URL: /api/plex/webhook?secret=YOUR_SECRET and set PLEX_WEBHOOK_SECRET.
  *
- * On `media.scrobble` (past watch threshold): appends `PlaybackEvent`, then updates linked WatchBox
- * rows — TV: season grid, manual last-watched, progress note; movies: status → finished + note.
+ * Records `PlaybackEvent` for: `media.scrobble`, `media.play`, `media.stop`, `media.pause` (so you can
+ * see activity in the title’s Plex log). Only `media.scrobble` updates WatchBox media (finished episode / movie).
  */
 export const dynamic = "force-dynamic";
 
-const RECORD_EVENTS = new Set(["media.scrobble"]);
+/** Persisted to PlaybackEvent — play/stop/pause are logged only; scrobble also updates Media. */
+const RECORD_PLAYBACK_EVENTS = new Set([
+  "media.scrobble",
+  "media.play",
+  "media.stop",
+  "media.pause",
+]);
 
 function num(v: unknown): number | undefined {
   if (typeof v === "number" && Number.isFinite(v)) return Math.trunc(v);
@@ -47,7 +53,7 @@ export async function POST(request: Request) {
   }
 
   const ev = payload.event;
-  if (!ev || !RECORD_EVENTS.has(ev)) {
+  if (!ev || !RECORD_PLAYBACK_EVENTS.has(ev)) {
     return Response.json({
       ok: true,
       ignored: true,
@@ -108,7 +114,7 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "persist_failed" }, { status: 500 });
   }
 
-  if (mediaId) {
+  if (mediaId && ev === "media.scrobble") {
     try {
       if (kind === "episode") {
         const season = num(meta.parentIndex);
