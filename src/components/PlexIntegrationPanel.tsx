@@ -543,6 +543,9 @@ export function PlexIntegrationPanel() {
               <Link href="/overview#outside-library" className="text-[11px] text-shelf-muted hover:text-cyan-200/90 hover:underline">
                 Not in WatchBox
               </Link>
+              <Link href="/settings/plex-logs" className="text-[11px] text-shelf-muted hover:text-cyan-200/90 hover:underline">
+                Webhook log
+              </Link>
             </div>
           </div>
           <div className="relative group">
