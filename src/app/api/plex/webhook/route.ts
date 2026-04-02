@@ -11,8 +11,15 @@ import {
  *
  * Records `PlaybackEvent` for: `media.scrobble`, `media.play`, `media.stop`, `media.pause` (so you can
  * see activity in the title’s Plex log). Only `media.scrobble` updates WatchBox media (finished episode / movie).
+ *
+ * Set `PLEX_WEBHOOK_LOG_RAW=true` to print the raw multipart `payload` JSON to stdout (docker logs).
  */
 export const dynamic = "force-dynamic";
+
+function shouldLogRawPlexWebhook(): boolean {
+  const v = process.env.PLEX_WEBHOOK_LOG_RAW?.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes";
+}
 
 /** Persisted to PlaybackEvent — play/stop/pause are logged only; scrobble also updates Media. */
 const RECORD_PLAYBACK_EVENTS = new Set([
@@ -45,6 +52,14 @@ export async function POST(request: Request) {
     formData = await request.formData();
   } catch {
     return Response.json({ error: "Expected multipart form data" }, { status: 400 });
+  }
+
+  if (shouldLogRawPlexWebhook()) {
+    const raw = formData.get("payload");
+    console.info(
+      "[plex webhook] raw payload:",
+      typeof raw === "string" ? raw : `(no payload field: ${String(raw)})`
+    );
   }
 
   const payload = parseWebhookPayload(formData);
