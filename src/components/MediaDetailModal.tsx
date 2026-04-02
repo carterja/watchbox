@@ -139,6 +139,7 @@ function MediaDetailModalComponent({ media, onClose, onUpdate, onDelete }: Props
 
   const posterImage = selectedPoster ? (
     isExternalPoster(selectedPoster) ? (
+      // eslint-disable-next-line @next/next/no-img-element -- external poster URL; not in images.remotePatterns
       <img src={posterUrl(selectedPoster)!} alt={title} className="object-cover w-full h-full" />
     ) : (
       <Image src={posterUrl(selectedPoster)!} alt={title} fill className="object-cover" />

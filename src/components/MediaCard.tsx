@@ -84,6 +84,7 @@ export const MediaCard = memo(function MediaCard({
           <div className="relative w-14 sm:w-16 aspect-[2/3] shrink-0 bg-shelf-border">
             {imgSrc ? (
               isExternalPoster(media.posterPath) ? (
+                // eslint-disable-next-line @next/next/no-img-element -- external poster URL; not in images.remotePatterns
                 <img src={imgSrc} alt={media.title} className="object-cover w-full h-full" loading="lazy" />
               ) : (
                 <Image
@@ -149,6 +150,7 @@ export const MediaCard = memo(function MediaCard({
       <div className="absolute inset-0">
         {imgSrc ? (
           isExternalPoster(media.posterPath) ? (
+            // eslint-disable-next-line @next/next/no-img-element -- external poster URL; not in images.remotePatterns
             <img src={imgSrc} alt={media.title} className="object-cover w-full h-full" loading="lazy" />
           ) : (
             <Image

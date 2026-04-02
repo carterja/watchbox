@@ -112,6 +112,7 @@ export function PosterPicker({ tmdbId, mediaType, selectedPoster, onSelect }: Pr
               onClick={() => selectAndClose(imdbPosterUrl)}
               className="flex items-center gap-2 w-full rounded-lg border-2 border-shelf-border hover:border-[#8b5cf6]/50 p-2 text-left"
             >
+              {/* eslint-disable-next-line @next/next/no-img-element -- OMDb/IMDb image host not in images.remotePatterns */}
               <img src={imdbPosterUrl} alt="IMDb poster" className="w-10 lg:w-12 h-14 lg:h-[4.5rem] object-cover rounded shrink-0" />
               <span className="text-xs lg:text-sm text-shelf-muted">Use IMDb poster</span>
             </button>
