@@ -51,6 +51,31 @@ function num(v: unknown): number | undefined {
 
 type TmdbRef = { type: "movie" | "tv"; id: number };
 
+/** Match Plex "Bluey (2018)" to WatchBox "Bluey" or same with year. */
+function normalizeTvDisplayTitle(s: string): string {
+  return s.replace(/\s*\(\d{4}\)\s*$/, "").trim().toLowerCase();
+}
+
+/** Last resort when TMDB ids differ between Plex resolution and your library row. */
+async function findTvMediaByGrandparentTitle(
+  grandparentTitle: string | undefined
+): Promise<{ id: string; tmdbId: number } | null> {
+  const raw = grandparentTitle?.trim();
+  if (!raw) return null;
+  const norm = normalizeTvDisplayTitle(raw);
+  const rows = await prisma.media.findMany({
+    where: { type: "tv" },
+    select: { id: true, tmdbId: true, title: true },
+  });
+  const match = rows.find(
+    (r) =>
+      r.title.toLowerCase() === raw.toLowerCase() ||
+      normalizeTvDisplayTitle(r.title) === norm ||
+      normalizeTvDisplayTitle(r.title) === normalizeTvDisplayTitle(raw)
+  );
+  return match ? { id: match.id, tmdbId: match.tmdbId } : null;
+}
+
 /**
  * Map episode webhooks to WatchBox TV rows: direct TMDB id, then IMDb / TVDB find, then Plex show XML.
  * Handles missing `tmdb://` in Guid (only TVDB/IMDb) and episode vs series TMDB id mixups.
@@ -107,6 +132,11 @@ async function resolveEpisodeTvToMediaRow(
       });
       if (row) return { tmdb, mediaId: row.id };
     }
+  }
+
+  const byTitle = await findTvMediaByGrandparentTitle(meta.grandparentTitle);
+  if (byTitle) {
+    return { tmdb: { type: "tv", id: byTitle.tmdbId }, mediaId: byTitle.id };
   }
 
   return { tmdb, mediaId: null };
