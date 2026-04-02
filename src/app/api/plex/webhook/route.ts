@@ -169,7 +169,8 @@ export async function POST(request: Request) {
   let mediaId: string | null = null;
 
   if (kind === "episode") {
-    const startTv = tmdb?.type === "tv" ? tmdb : null;
+    const startTv: { type: "tv"; id: number } | null =
+      tmdb?.type === "tv" ? { type: "tv", id: tmdb.id } : null;
     const resolved = await resolveEpisodeTvToMediaRow(meta, startTv);
     tmdb = resolved.tmdb;
     mediaId = resolved.mediaId;

@@ -536,12 +536,14 @@ export function PlexIntegrationPanel() {
             <h2 className="text-sm font-semibold leading-tight text-white sm:text-base md:text-lg">
               Plex & library sync
             </h2>
-            <Link
-              href="/overview"
-              className="text-[11px] text-shelf-accent hover:underline mt-0.5 inline-block"
-            >
-              Queue &amp; stats — webhook health &amp; merge rules
-            </Link>
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5">
+              <Link href="/overview" className="text-[11px] text-shelf-accent hover:underline">
+                Queue &amp; stats — webhook health &amp; merge rules
+              </Link>
+              <Link href="/overview#outside-library" className="text-[11px] text-shelf-muted hover:text-cyan-200/90 hover:underline">
+                Not in WatchBox
+              </Link>
+            </div>
           </div>
           <div className="relative group">
             <button

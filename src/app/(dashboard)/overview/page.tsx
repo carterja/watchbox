@@ -9,7 +9,9 @@ import {
   CheckCircle2,
   Clapperboard,
   ExternalLink,
+  Film,
   Loader2,
+  PlusCircle,
   Radio,
   RefreshCw,
   Tv,
@@ -36,6 +38,17 @@ type ActivityPayload = {
   playbackEventsTotal: number;
   playbackEventsLast24h: number;
   playbackEventsLast7d: number;
+};
+
+type UnmatchedPlaybackItem = {
+  mediaKind: "movie" | "tv";
+  displayTitle: string;
+  subtitle: string | null;
+  lastActivityAt: string;
+  lastEvent: string;
+  tmdbId: number | null;
+  discoverQuery: string;
+  discoverType: "movie" | "tv";
 };
 
 function formatWhen(iso: string | null): string {
@@ -127,20 +140,31 @@ export default function OverviewPage() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [activity, setActivity] = useState<ActivityPayload | null>(null);
   const [activityLoading, setActivityLoading] = useState(true);
+  const [unmatched, setUnmatched] = useState<UnmatchedPlaybackItem[] | null>(null);
+  const [unmatchedLoading, setUnmatchedLoading] = useState(true);
 
   const load = useCallback(async () => {
     setStatsLoading(true);
     setActivityLoading(true);
+    setUnmatchedLoading(true);
     try {
-      const [sRes, aRes] = await Promise.all([
+      const [sRes, aRes, uRes] = await Promise.all([
         fetch("/api/stats"),
         fetch("/api/plex/activity"),
+        fetch("/api/plex/unmatched-playback?days=14&limit=20"),
       ]);
       if (sRes.ok) setStats((await sRes.json()) as StatsPayload);
       if (aRes.ok) setActivity((await aRes.json()) as ActivityPayload);
+      if (uRes.ok) {
+        const u = (await uRes.json()) as { items: UnmatchedPlaybackItem[] };
+        setUnmatched(Array.isArray(u.items) ? u.items : []);
+      } else {
+        setUnmatched([]);
+      }
     } finally {
       setStatsLoading(false);
       setActivityLoading(false);
+      setUnmatchedLoading(false);
     }
   }, []);
 
@@ -253,6 +277,61 @@ export default function OverviewPage() {
           {list.filter((m) => m.type === "tv" && m.status === "in_progress").length} in-progress series in your
           library.
         </p>
+      </section>
+
+      {/* Plex activity not linked to a WatchBox title */}
+      <section id="outside-library" className="space-y-3 scroll-mt-24">
+        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <PlusCircle size={18} className="text-shelf-muted" />
+          Not in WatchBox
+        </h2>
+        <p className="text-xs text-shelf-muted max-w-xl">
+          Recent Plex plays we couldn&apos;t attach to a library title (add the show or movie here, then it will
+          sync on future scrobbles). Based on webhook history — Plex Pass required.
+        </p>
+        {unmatchedLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="animate-spin text-shelf-muted" size={24} />
+          </div>
+        ) : !unmatched || unmatched.length === 0 ? (
+          <p className="text-sm text-shelf-muted rounded-xl border border-dashed border-shelf-border p-6 text-center">
+            Nothing unmatched in the last 14 days, or webhooks aren&apos;t recording yet.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {unmatched.map((item, idx) => {
+              const discoverHref = `/discover?q=${encodeURIComponent(item.discoverQuery)}&type=${item.discoverType}`;
+              return (
+                <li key={`${item.mediaKind}-${item.displayTitle}-${item.lastActivityAt}-${idx}`}>
+                  <div className="flex flex-col gap-2 rounded-xl border border-shelf-border bg-shelf-card/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex gap-3 min-w-0">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-shelf-border bg-shelf-card text-shelf-muted">
+                        {item.mediaKind === "movie" ? <Film size={20} /> : <Tv size={20} />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-white truncate">{item.displayTitle}</p>
+                        {item.subtitle && (
+                          <p className="text-xs text-shelf-muted truncate">{item.subtitle}</p>
+                        )}
+                        <p className="text-[11px] text-shelf-muted/90 mt-0.5">
+                          {formatWhen(item.lastActivityAt)} · {item.lastEvent.replace("media.", "")}
+                        </p>
+                      </div>
+                    </div>
+                    <Link
+                      href={discoverHref}
+                      prefetch={true}
+                      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#8b5cf6]/50 bg-[#8b5cf6]/15 px-3 py-2 text-xs font-medium text-[#c4b5fd] hover:bg-[#8b5cf6]/25 sm:self-center"
+                    >
+                      Add in Discover
+                      <ExternalLink size={12} />
+                    </Link>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       {/* Plex health + rules */}

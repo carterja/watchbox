@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { Suspense, useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Search, Film, Tv, Loader2, Check } from "lucide-react";
 import { toast } from "sonner";
@@ -31,7 +32,9 @@ type TmdbLists = {
 
 type Category = "top" | "popular" | "trending" | "nowPlaying";
 
-export default function DiscoverPage() {
+function DiscoverPageContent() {
+  const searchParams = useSearchParams();
+  const lastPrefillKey = useRef<string>("");
   const [tab, setTab] = useState<"search" | "browse">("browse");
   const [category, setCategory] = useState<Category>("popular");
   const [searchQuery, setSearchQuery] = useState("");
@@ -91,6 +94,43 @@ export default function DiscoverPage() {
     }, 400);
     return () => clearTimeout(t);
   }, [searchMode, searchQuery]);
+
+  // Deep link: /discover?q=Name&type=tv|movie — open Search and run query
+  useEffect(() => {
+    const q = searchParams.get("q")?.trim();
+    if (!q) return;
+    const type = searchParams.get("type") ?? "";
+    const key = `${q}|${type}`;
+    if (lastPrefillKey.current === key) return;
+    lastPrefillKey.current = key;
+    setTab("search");
+    setSearchQuery(q);
+    setQuery(q);
+    if (type === "movie" || type === "tv") setSearchType(type);
+    else setSearchType("all");
+    setSearchMode("title");
+    let cancelled = false;
+    void (async () => {
+      setLoading(true);
+      setTmdbError(null);
+      try {
+        const res = await fetch(`/api/tmdb/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (!res.ok) {
+          setTmdbError(data.error || "Search failed");
+          setSearchResults([]);
+          return;
+        }
+        setSearchResults(Array.isArray(data) ? data : []);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   useEffect(() => {
     const handleSlash = (e: KeyboardEvent) => {
@@ -931,5 +971,19 @@ export default function DiscoverPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function DiscoverPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[50vh] items-center justify-center px-4">
+          <Loader2 className="h-8 w-8 animate-spin text-shelf-muted" aria-label="Loading" />
+        </div>
+      }
+    >
+      <DiscoverPageContent />
+    </Suspense>
   );
 }
