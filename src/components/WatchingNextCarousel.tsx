@@ -443,7 +443,8 @@ function WatchingNextDetailSlide({
               </button>
             </div>
             <Link
-              href="/series"
+              href={`/series?open=${encodeURIComponent(row.mediaId)}`}
+              prefetch={true}
               className="group flex w-full items-center justify-center gap-1 self-center text-[10px] font-semibold uppercase tracking-[0.2em] text-shelf-muted transition hover:text-[#a78bfa] sm:text-xs"
             >
               Series list

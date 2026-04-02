@@ -19,9 +19,19 @@ type Props = {
   variant?: "card" | "list";
   /** When true, suppress click-to-open and show jiggle animation for drag reordering. */
   reorderMode?: boolean;
+  /** When true, click does not open the modal (e.g. parent already opened it via ?open= deep link). */
+  suppressClickModal?: boolean;
 };
 
-export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, showTypeTag = true, variant = "card", reorderMode = false }: Props) {
+export const MediaCard = memo(function MediaCard({
+  media,
+  onDelete,
+  onUpdate,
+  showTypeTag = true,
+  variant = "card",
+  reorderMode = false,
+  suppressClickModal = false,
+}: Props) {
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   const handleCloseModal = useCallback(() => setShowDetailModal(false), []);
@@ -65,8 +75,11 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
     return (
       <>
         <div
-          className={`group flex items-center gap-3 rounded-xl border border-shelf-border bg-shelf-card overflow-hidden transition ${reorderMode ? "cursor-grab active:cursor-grabbing" : "hover:border-[#8b5cf6]/50 hover:shadow-lg hover:shadow-[#8b5cf6]/20 cursor-pointer"} ${getViewerGlowClass()}`}
-          onClick={reorderMode ? undefined : () => setShowDetailModal(true)}
+          data-media-card-id={media.id}
+          className={`group flex items-center gap-3 rounded-xl border border-shelf-border bg-shelf-card overflow-hidden transition ${reorderMode ? "cursor-grab active:cursor-grabbing" : suppressClickModal ? "cursor-default" : "hover:border-[#8b5cf6]/50 hover:shadow-lg hover:shadow-[#8b5cf6]/20 cursor-pointer"} ${getViewerGlowClass()}`}
+          onClick={
+            reorderMode || suppressClickModal ? undefined : () => setShowDetailModal(true)
+          }
         >
           <div className="relative w-14 sm:w-16 aspect-[2/3] shrink-0 bg-shelf-border">
             {imgSrc ? (
@@ -123,12 +136,15 @@ export const MediaCard = memo(function MediaCard({ media, onDelete, onUpdate, sh
 
   return (
     <div
+      data-media-card-id={media.id}
       className={`group relative aspect-[2/3] rounded-xl border overflow-hidden transition ${
         reorderMode
           ? "border-[#8b5cf6]/40 cursor-grab active:cursor-grabbing ring-1 ring-[#8b5cf6]/20"
-          : "border-shelf-border hover:border-[#8b5cf6]/50 hover:shadow-lg hover:shadow-[#8b5cf6]/20 cursor-pointer"
+          : suppressClickModal
+            ? "border-shelf-border cursor-default"
+            : "border-shelf-border hover:border-[#8b5cf6]/50 hover:shadow-lg hover:shadow-[#8b5cf6]/20 cursor-pointer"
       } bg-shelf-card ${getViewerGlowClass()}`}
-      onClick={reorderMode ? undefined : () => setShowDetailModal(true)}
+      onClick={reorderMode || suppressClickModal ? undefined : () => setShowDetailModal(true)}
     >
       <div className="absolute inset-0">
         {imgSrc ? (

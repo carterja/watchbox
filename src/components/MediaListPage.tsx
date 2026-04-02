@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import dynamic from "next/dynamic";
 import { MediaCard } from "@/components/MediaCard";
+import { MediaDetailModal } from "@/components/MediaDetailModal";
 import { VirtualizedMediaGrid } from "@/components/VirtualizedMediaGrid";
 import { type StatusFilterValue } from "@/components/UnifiedCategoryBar";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -37,9 +38,32 @@ export function MediaListPage({
   emptyNoun = "titles",
 }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { list, loading, refetch, optimisticReorder } = useMediaList();
   const { handleDelete, handleUpdate } = useMediaMutations();
+
+  const openId = searchParams.get("open");
+  const deepLinkMedia = useMemo(() => {
+    if (!openId) return null;
+    return (
+      list.find((m) => {
+        if (m.id !== openId) return false;
+        if (typeFilter === "movie") return m.type === "movie";
+        if (typeFilter === "tv") return m.type === "tv";
+        return true;
+      }) ?? null
+    );
+  }, [openId, list, typeFilter]);
+
+  const showDeepLinkModal = Boolean(openId && deepLinkMedia);
+
+  const clearOpenParam = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("open");
+    const q = params.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }, [router, searchParams, pathname]);
   
   // Initialize from URL params, fallback to defaults
   const [statusFilter, setStatusFilter] = useState<StatusFilterValue>(() => {
@@ -54,17 +78,19 @@ export function MediaListPage({
     return (param as Viewer) || null;
   });
 
-  // Sync filters to URL on change
+  // Sync filters to URL on change (preserve ?open= from current location — avoid looping on searchParams)
   useEffect(() => {
     const params = new URLSearchParams();
     if (statusFilter !== "all") params.set("status", statusFilter);
     if (streamingServiceFilter) params.set("service", streamingServiceFilter);
     if (viewerFilter) params.set("viewer", viewerFilter);
-    
+    if (typeof window !== "undefined") {
+      const open = new URLSearchParams(window.location.search).get("open");
+      if (open) params.set("open", open);
+    }
     const query = params.toString();
-    const url = query ? `?${query}` : window.location.pathname;
-    router.replace(url, { scroll: false });
-  }, [statusFilter, streamingServiceFilter, viewerFilter, router]);
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [statusFilter, streamingServiceFilter, viewerFilter, router, pathname]);
 
   const { reorderMode, setReorderMode } = useReorderMode();
   const { displayMode } = useDisplayMode();
@@ -98,18 +124,29 @@ export function MediaListPage({
     });
   }, [typeFiltered, statusFilter, streamingServiceFilter, viewerFilter]);
 
+  useEffect(() => {
+    if (!openId || !deepLinkMedia || loading) return;
+    const id = requestAnimationFrame(() => {
+      document
+        .querySelector(`[data-media-card-id="${openId}"]`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [openId, deepLinkMedia, loading]);
+
   const renderItem = useCallback(
-    (m: Media) => (
+    (m: Media, reorderMode = false) => (
       <MediaCard
         media={m}
         onDelete={handleDelete}
         onUpdate={handleUpdate}
         showTypeTag={showTypeTag}
         variant={isList ? "list" : "card"}
-        reorderMode={false}
+        reorderMode={reorderMode}
+        suppressClickModal={showDeepLinkModal && openId === m.id}
       />
     ),
-    [handleDelete, handleUpdate, showTypeTag, isList]
+    [handleDelete, handleUpdate, showTypeTag, isList, showDeepLinkModal, openId]
   );
 
   const fullOrderedIds = useMemo(() => list.map((m) => m.id), [list]);
@@ -171,6 +208,18 @@ export function MediaListPage({
           />
         )}
       </div>
+
+      {showDeepLinkModal && deepLinkMedia && (
+        <MediaDetailModal
+          key={deepLinkMedia.id}
+          media={deepLinkMedia}
+          onClose={clearOpenParam}
+          onUpdate={async (patch) => {
+            await handleUpdate(deepLinkMedia.id, patch);
+          }}
+          onDelete={() => handleDelete(deepLinkMedia.id)}
+        />
+      )}
     </div>
   );
 }

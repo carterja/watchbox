@@ -715,7 +715,12 @@ export function PlexIntegrationPanel() {
                   <div className="min-w-0 flex-1 space-y-1.5 md:space-y-3">
                     <div>
                       <Link
-                        href={media.type === "movie" ? "/movies" : "/series"}
+                        href={
+                          media.type === "movie"
+                            ? `/movies?open=${encodeURIComponent(media.id)}`
+                            : `/series?open=${encodeURIComponent(media.id)}`
+                        }
+                        prefetch={true}
                         className="text-sm font-semibold text-white hover:text-shelf-accent transition line-clamp-1 md:line-clamp-2"
                       >
                         {media.title}
@@ -787,7 +792,12 @@ export function PlexIntegrationPanel() {
                   <p className="text-xs text-shelf-muted truncate">{media.progressNote || "No progress note"}</p>
                 </div>
                 <Link
-                  href={media.type === "movie" ? "/movies" : "/series"}
+                  href={
+                    media.type === "movie"
+                      ? `/movies?open=${encodeURIComponent(media.id)}`
+                      : `/series?open=${encodeURIComponent(media.id)}`
+                  }
+                  prefetch={true}
                   className="text-xs text-shelf-accent shrink-0"
                 >
                   Open
