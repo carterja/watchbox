@@ -515,6 +515,36 @@ export function firstImdbIdFromGuidArray(Guid: PlexWebhookMetadata["Guid"]): str
   return null;
 }
 
+/** First `tvdb://…` numeric id in Plex `Guid` array (episode or show TVDB id). */
+export function firstTvdbIdFromGuidArray(Guid: PlexWebhookMetadata["Guid"]): string | null {
+  for (const item of normalizeGuidItems(Guid)) {
+    const id = item?.id;
+    if (typeof id !== "string") continue;
+    const m = id.match(/^tvdb:\/\/(\d+)$/i);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+/**
+ * Fetch Plex show metadata by rating key and read series TMDB id (when `Guid` has no usable ids).
+ */
+export async function getTvShowTmdbIdFromPlexGrandparentKey(
+  grandparentRatingKey: string
+): Promise<number | null> {
+  if (!isPlexConfigured()) return null;
+  const key = grandparentRatingKey.trim();
+  if (!key) return null;
+  try {
+    const xml = await fetchPlex(`/library/metadata/${encodeURIComponent(key)}`);
+    const parsed = parseLibraryMetadataForTmdb(xml);
+    if (parsed?.type === "tv") return parsed.id;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Resolve TMDB id for webhook Metadata: prefers agent `guid` (show/movie id), then `<Guid id="tmdb://…">`.
  */

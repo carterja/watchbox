@@ -1,10 +1,13 @@
 import { prisma } from "@/lib/db";
+import type { PlexWebhookMetadata } from "@/lib/plex";
 import {
   extractTmdbFromWebhookMetadata,
   firstImdbIdFromGuidArray,
+  firstTvdbIdFromGuidArray,
+  getTvShowTmdbIdFromPlexGrandparentKey,
   parseWebhookPayload,
 } from "@/lib/plex";
-import { getTvShowIdFromImdbFind } from "@/lib/tmdb";
+import { getTvShowIdFromImdbFind, getTvShowIdFromTvdbFind } from "@/lib/tmdb";
 import {
   applyEpisodeWatchedFromPlexWebhook,
   applyMovieScrobbleFromPlexWebhook,
@@ -18,6 +21,9 @@ import {
  * see activity in the title’s Plex log). Only `media.scrobble` updates WatchBox media (finished episode / movie).
  *
  * Set `PLEX_WEBHOOK_LOG_RAW=true` to print the raw multipart `payload` JSON to stdout (docker logs).
+ *
+ * Episode → WatchBox TV row: TMDB id match, then IMDb / TVDB TMDB `/find`, then Plex show metadata
+ * (`grandparentRatingKey`) when `PLEX_SERVER_URL` + `PLEX_TOKEN` are set.
  */
 export const dynamic = "force-dynamic";
 
@@ -41,6 +47,69 @@ function num(v: unknown): number | undefined {
     return Number.isFinite(n) ? n : undefined;
   }
   return undefined;
+}
+
+type TmdbRef = { type: "movie" | "tv"; id: number };
+
+/**
+ * Map episode webhooks to WatchBox TV rows: direct TMDB id, then IMDb / TVDB find, then Plex show XML.
+ * Handles missing `tmdb://` in Guid (only TVDB/IMDb) and episode vs series TMDB id mixups.
+ */
+async function resolveEpisodeTvToMediaRow(
+  meta: PlexWebhookMetadata,
+  initialTv: { type: "tv"; id: number } | null
+): Promise<{ tmdb: TmdbRef | null; mediaId: string | null }> {
+  let tmdb: TmdbRef | null = initialTv;
+  let row: { id: string } | null = null;
+
+  if (tmdb) {
+    row = await prisma.media.findFirst({
+      where: { tmdbId: tmdb.id, type: "tv" },
+      select: { id: true },
+    });
+    if (row) return { tmdb, mediaId: row.id };
+  }
+
+  const imdb = firstImdbIdFromGuidArray(meta.Guid);
+  if (imdb) {
+    const showId = await getTvShowIdFromImdbFind(imdb);
+    if (showId != null) {
+      tmdb = { type: "tv", id: showId };
+      row = await prisma.media.findFirst({
+        where: { tmdbId: showId, type: "tv" },
+        select: { id: true },
+      });
+      if (row) return { tmdb, mediaId: row.id };
+    }
+  }
+
+  const tvdb = firstTvdbIdFromGuidArray(meta.Guid);
+  if (tvdb) {
+    const showId = await getTvShowIdFromTvdbFind(tvdb);
+    if (showId != null) {
+      tmdb = { type: "tv", id: showId };
+      row = await prisma.media.findFirst({
+        where: { tmdbId: showId, type: "tv" },
+        select: { id: true },
+      });
+      if (row) return { tmdb, mediaId: row.id };
+    }
+  }
+
+  const gpk = meta.grandparentRatingKey;
+  if (gpk) {
+    const showId = await getTvShowTmdbIdFromPlexGrandparentKey(gpk);
+    if (showId != null) {
+      tmdb = { type: "tv", id: showId };
+      row = await prisma.media.findFirst({
+        where: { tmdbId: showId, type: "tv" },
+        select: { id: true },
+      });
+      if (row) return { tmdb, mediaId: row.id };
+    }
+  }
+
+  return { tmdb, mediaId: null };
 }
 
 export async function POST(request: Request) {
@@ -98,28 +167,20 @@ export async function POST(request: Request) {
 
   let tmdb = extractTmdbFromWebhookMetadata(meta);
   let mediaId: string | null = null;
-  if (tmdb) {
-    let row = await prisma.media.findFirst({
+
+  if (kind === "episode") {
+    const startTv = tmdb?.type === "tv" ? tmdb : null;
+    const resolved = await resolveEpisodeTvToMediaRow(meta, startTv);
+    tmdb = resolved.tmdb;
+    mediaId = resolved.mediaId;
+  } else if (tmdb) {
+    const row = await prisma.media.findFirst({
       where: {
         tmdbId: tmdb.id,
         type: tmdb.type === "movie" ? "movie" : "tv",
       },
       select: { id: true },
     });
-    // Episode webhooks often send the **episode** TMDB id in Guid; WatchBox rows use the **series** id.
-    if (!row && kind === "episode" && tmdb.type === "tv") {
-      const imdb = firstImdbIdFromGuidArray(meta.Guid);
-      if (imdb) {
-        const showId = await getTvShowIdFromImdbFind(imdb);
-        if (showId != null) {
-          tmdb = { type: "tv", id: showId };
-          row = await prisma.media.findFirst({
-            where: { tmdbId: showId, type: "tv" },
-            select: { id: true },
-          });
-        }
-      }
-    }
     mediaId = row?.id ?? null;
   }
 

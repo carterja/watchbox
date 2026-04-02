@@ -3,6 +3,7 @@ import {
   extractTmdbFromWebhookMetadata,
   firstImdbIdFromGuidArray,
   firstTmdbIdFromGuidArray,
+  firstTvdbIdFromGuidArray,
   parseTmdbFromGuid,
 } from "@/lib/plex";
 
@@ -43,6 +44,12 @@ describe("firstImdbIdFromGuidArray", () => {
     expect(
       firstImdbIdFromGuidArray([{ id: "imdb://tt15551032" }, { id: "tmdb://3381140" }])
     ).toBe("tt15551032");
+  });
+});
+
+describe("firstTvdbIdFromGuidArray", () => {
+  it("reads first tvdb id from Guid array", () => {
+    expect(firstTvdbIdFromGuidArray([{ id: "tvdb://8862167" }, { id: "tmdb://1" }])).toBe("8862167");
   });
 });
 
