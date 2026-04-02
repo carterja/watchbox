@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractTmdbFromWebhookMetadata,
+  firstImdbIdFromGuidArray,
   firstTmdbIdFromGuidArray,
   parseTmdbFromGuid,
 } from "@/lib/plex";
@@ -34,6 +35,14 @@ describe("firstTmdbIdFromGuidArray", () => {
     expect(
       firstTmdbIdFromGuidArray([{ id: "imdb://tt123" }, { id: "tmdb://46533" }])
     ).toBe(46533);
+  });
+});
+
+describe("firstImdbIdFromGuidArray", () => {
+  it("reads first imdb id from Guid array", () => {
+    expect(
+      firstImdbIdFromGuidArray([{ id: "imdb://tt15551032" }, { id: "tmdb://3381140" }])
+    ).toBe("tt15551032");
   });
 });
 

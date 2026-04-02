@@ -504,6 +504,17 @@ export function firstTmdbIdFromGuidArray(Guid: PlexWebhookMetadata["Guid"]): num
   return null;
 }
 
+/** First `imdb://tt…` in Plex `Guid` array (used to resolve TV **series** id from an episode webhook). */
+export function firstImdbIdFromGuidArray(Guid: PlexWebhookMetadata["Guid"]): string | null {
+  for (const item of normalizeGuidItems(Guid)) {
+    const id = item?.id;
+    if (typeof id !== "string") continue;
+    const m = id.match(/^imdb:\/\/(tt\d+)$/i);
+    if (m) return m[1];
+  }
+  return null;
+}
+
 /**
  * Resolve TMDB id for webhook Metadata: prefers agent `guid` (show/movie id), then `<Guid id="tmdb://…">`.
  */

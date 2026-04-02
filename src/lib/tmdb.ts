@@ -229,6 +229,28 @@ export async function getTmdbByImdbId(imdbId: string): Promise<TmdbFindResult | 
   return null;
 }
 
+/**
+ * For Plex episode webhooks, `Guid` often has `tmdb://` = **episode** id, not series id.
+ * TMDB `/find` with the episode IMDb id returns `tv_episode_results[].show_id` (the TV series id).
+ */
+export async function getTvShowIdFromImdbFind(imdbId: string): Promise<number | null> {
+  const id = imdbId.trim();
+  if (!/^tt\d+$/i.test(id)) return null;
+  const json = await tmdbGetOrNull<{
+    tv_episode_results?: { show_id?: number }[];
+    tv_results?: { id?: number }[];
+  }>(`/find/${encodeURIComponent(id)}`, { external_source: "imdb_id" });
+  if (!json) return null;
+  const eps = json.tv_episode_results ?? [];
+  if (eps.length > 0) {
+    const sid = eps[0]?.show_id;
+    if (typeof sid === "number" && Number.isFinite(sid)) return sid;
+  }
+  const tv = json.tv_results ?? [];
+  if (tv.length > 0 && typeof tv[0]?.id === "number") return tv[0].id;
+  return null;
+}
+
 // ── Watch providers ──────────────────────────────────────────────────
 
 export async function getTmdbWatchProviders(

@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/db";
-import { extractTmdbFromWebhookMetadata, parseWebhookPayload } from "@/lib/plex";
+import {
+  extractTmdbFromWebhookMetadata,
+  firstImdbIdFromGuidArray,
+  parseWebhookPayload,
+} from "@/lib/plex";
+import { getTvShowIdFromImdbFind } from "@/lib/tmdb";
 import {
   applyEpisodeWatchedFromPlexWebhook,
   applyMovieScrobbleFromPlexWebhook,
@@ -91,16 +96,30 @@ export async function POST(request: Request) {
     });
   }
 
-  const tmdb = extractTmdbFromWebhookMetadata(meta);
+  let tmdb = extractTmdbFromWebhookMetadata(meta);
   let mediaId: string | null = null;
   if (tmdb) {
-    const row = await prisma.media.findFirst({
+    let row = await prisma.media.findFirst({
       where: {
         tmdbId: tmdb.id,
         type: tmdb.type === "movie" ? "movie" : "tv",
       },
       select: { id: true },
     });
+    // Episode webhooks often send the **episode** TMDB id in Guid; WatchBox rows use the **series** id.
+    if (!row && kind === "episode" && tmdb.type === "tv") {
+      const imdb = firstImdbIdFromGuidArray(meta.Guid);
+      if (imdb) {
+        const showId = await getTvShowIdFromImdbFind(imdb);
+        if (showId != null) {
+          tmdb = { type: "tv", id: showId };
+          row = await prisma.media.findFirst({
+            where: { tmdbId: showId, type: "tv" },
+            select: { id: true },
+          });
+        }
+      }
+    }
     mediaId = row?.id ?? null;
   }
 
