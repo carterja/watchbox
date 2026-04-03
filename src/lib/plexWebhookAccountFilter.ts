@@ -21,14 +21,21 @@ export function plexWebhookAccountTitleAllowed(accountTitle: string | null | und
   return allowed.some((a) => a.toLowerCase() === lower);
 }
 
+/** Exact-match variants for SQLite (no `mode: insensitive` on string fields). */
+function accountTitleEqualsClauses(allowed: string[]): Prisma.PlaybackEventWhereInput[] {
+  return allowed.flatMap((a) => {
+    const t = a.trim();
+    const variants = [...new Set([t, t.toLowerCase(), t.toUpperCase()])];
+    return variants.map((v) => ({ accountTitle: { equals: v } }));
+  });
+}
+
 /** Prisma fragment for PlaybackEvent queries when the allowlist is active. */
 export function playbackEventWhereAllowedAccounts(): Prisma.PlaybackEventWhereInput | undefined {
   const allowed = getAllowedPlexWebhookAccountTitles();
   if (!allowed?.length) return undefined;
   return {
-    OR: allowed.map((a) => ({
-      accountTitle: { equals: a, mode: "insensitive" },
-    })),
+    OR: accountTitleEqualsClauses(allowed),
   };
 }
 

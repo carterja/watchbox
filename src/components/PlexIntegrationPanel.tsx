@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -139,6 +139,10 @@ export function PlexIntegrationPanel() {
   /** Rows hidden after add; Plex often has no TMDB so `plexOnly` cannot infer removal from list alone. Cleared on Refresh. */
   const [dismissedPlexOnlyRowKeys, setDismissedPlexOnlyRowKeys] = useState<string[]>([]);
 
+  /** Skip redundant `/api/plex/on-deck` calls when tab stays mounted (Plex hub keeps panels alive). */
+  const lastOnDeckFetchAtRef = useRef(0);
+  const PLEX_ON_DECK_TTL_MS = 60_000;
+
   const loadStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/plex/status");
@@ -172,7 +176,15 @@ export function PlexIntegrationPanel() {
     }
   }, []);
 
-  const loadOnDeck = useCallback(async () => {
+  const loadOnDeck = useCallback(async (opts?: { force?: boolean }) => {
+    const force = opts?.force === true;
+    if (
+      !force &&
+      lastOnDeckFetchAtRef.current > 0 &&
+      Date.now() - lastOnDeckFetchAtRef.current < PLEX_ON_DECK_TTL_MS
+    ) {
+      return;
+    }
     setLoadingDeck(true);
     setDeckError(null);
     try {
@@ -189,6 +201,7 @@ export function PlexIntegrationPanel() {
         library: typeof data.libraryPartialCount === "number" ? data.libraryPartialCount : 0,
       });
       if (data.error) setDeckError(data.error);
+      lastOnDeckFetchAtRef.current = Date.now();
     } catch {
       setDeckError("Network error — is the app reachable?");
       setItems([]);
@@ -206,13 +219,14 @@ export function PlexIntegrationPanel() {
   useEffect(() => {
     if (status.loading) return;
     if (!status.configured || !status.reachable) {
+      lastOnDeckFetchAtRef.current = 0;
       setLoadingDeck(false);
       setItems([]);
       setPlexScan(null);
       setDeckError(null);
       return;
     }
-    loadOnDeck();
+    void loadOnDeck({ force: false });
   }, [status, loadOnDeck]);
 
   const { matches, watchBoxInProgressOnly, plexOnly: plexOnlyRaw } = useMemo(
@@ -255,7 +269,7 @@ export function PlexIntegrationPanel() {
     setDismissedPlexOnlyRowKeys([]);
     loadStatus();
     loadHealth();
-    loadOnDeck();
+    void loadOnDeck({ force: true });
   };
 
   /** Poll Plex (On Deck + partials) and apply WatchBox updates past ~90% — fallback if webhooks missed. */
@@ -276,7 +290,7 @@ export function PlexIntegrationPanel() {
         `Applied ${data.updated ?? 0} update(s) from Plex (past watch threshold).`
       );
       await refetch();
-      loadOnDeck();
+      void loadOnDeck({ force: true });
     } catch {
       toast.error("Request failed");
     } finally {

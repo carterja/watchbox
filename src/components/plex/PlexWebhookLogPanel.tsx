@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, CircleSlash, Loader2, RefreshCw } from "lucide-react";
 import type { PlexPlaybackLogRow } from "@/types/plexPlaybackLog";
+import { PlexAccountFilterBanner } from "@/components/PlexAccountFilterBanner";
 
 function formatEvent(ev: string): string {
   return ev.replace(/^media\./, "");
@@ -104,7 +105,9 @@ export function PlexWebhookLogPanel() {
           Showing only accounts in <code className="text-[10px]">PLEX_WEBHOOK_ALLOWED_ACCOUNTS</code>. Other Plex home
           users are hidden.
         </p>
-      ) : null}
+      ) : (
+        <PlexAccountFilterBanner />
+      )}
 
       {loading && !events ? (
         <div className="flex justify-center py-16">

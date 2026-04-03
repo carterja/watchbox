@@ -13,6 +13,7 @@
  * it to the webServer so `plexWebhookPath()` can add `?secret=` to match.
  */
 import { test, expect } from "@playwright/test";
+import { postPlexWebhook } from "./helpers/plexE2e";
 
 /** Shared fake IDs + DB — run API tests in order to avoid cross-test collisions. */
 test.describe.configure({ mode: "serial" });
@@ -82,23 +83,6 @@ async function cleanup(
       .filter((id): id is string => !!id)
       .map((id) => request.delete(`/api/media/${id}`))
   );
-}
-
-/** Matches route + optional ?secret= for POST /api/plex/webhook (server must get same env). */
-function plexWebhookPath(): string {
-  const s = process.env.PLEX_WEBHOOK_SECRET?.trim();
-  return s
-    ? `/api/plex/webhook?secret=${encodeURIComponent(s)}`
-    : "/api/plex/webhook";
-}
-
-async function postPlexWebhook(
-  request: Parameters<Parameters<typeof test>[1]>[0]["request"],
-  payload: Record<string, unknown>
-) {
-  return request.post(plexWebhookPath(), {
-    multipart: { payload: JSON.stringify(payload) },
-  });
 }
 
 // ─── tests ────────────────────────────────────────────────────────────────────
@@ -481,6 +465,72 @@ test.describe("API: Plex webhook", () => {
       },
     });
     expect(res.status()).toBe(401);
+  });
+});
+
+test.describe("API: Plex unmatched playback + link", () => {
+  let linkTestTvId: string;
+
+  test.afterAll(async ({ request }) => {
+    await cleanup(request, linkTestTvId);
+  });
+
+  test("GET /api/plex/unmatched-playback → shape; webhook + link flow", async ({ request }) => {
+    const runId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    const tv = await createOrFind(request, {
+      ...TEST_TV,
+      tmdbId: 9_000_004,
+      title: `E2E Unmatched Link ${runId}`,
+    });
+    linkTestTvId = tv.id;
+
+    const gp = `gp_e2e_${runId}`;
+    const wh = await postPlexWebhook(request, {
+      event: "media.stop",
+      Metadata: {
+        type: "episode",
+        title: "Pilot",
+        grandparentTitle: `Z Unmatched Show ${runId}`,
+        parentIndex: 1,
+        index: 1,
+        ratingKey: "rk_e2e_1",
+        grandparentRatingKey: gp,
+      },
+    });
+    expect(wh.ok()).toBeTruthy();
+
+    const uRes = await request.get("/api/plex/unmatched-playback?days=14&limit=40");
+    expect(uRes.ok()).toBeTruthy();
+    const uBody = (await uRes.json()) as {
+      items: Array<{
+        representativeEventId: string;
+        fingerprintAvailable: boolean;
+        displayTitle: string;
+        mediaKind: string;
+      }>;
+      webhookAccountFilterActive: boolean;
+    };
+    expect(typeof uBody.webhookAccountFilterActive).toBe("boolean");
+    const row = uBody.items.find((i) => i.displayTitle.includes(`Z Unmatched Show ${runId}`));
+    expect(row, "unmatched row for webhook").toBeDefined();
+    expect(row!.fingerprintAvailable).toBe(true);
+    expect(row!.mediaKind).toBe("tv");
+
+    const linkRes = await request.post("/api/plex/playback-events/link", {
+      data: {
+        eventId: row!.representativeEventId,
+        mediaId: linkTestTvId,
+        scope: "fingerprint",
+      },
+    });
+    expect(linkRes.ok()).toBeTruthy();
+    const linkBody = (await linkRes.json()) as { updated?: number };
+    expect(linkBody.updated).toBeGreaterThanOrEqual(1);
+
+    const u2 = await request.get("/api/plex/unmatched-playback?days=14&limit=40");
+    const u2Body = (await u2.json()) as typeof uBody;
+    const row2 = u2Body.items.find((i) => i.displayTitle.includes(`Z Unmatched Show ${runId}`));
+    expect(row2).toBeUndefined();
   });
 });
 

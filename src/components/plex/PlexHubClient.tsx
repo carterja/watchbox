@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -8,6 +8,7 @@ import {
   ExternalLink,
   Film,
   Loader2,
+  Library,
   Link2,
   PlusCircle,
   Radio,
@@ -18,6 +19,9 @@ import {
 import { toast } from "sonner";
 import { PlexIntegrationPanel } from "@/components/PlexIntegrationPanel";
 import { PlexWebhookLogPanel } from "@/components/plex/PlexWebhookLogPanel";
+import { PlexAccountFilterBanner } from "@/components/PlexAccountFilterBanner";
+import { LinkUnmatchedToLibraryModal } from "@/components/LinkUnmatchedToLibraryModal";
+import type { UnmatchedPlaybackItem } from "@/types/unmatchedPlayback";
 
 const TAB_IDS = ["sync", "activity", "unmatched", "logs"] as const;
 type PlexTabId = (typeof TAB_IDS)[number];
@@ -37,24 +41,14 @@ type ActivityPayload = {
   webhookAccountFilterActive: boolean;
 };
 
-type UnmatchedPlaybackItem = {
-  dedupeKey: string;
-  mediaKind: "movie" | "tv";
-  displayTitle: string;
-  subtitle: string | null;
-  lastActivityAt: string;
-  lastEvent: string;
-  tmdbId: number | null;
-  discoverQuery: string;
-  discoverType: "movie" | "tv";
-};
-
 function formatWhen(iso: string | null): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
+
+const PLEX_HUB_DATA_TTL_MS = 60_000;
 
 export function PlexHubClient() {
   const router = useRouter();
@@ -75,8 +69,19 @@ export function PlexHubClient() {
   const [unmatchedLoading, setUnmatchedLoading] = useState(true);
   const [relinking, setRelinking] = useState(false);
   const [dismissingKey, setDismissingKey] = useState<string | null>(null);
+  const [linkingItem, setLinkingItem] = useState<UnmatchedPlaybackItem | null>(null);
 
-  const loadPlexData = useCallback(async () => {
+  const hubDataFetchedAtRef = useRef(0);
+
+  const loadPlexData = useCallback(async (opts?: { force?: boolean }) => {
+    const force = opts?.force === true;
+    if (
+      !force &&
+      hubDataFetchedAtRef.current > 0 &&
+      Date.now() - hubDataFetchedAtRef.current < PLEX_HUB_DATA_TTL_MS
+    ) {
+      return;
+    }
     setActivityLoading(true);
     setUnmatchedLoading(true);
     try {
@@ -91,6 +96,9 @@ export function PlexHubClient() {
       } else {
         setUnmatched([]);
       }
+      if (aRes.ok && uRes.ok) {
+        hubDataFetchedAtRef.current = Date.now();
+      }
     } finally {
       setActivityLoading(false);
       setUnmatchedLoading(false);
@@ -98,7 +106,7 @@ export function PlexHubClient() {
   }, []);
 
   useEffect(() => {
-    void loadPlexData();
+    void loadPlexData({ force: false });
   }, [loadPlexData]);
 
   const relinkPastPlayback = useCallback(async () => {
@@ -112,7 +120,7 @@ export function PlexHubClient() {
       }
       const n = data.playbackEventsUpdated ?? 0;
       toast.success(n > 0 ? `Linked ${n} past playback event${n === 1 ? "" : "s"} to your library` : "Nothing to relink");
-      await loadPlexData();
+      await loadPlexData({ force: true });
     } catch {
       toast.error("Relink failed");
     } finally {
@@ -152,7 +160,7 @@ export function PlexHubClient() {
           </Link>{" "}
           for a compact health summary.
         </p>
-        <nav className="mt-4 flex flex-wrap gap-1 border-t border-shelf-border/60 pt-3 -mb-px">
+        <nav className="mt-4 flex flex-wrap gap-1 border-t border-shelf-border/60 pt-3 -mb-px" role="tablist" aria-label="Plex hub sections">
           {(
             [
               { id: "sync" as const, label: "Sync", icon: Radio },
@@ -163,7 +171,11 @@ export function PlexHubClient() {
           ).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
+              id={`plex-tab-${id}`}
               type="button"
+              role="tab"
+              aria-selected={activeTab === id}
+              aria-controls={`plex-panel-${id}`}
               onClick={() => setTab(id)}
               className={`inline-flex items-center gap-1.5 rounded-t-lg border border-b-0 px-3 py-2 text-xs font-medium sm:text-sm transition ${
                 activeTab === id
@@ -180,130 +192,176 @@ export function PlexHubClient() {
 
       <div className="mx-auto max-w-4xl px-3 py-4 sm:px-4 md:p-6">
         <div className="overflow-hidden rounded-xl border border-shelf-border bg-shelf-bg/40 sm:rounded-2xl">
-          {activeTab === "sync" ? (
+          <div
+            id="plex-panel-sync"
+            role="tabpanel"
+            aria-labelledby="plex-tab-sync"
+            className={activeTab === "sync" ? undefined : "hidden"}
+            {...(activeTab !== "sync" ? { inert: true as const } : {})}
+          >
             <PlexIntegrationPanel />
-          ) : activeTab === "activity" ? (
-            <div className="p-4 md:p-6 space-y-4">
-              <h2 className="text-sm font-medium text-white">Webhook &amp; server activity</h2>
-              {activityLoading && !activity ? (
-                <Loader2 className="animate-spin text-shelf-muted" size={24} />
-              ) : activity ? (
-                <ul className="text-sm text-shelf-muted space-y-2 rounded-xl border border-shelf-border bg-shelf-card/40 p-4">
+          </div>
+
+          <div
+            id="plex-panel-activity"
+            role="tabpanel"
+            aria-labelledby="plex-tab-activity"
+            className={activeTab === "activity" ? "p-4 md:p-6 space-y-4" : "hidden"}
+            {...(activeTab !== "activity" ? { inert: true as const } : {})}
+          >
+            <h2 className="text-sm font-medium text-white">Webhook &amp; server activity</h2>
+            {activityLoading && !activity ? (
+              <Loader2 className="animate-spin text-shelf-muted" size={24} />
+            ) : activity ? (
+              <ul className="text-sm text-shelf-muted space-y-2 rounded-xl border border-shelf-border bg-shelf-card/40 p-4">
+                <li>
+                  <span className="text-white/90">Plex server:</span>{" "}
+                  {!activity.plexConfigured
+                    ? "Not configured (set PLEX_SERVER_URL + PLEX_TOKEN)"
+                    : activity.plexReachable
+                      ? "Reachable"
+                      : "Configured but not reachable"}
+                </li>
+                <li>
+                  <span className="text-white/90">Webhook URL secret:</span>{" "}
+                  {activity.webhookSecretConfigured
+                    ? "Set — use ?secret= on your Plex webhook URL"
+                    : "Optional — add PLEX_WEBHOOK_SECRET for URL verification"}
+                </li>
+                {activity.webhookAccountFilterActive ? (
                   <li>
-                    <span className="text-white/90">Plex server:</span>{" "}
-                    {!activity.plexConfigured
-                      ? "Not configured (set PLEX_SERVER_URL + PLEX_TOKEN)"
-                      : activity.plexReachable
-                        ? "Reachable"
-                        : "Configured but not reachable"}
+                    <span className="text-white/90">Account filter:</span> Only Plex accounts listed in{" "}
+                    <code className="text-[11px] text-white/80">PLEX_WEBHOOK_ALLOWED_ACCOUNTS</code> are counted.
                   </li>
-                  <li>
-                    <span className="text-white/90">Webhook URL secret:</span>{" "}
-                    {activity.webhookSecretConfigured
-                      ? "Set — use ?secret= on your Plex webhook URL"
-                      : "Optional — add PLEX_WEBHOOK_SECRET for URL verification"}
-                  </li>
-                  {activity.webhookAccountFilterActive ? (
-                    <li>
-                      <span className="text-white/90">Account filter:</span> Only Plex accounts listed in{" "}
-                      <code className="text-[11px] text-white/80">PLEX_WEBHOOK_ALLOWED_ACCOUNTS</code> are counted.
-                    </li>
-                  ) : null}
-                  <li>
-                    <span className="text-white/90">Last scrobble recorded:</span> {formatWhen(activity.lastScrobbleAt)}
-                  </li>
-                  <li>
-                    <span className="text-white/90">Playback events:</span> {activity.playbackEventsTotal} total ·{" "}
-                    {activity.playbackEventsLast24h} last 24h · {activity.playbackEventsLast7d} last 7d
-                  </li>
-                </ul>
-              ) : (
-                <p className="text-sm text-amber-200/90">Could not load Plex activity.</p>
-              )}
+                ) : null}
+                <li>
+                  <span className="text-white/90">Last scrobble recorded:</span> {formatWhen(activity.lastScrobbleAt)}
+                </li>
+                <li>
+                  <span className="text-white/90">Playback events:</span> {activity.playbackEventsTotal} total ·{" "}
+                  {activity.playbackEventsLast24h} last 24h · {activity.playbackEventsLast7d} last 7d
+                </li>
+              </ul>
+            ) : (
+              <p className="text-sm text-amber-200/90">Could not load Plex activity.</p>
+            )}
+            {activity && !activity.webhookAccountFilterActive ? (
+              <PlexAccountFilterBanner className="mt-3" />
+            ) : null}
+          </div>
+
+          <div
+            id="plex-panel-unmatched"
+            role="tabpanel"
+            aria-labelledby="plex-tab-unmatched"
+            className={activeTab === "unmatched" ? "p-4 md:p-6 space-y-4" : "hidden"}
+            {...(activeTab !== "unmatched" ? { inert: true as const } : {})}
+          >
+            {activity && !activity.webhookAccountFilterActive ? <PlexAccountFilterBanner /> : null}
+            <p className="text-xs text-shelf-muted max-w-xl">
+              Recent Plex plays we couldn&apos;t attach to a library title. Add from Discover, then future scrobbles
+              link automatically.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void relinkPastPlayback()}
+                disabled={relinking}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-shelf-border bg-shelf-card/50 px-2.5 py-1.5 text-xs text-shelf-muted hover:text-white hover:bg-shelf-card disabled:opacity-50"
+              >
+                {relinking ? <Loader2 size={12} className="animate-spin" /> : <Link2 size={12} />}
+                Relink past events
+              </button>
             </div>
-          ) : activeTab === "unmatched" ? (
-            <div className="p-4 md:p-6 space-y-4">
-              <p className="text-xs text-shelf-muted max-w-xl">
-                Recent Plex plays we couldn&apos;t attach to a library title. Add from Discover, then future scrobbles
-                link automatically.
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => void relinkPastPlayback()}
-                  disabled={relinking}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-shelf-border bg-shelf-card/50 px-2.5 py-1.5 text-xs text-shelf-muted hover:text-white hover:bg-shelf-card disabled:opacity-50"
-                >
-                  {relinking ? <Loader2 size={12} className="animate-spin" /> : <Link2 size={12} />}
-                  Relink past events
-                </button>
+            {unmatchedLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="animate-spin text-shelf-muted" size={28} />
               </div>
-              {unmatchedLoading ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="animate-spin text-shelf-muted" size={28} />
-                </div>
-              ) : !unmatched || unmatched.length === 0 ? (
-                <p className="text-sm text-shelf-muted rounded-xl border border-dashed border-shelf-border p-8 text-center">
-                  Nothing unmatched in the last 14 days.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {unmatched.map((item) => {
-                    const discoverHref = `/discover?q=${encodeURIComponent(item.discoverQuery)}&type=${item.discoverType}`;
-                    return (
-                      <li key={item.dedupeKey}>
-                        <div className="flex flex-col gap-2 rounded-xl border border-shelf-border bg-shelf-card/40 p-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex gap-3 min-w-0">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-shelf-border bg-shelf-card text-shelf-muted">
-                              {item.mediaKind === "movie" ? <Film size={20} /> : <Tv size={20} />}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-medium text-white truncate">{item.displayTitle}</p>
-                              {item.subtitle && (
-                                <p className="text-xs text-shelf-muted truncate">{item.subtitle}</p>
-                              )}
-                              <p className="text-[11px] text-shelf-muted/90 mt-0.5">
-                                {formatWhen(item.lastActivityAt)} · {item.lastEvent.replace("media.", "")}
-                              </p>
-                            </div>
+            ) : !unmatched || unmatched.length === 0 ? (
+              <p className="text-sm text-shelf-muted rounded-xl border border-dashed border-shelf-border p-8 text-center">
+                Nothing unmatched in the last 14 days.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {unmatched.map((item) => {
+                  const discoverHref = `/discover?q=${encodeURIComponent(item.discoverQuery)}&type=${item.discoverType}`;
+                  return (
+                    <li key={item.dedupeKey}>
+                      <div className="flex flex-col gap-2 rounded-xl border border-shelf-border bg-shelf-card/40 p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex gap-3 min-w-0">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-shelf-border bg-shelf-card text-shelf-muted">
+                            {item.mediaKind === "movie" ? <Film size={20} /> : <Tv size={20} />}
                           </div>
-                          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-                            <button
-                              type="button"
-                              onClick={() => void dismissUnmatched(item.dedupeKey)}
-                              disabled={dismissingKey === item.dedupeKey}
-                              className="inline-flex items-center justify-center gap-1 rounded-lg border border-shelf-border bg-shelf-card/30 px-2.5 py-2 text-xs text-shelf-muted hover:text-white hover:bg-shelf-card disabled:opacity-50"
-                            >
-                              {dismissingKey === item.dedupeKey ? (
-                                <Loader2 size={12} className="animate-spin" />
-                              ) : (
-                                <X size={14} />
-                              )}
-                              Dismiss
-                            </button>
-                            <Link
-                              href={discoverHref}
-                              prefetch={true}
-                              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#8b5cf6]/50 bg-[#8b5cf6]/15 px-3 py-2 text-xs font-medium text-[#c4b5fd] hover:bg-[#8b5cf6]/25 sm:self-center"
-                            >
-                              Add in Discover
-                              <ExternalLink size={12} />
-                            </Link>
+                          <div className="min-w-0">
+                            <p className="font-medium text-white truncate">{item.displayTitle}</p>
+                            {item.subtitle && (
+                              <p className="text-xs text-shelf-muted truncate">{item.subtitle}</p>
+                            )}
+                            <p className="text-[11px] text-shelf-muted/90 mt-0.5">
+                              {formatWhen(item.lastActivityAt)} · {item.lastEvent.replace("media.", "")}
+                              {item.accountTitle ? (
+                                <span className="text-shelf-muted/70"> · Plex: {item.accountTitle}</span>
+                              ) : null}
+                            </p>
                           </div>
                         </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          ) : (
-            <div className="p-4 md:p-6">
-              <PlexWebhookLogPanel />
-            </div>
-          )}
+                        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setLinkingItem(item)}
+                            className="inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-100/95 hover:bg-emerald-500/20"
+                          >
+                            <Library size={14} />
+                            Link to library
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void dismissUnmatched(item.dedupeKey)}
+                            disabled={dismissingKey === item.dedupeKey}
+                            className="inline-flex items-center justify-center gap-1 rounded-lg border border-shelf-border bg-shelf-card/30 px-2.5 py-2 text-xs text-shelf-muted hover:text-white hover:bg-shelf-card disabled:opacity-50"
+                          >
+                            {dismissingKey === item.dedupeKey ? (
+                              <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                              <X size={14} />
+                            )}
+                            Dismiss
+                          </button>
+                          <Link
+                            href={discoverHref}
+                            prefetch={true}
+                            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-[#8b5cf6]/50 bg-[#8b5cf6]/15 px-3 py-2 text-xs font-medium text-[#c4b5fd] hover:bg-[#8b5cf6]/25 sm:self-center"
+                          >
+                            Add in Discover
+                            <ExternalLink size={12} />
+                          </Link>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          <div
+            id="plex-panel-logs"
+            role="tabpanel"
+            aria-labelledby="plex-tab-logs"
+            className={activeTab === "logs" ? "p-4 md:p-6" : "hidden"}
+            {...(activeTab !== "logs" ? { inert: true as const } : {})}
+          >
+            <PlexWebhookLogPanel />
+          </div>
         </div>
       </div>
+      {linkingItem ? (
+        <LinkUnmatchedToLibraryModal
+          item={linkingItem}
+          onClose={() => setLinkingItem(null)}
+          onLinked={() => void loadPlexData({ force: true })}
+        />
+      ) : null}
     </div>
   );
 }

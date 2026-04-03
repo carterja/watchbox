@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 
 const dashboardRoutes = [
   "/discover",
+  "/overview",
   "/all",
   "/movies",
   "/series",

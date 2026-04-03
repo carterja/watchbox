@@ -7,6 +7,7 @@ import {
   Clapperboard,
   ExternalLink,
   Film,
+  Library,
   Loader2,
   Link2,
   PlusCircle,
@@ -16,6 +17,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useMediaList } from "@/contexts/MediaListContext";
+import { PlexAccountFilterBanner } from "@/components/PlexAccountFilterBanner";
+import { LinkUnmatchedToLibraryModal } from "@/components/LinkUnmatchedToLibraryModal";
+import type { UnmatchedPlaybackItem } from "@/types/unmatchedPlayback";
 
 type StatsPayload = {
   total: number;
@@ -35,18 +39,6 @@ type ActivityPayload = {
   playbackEventsLast24h: number;
   playbackEventsLast7d: number;
   webhookAccountFilterActive: boolean;
-};
-
-type UnmatchedPlaybackItem = {
-  dedupeKey: string;
-  mediaKind: "movie" | "tv";
-  displayTitle: string;
-  subtitle: string | null;
-  lastActivityAt: string;
-  lastEvent: string;
-  tmdbId: number | null;
-  discoverQuery: string;
-  discoverType: "movie" | "tv";
 };
 
 function formatWhen(iso: string | null): string {
@@ -85,6 +77,7 @@ export default function OverviewPage() {
   const [unmatchedLoading, setUnmatchedLoading] = useState(true);
   const [relinking, setRelinking] = useState(false);
   const [dismissingKey, setDismissingKey] = useState<string | null>(null);
+  const [linkingItem, setLinkingItem] = useState<UnmatchedPlaybackItem | null>(null);
 
   const load = useCallback(async () => {
     setStatsLoading(true);
@@ -264,9 +257,12 @@ export default function OverviewPage() {
           <span className="text-[11px] leading-snug">
             If you already added a title (or used <strong className="text-white/80">Rematch</strong> on the detail
             card to fix the TMDB id), this attaches older webhook rows that had the right TMDB but no library link
-            — e.g. &quot;Bluey (2018)&quot; vs <strong className="text-white/80">Bluey</strong>.
+            — e.g. &quot;Bluey (2018)&quot; vs <strong className="text-white/80">Bluey</strong>. Use{" "}
+            <strong className="text-white/80">Link to library</strong> when the title is already in WatchBox but Plex
+            metadata didn&apos;t match.
           </span>
         </div>
+        {activity && !activity.webhookAccountFilterActive ? <PlexAccountFilterBanner className="max-w-xl" /> : null}
         {unmatchedLoading ? (
           <div className="flex justify-center py-8">
             <Loader2 className="animate-spin text-shelf-muted" size={24} />
@@ -293,10 +289,21 @@ export default function OverviewPage() {
                         )}
                         <p className="text-[11px] text-shelf-muted/90 mt-0.5">
                           {formatWhen(item.lastActivityAt)} · {item.lastEvent.replace("media.", "")}
+                          {item.accountTitle ? (
+                            <span className="text-shelf-muted/70"> · Plex: {item.accountTitle}</span>
+                          ) : null}
                         </p>
                       </div>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setLinkingItem(item)}
+                        className="inline-flex items-center justify-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-2 text-xs text-emerald-100/95 hover:bg-emerald-500/20"
+                      >
+                        <Library size={14} />
+                        Link to library
+                      </button>
                       <button
                         type="button"
                         onClick={() => void dismissUnmatched(item.dedupeKey)}
@@ -379,6 +386,7 @@ export default function OverviewPage() {
           >
             Open Plex hub <ExternalLink size={12} />
           </Link>
+          {activity && !activity.webhookAccountFilterActive ? <PlexAccountFilterBanner className="mt-3" /> : null}
         </div>
 
         <div className="rounded-xl border border-shelf-border bg-shelf-card/40 p-4 space-y-2">
@@ -401,6 +409,14 @@ export default function OverviewPage() {
           </ul>
         </div>
       </section>
+
+      {linkingItem ? (
+        <LinkUnmatchedToLibraryModal
+          item={linkingItem}
+          onClose={() => setLinkingItem(null)}
+          onLinked={() => void load()}
+        />
+      ) : null}
     </div>
   );
 }

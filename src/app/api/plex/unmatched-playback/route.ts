@@ -3,7 +3,10 @@ import {
   inferUnmatchedKind,
   unmatchedPlaybackDedupeKey,
 } from "@/lib/unmatchedPlaybackDedupe";
-import { withPlaybackAccountFilter } from "@/lib/plexWebhookAccountFilter";
+import {
+  getAllowedPlexWebhookAccountTitles,
+  withPlaybackAccountFilter,
+} from "@/lib/plexWebhookAccountFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +39,9 @@ export async function GET(request: Request) {
     string,
     {
       dedupeKey: string;
+      representativeEventId: string;
+      accountTitle: string | null;
+      fingerprintAvailable: boolean;
       lastActivityAt: Date;
       lastEvent: string;
       mediaKind: "movie" | "tv";
@@ -56,6 +62,10 @@ export async function GET(request: Request) {
     if (merged.has(dedupeKey)) continue;
 
     const kind = inferUnmatchedKind(r);
+    const fingerprintAvailable =
+      kind === "tv"
+        ? Boolean(r.grandparentRatingKey?.trim())
+        : Boolean(r.ratingKey?.trim());
     const displayTitle =
       kind === "tv"
         ? (r.showTitle?.trim() || r.title?.trim() || "Unknown show")
@@ -73,6 +83,9 @@ export async function GET(request: Request) {
 
     merged.set(dedupeKey, {
       dedupeKey,
+      representativeEventId: r.id,
+      accountTitle: r.accountTitle ?? null,
+      fingerprintAvailable,
       lastActivityAt: r.createdAt,
       lastEvent: r.event,
       mediaKind: kind,
@@ -87,6 +100,9 @@ export async function GET(request: Request) {
     .slice(0, limit)
     .map((m) => ({
       dedupeKey: m.dedupeKey,
+      representativeEventId: m.representativeEventId,
+      accountTitle: m.accountTitle,
+      fingerprintAvailable: m.fingerprintAvailable,
       mediaKind: m.mediaKind,
       displayTitle: m.displayTitle,
       subtitle: m.subtitle,
@@ -97,5 +113,10 @@ export async function GET(request: Request) {
       discoverType: m.mediaKind,
     }));
 
-  return Response.json({ items, days, limit });
+  return Response.json({
+    items,
+    days,
+    limit,
+    webhookAccountFilterActive: getAllowedPlexWebhookAccountTitles() != null,
+  });
 }
