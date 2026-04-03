@@ -1,0 +1,13 @@
+---
+description: Local patch version bump before commit/push (no CI auto-bump on main)
+alwaysApply: true
+---
+
+# Release version (WatchBox)
+
+- **Do not** add a GitHub Action that runs `npm version patch` and **pushes** to `main` after every push. That caused `origin/main` to race ahead and rejected pushes.
+- **Do** use the local workflow when a release-worthy change is ready to ship:
+  1. Run `npm run bump` (runs `scripts/bump-version.sh` — bumps `package.json` / `package-lock.json` patch).
+  2. Stage `package.json` and `package-lock.json` with the rest of the change (or a dedicated `chore: bump version to X` commit if the user prefers).
+  3. Commit and push once.
+- If the user explicitly skips a version bump for a given change, follow their lead.
