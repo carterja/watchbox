@@ -44,17 +44,20 @@ describe("plexWebhookAccountFilter", () => {
     expect(withPlaybackAccountFilter(w)).toEqual(w);
   });
 
+  /** SQLite-compatible Prisma filters: OR of equals (trim + lower/upper variants), no `mode: insensitive`. */
+  const accountOrForMe = {
+    OR: [{ accountTitle: { equals: "me" } }, { accountTitle: { equals: "ME" } }],
+  };
+
   it("withPlaybackAccountFilter merges allowlist", () => {
     process.env[KEY] = "me";
     expect(withPlaybackAccountFilter({ event: "media.scrobble" })).toEqual({
-      AND: [{ event: "media.scrobble" }, { OR: [{ accountTitle: { equals: "me", mode: "insensitive" } }] }],
+      AND: [{ event: "media.scrobble" }, accountOrForMe],
     });
   });
 
   it("withPlaybackAccountFilter returns only allowlist when base empty", () => {
     process.env[KEY] = "me";
-    expect(withPlaybackAccountFilter()).toEqual({
-      OR: [{ accountTitle: { equals: "me", mode: "insensitive" } }],
-    });
+    expect(withPlaybackAccountFilter()).toEqual(accountOrForMe);
   });
 });
