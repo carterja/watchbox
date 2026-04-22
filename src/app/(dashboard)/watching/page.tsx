@@ -25,7 +25,7 @@ const WatchingNextCarousel = dynamic(() => import("@/components/WatchingNextCaro
 });
 
 export default function WatchingPage() {
-  const { list, loading: listLoading, refetch, optimisticUpdate, optimisticMoveToFront } = useMediaList();
+  const { list, loading: listLoading, refetch, optimisticUpdate } = useMediaList();
   const { rows: cachedRows, status: cacheStatus, error: cacheErrorMessage, refresh, mergeRow } =
     useWhatNextCache();
 
@@ -157,9 +157,9 @@ export default function WatchingPage() {
       optimisticUpdate(mediaId, {
         manualLastWatchedSeason: data.manualLastWatchedSeason ?? null,
         manualLastWatchedEpisode: data.manualLastWatchedEpisode ?? null,
-        sortOrder: typeof data.sortOrder === "number" ? data.sortOrder : 0,
+        watchingSortOrder:
+          typeof data.watchingSortOrder === "number" ? data.watchingSortOrder : undefined,
       });
-      optimisticMoveToFront(mediaId);
       if (data.whatNextRow && typeof data.whatNextRow === "object") {
         mergeRow(data.whatNextRow as WhatNextRow);
       } else {
@@ -170,7 +170,7 @@ export default function WatchingPage() {
     } finally {
       setMarking(null);
     }
-  }, [optimisticUpdate, optimisticMoveToFront, mergeRow, refresh]);
+  }, [optimisticUpdate, mergeRow, refresh]);
 
   const openSetPosition = useCallback((row: WhatNextRow) => {
     setSettingId(row.mediaId);

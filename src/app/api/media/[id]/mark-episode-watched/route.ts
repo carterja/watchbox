@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { promoteMediaToFrontOfList } from "@/lib/promoteMediaSort";
+import { promoteMediaToFrontOfWatchingQueue } from "@/lib/promoteMediaSort";
 import { resolveWhatNextForMedia, whatNextRowAfterManualAdvance } from "@/lib/whatNext";
 import { z } from "zod";
 
@@ -58,8 +58,8 @@ export async function POST(
             manualLastWatchedEpisode: episode,
           },
         });
-        const sortOrder = await promoteMediaToFrontOfList(tx, id);
-        return { ...updated, sortOrder };
+        const watchingSortOrder = await promoteMediaToFrontOfWatchingQueue(tx, id);
+        return { ...updated, watchingSortOrder };
       });
       const lastFinished = { season: season!, episode: episode! };
       const whatNextRow = await whatNextRowAfterManualAdvance(
@@ -95,8 +95,8 @@ export async function POST(
           manualLastWatchedEpisode: next.episode,
         },
       });
-      const sortOrder = await promoteMediaToFrontOfList(tx, id);
-      return { ...updated, sortOrder };
+      const watchingSortOrder = await promoteMediaToFrontOfWatchingQueue(tx, id);
+      return { ...updated, watchingSortOrder };
     });
     const lastFinished = { season: next.season, episode: next.episode };
     const whatNextRow = await whatNextRowAfterManualAdvance(

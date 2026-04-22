@@ -6,6 +6,7 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -66,7 +67,7 @@ function SortableItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`touch-none ${isDragging ? "opacity-90 shadow-2xl shadow-[#8b5cf6]/30" : "reorder-jiggle"}`}
+      className={`select-none ${isDragging ? "opacity-90 shadow-2xl shadow-[#8b5cf6]/30 touch-none" : "reorder-jiggle"}`}
       {...attributes}
       {...listeners}
     >
@@ -87,6 +88,9 @@ export function SortableMediaList({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 10 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 220, tolerance: 6 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,

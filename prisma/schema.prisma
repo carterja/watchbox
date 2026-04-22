@@ -34,8 +34,10 @@ model Media {
   streamingService String?
   // Viewer: "wife" | "both" | "me"
   viewer String?
-  // Custom sort order (lower = first). Default 0; reorder updates this.
+  // Library shelf order (Series/Movies/All drag reorder). Lower = first.
   sortOrder Int @default(0)
+  /** Watching-queue order (what-next / Plex activity). Separate from shelf `sortOrder`. Lower = first. */
+  watchingSortOrder Int @default(0)
   // Free-form notes (not the same as progressNote / Plex line).
   personalNotes String?
   // Who last updated watch position: Plex webhook/sync-watched vs WatchBox UI.
@@ -50,6 +52,7 @@ model Media {
   @@index([streamingService])
   @@index([viewer])
   @@index([sortOrder])
+  @@index([watchingSortOrder])
 }
 
 /// Append-only Plex webhook history (e.g. media.scrobble). Survives deleting episodes or titles in Plex;

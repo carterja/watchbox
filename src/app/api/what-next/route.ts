@@ -18,7 +18,7 @@ export async function GET() {
   try {
     const rows = await prisma.media.findMany({
       where: { type: "tv", status: "in_progress" },
-      orderBy: [{ sortOrder: "asc" }, { updatedAt: "desc" }],
+      orderBy: [{ watchingSortOrder: "asc" }, { updatedAt: "desc" }],
     });
 
     const items = await mapPool(rows, BATCH, async (m) => {

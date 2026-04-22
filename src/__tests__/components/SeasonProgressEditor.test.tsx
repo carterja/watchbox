@@ -31,6 +31,7 @@ describe('SeasonProgressEditor', () => {
     streamingService: null,
     viewer: null,
     sortOrder: 0,
+    watchingSortOrder: 0,
     personalNotes: null,
     lastProgressSource: null,
     createdAt: '2024-01-01T00:00:00Z',

@@ -35,6 +35,8 @@ export type Media = {
   streamingService: string | null;
   viewer: Viewer | null;
   sortOrder: number;
+  /** Watching queue position (what-next); independent of library `sortOrder`. */
+  watchingSortOrder: number;
   personalNotes: string | null;
   lastProgressSource: "plex" | "manual" | null;
   createdAt: string;
@@ -56,6 +58,7 @@ export type MediaUpdatePatch = Partial<
     | "viewer"
     | "posterPath"
     | "sortOrder"
+    | "watchingSortOrder"
     | "personalNotes"
     | "lastProgressSource"
   >

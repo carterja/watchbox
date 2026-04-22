@@ -39,8 +39,11 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: "Already in your list" }, { status: 409 });
     }
 
-    const { _max } = await prisma.media.aggregate({ _max: { sortOrder: true } });
+    const { _max } = await prisma.media.aggregate({
+      _max: { sortOrder: true, watchingSortOrder: true },
+    });
     const nextSortOrder = ((_max?.sortOrder ?? 0) + 1) | 0;
+    const nextWatchingSortOrder = ((_max?.watchingSortOrder ?? 0) + 1) | 0;
 
     const media = await prisma.media.create({
       data: {
@@ -56,6 +59,7 @@ export async function POST(request: NextRequest) {
         streamingService: enriched.streamingService && enriched.streamingService.trim() ? enriched.streamingService.trim() : null,
         viewer: enriched.viewer ?? null,
         sortOrder: nextSortOrder,
+        watchingSortOrder: nextWatchingSortOrder,
       },
     });
 

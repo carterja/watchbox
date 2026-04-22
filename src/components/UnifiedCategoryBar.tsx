@@ -51,7 +51,7 @@ function UnifiedCategoryBarComponent({
   };
 
   const handleStatusClick = (value: MediaStatus) => {
-    onStatusChange(value);
+    onStatusChange(statusFilter === value ? "all" : value);
   };
 
   const handleViewerClick = (value: Viewer) => {

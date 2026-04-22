@@ -52,6 +52,7 @@ type MediaItem = {
   streamingService: string | null;
   viewer: string | null;
   sortOrder: number;
+  watchingSortOrder?: number;
   manualLastWatchedSeason: number | null;
   manualLastWatchedEpisode: number | null;
   progressNote?: string | null;

@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { promoteMediaToFrontOfList } from "@/lib/promoteMediaSort";
+import { promoteMediaToFrontOfWatchingQueue } from "@/lib/promoteMediaSort";
 import { maxEpisodeRef, type EpisodeRef } from "@/lib/whatNext";
 import type { MediaStatus, SeasonProgressItem } from "@/types/media";
 
@@ -96,7 +96,7 @@ export async function applyEpisodeWatchedFromPlexWebhook(
         where: { id: mediaId },
         data: { progressNote: `Specials E${episode} (Plex)`, lastProgressSource: "plex" },
       });
-      await promoteMediaToFrontOfList(tx, mediaId);
+      await promoteMediaToFrontOfWatchingQueue(tx, mediaId);
     });
     return;
   }
@@ -137,7 +137,7 @@ export async function applyEpisodeWatchedFromPlexWebhook(
         ...(progressNote ? { progressNote } : {}),
       },
     });
-    await promoteMediaToFrontOfList(tx, mediaId);
+    await promoteMediaToFrontOfWatchingQueue(tx, mediaId);
   });
 }
 

@@ -1,18 +1,18 @@
 import type { Prisma } from "@prisma/client";
 
 /**
- * Move one media row to the front of the global sort order with a single write:
- * set sortOrder to (min(sortOrder) − 1). No full-table renumbering.
+ * Move one TV row to the front of the Watching queue (`watchingSortOrder`) with a single write:
+ * set watchingSortOrder to (min − 1). Does not change library shelf `sortOrder`.
  */
-export async function promoteMediaToFrontOfList(
+export async function promoteMediaToFrontOfWatchingQueue(
   tx: Prisma.TransactionClient,
   mediaId: string
 ): Promise<number> {
-  const minRow = await tx.media.aggregate({ _min: { sortOrder: true } });
-  const next = (minRow._min.sortOrder ?? 0) - 1;
+  const minRow = await tx.media.aggregate({ _min: { watchingSortOrder: true } });
+  const next = (minRow._min.watchingSortOrder ?? 0) - 1;
   await tx.media.update({
     where: { id: mediaId },
-    data: { sortOrder: next },
+    data: { watchingSortOrder: next },
   });
   return next;
 }
