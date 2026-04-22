@@ -222,3 +222,26 @@ body {
   animation-duration: 0.28s;
 }
 
+/* Reorder — clear “swap with this slot” feedback */
+@keyframes reorder-swap-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 2px rgba(167, 139, 250, 0.95),
+      0 0 18px rgba(139, 92, 246, 0.45),
+      inset 0 0 24px rgba(139, 92, 246, 0.12);
+  }
+  50% {
+    box-shadow:
+      0 0 0 3px rgba(212, 196, 255, 1),
+      0 0 32px rgba(139, 92, 246, 0.65),
+      inset 0 0 28px rgba(139, 92, 246, 0.18);
+  }
+}
+.reorder-swap-target {
+  animation: reorder-swap-glow 1s ease-in-out infinite;
+  border-radius: 0.75rem;
+  position: relative;
+  z-index: 5;
+}
+

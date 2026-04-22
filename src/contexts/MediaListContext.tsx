@@ -73,6 +73,8 @@ export function MediaListProvider({ children }: { children: ReactNode }) {
 
   const optimisticReorder = useCallback((orderedIds: string[]) => {
     setList((prev) => {
+      if (orderedIds.length !== prev.length) return prev;
+      if (new Set(orderedIds).size !== orderedIds.length) return prev;
       const byId = new Map(prev.map((m) => [m.id, m]));
       const next: Media[] = [];
       for (const id of orderedIds) {

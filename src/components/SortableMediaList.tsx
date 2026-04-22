@@ -1,15 +1,18 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import {
   DndContext,
-  closestCenter,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
+  closestCorners,
+  pointerWithin,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -21,7 +24,15 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
+import { mergeFilteredReorder } from "@/lib/reorderFiltered";
 import type { Media } from "@/types/media";
+
+/** Prefer droppables under the pointer; grids fall back to corners (better than center-only). */
+const sortableCollision: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  if (pointerHits.length > 0) return pointerHits;
+  return closestCorners(args);
+};
 
 type Props = {
   fullOrderedIds: string[];
@@ -29,6 +40,7 @@ type Props = {
   optimisticReorder: (orderedIds: string[]) => void;
   refetch: () => Promise<void>;
   containerClass: string;
+  /** Compact list vs grid/poster — controls sortable strategy. */
   isList: boolean;
   renderItem: (media: Media, reorderMode: boolean) => React.ReactNode;
 };
@@ -36,12 +48,10 @@ type Props = {
 function SortableItem({
   id,
   media,
-  isList,
   renderItem,
 }: {
   id: string;
   media: Media;
-  isList: boolean;
   renderItem: (media: Media, reorderMode: boolean) => React.ReactNode;
 }) {
   const {
@@ -51,6 +61,8 @@ function SortableItem({
     transform,
     transition,
     isDragging,
+    isOver,
+    active,
   } = useSortable({ id });
 
   const style: React.CSSProperties = {
@@ -58,16 +70,24 @@ function SortableItem({
     transition,
   };
 
+  const activeId = active?.id ?? null;
+  const isDropTarget =
+    Boolean(activeId) && activeId !== id && isOver && !isDragging;
+
   if (isDragging) {
     style.zIndex = 50;
-    style.scale = "1.05";
+    style.scale = "1.03";
   }
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`select-none ${isDragging ? "opacity-90 shadow-2xl shadow-[#8b5cf6]/30 touch-none" : "reorder-jiggle"}`}
+      className={`select-none ${
+        isDragging
+          ? "touch-none rounded-xl opacity-95 shadow-2xl shadow-[#8b5cf6]/35 ring-2 ring-[#a78bfa]"
+          : "reorder-jiggle"
+      } ${isDropTarget ? "reorder-swap-target" : ""}`}
       {...attributes}
       {...listeners}
     >
@@ -85,12 +105,19 @@ export function SortableMediaList({
   isList,
   renderItem,
 }: Props) {
+  /** Touch / overlay drops often yield `over: null`; keep last collision target. */
+  const lastOverIdRef = useRef<string | null>(null);
+
+  const handleDragStart = useCallback((_event: DragStartEvent) => {
+    lastOverIdRef.current = null;
+  }, []);
+
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 10 },
+    useSensor(MouseSensor, {
+      activationConstraint: { distance: 8 },
     }),
     useSensor(TouchSensor, {
-      activationConstraint: { delay: 220, tolerance: 6 },
+      activationConstraint: { delay: 180, tolerance: 8 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -99,32 +126,38 @@ export function SortableMediaList({
 
   const handleDragEnd = useCallback(
     async (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (over == null || active.id === over.id) {
+      const { active } = event;
+      const activeIdStr = String(active.id);
+      let overIdStr: string | null =
+        event.over?.id != null ? String(event.over.id) : null;
+      if (overIdStr == null && lastOverIdRef.current != null) {
+        overIdStr = lastOverIdRef.current;
+      }
+      lastOverIdRef.current = null;
+
+      if (overIdStr == null || activeIdStr === overIdStr) {
         return;
       }
 
-      const oldIndex = filteredItems.findIndex((m) => m.id === active.id);
-      const newIndex = filteredItems.findIndex((m) => m.id === over.id);
-      if (oldIndex === -1 || newIndex === -1) {
+      const oldIndex = filteredItems.findIndex((m) => m.id === activeIdStr);
+      const newIndex = filteredItems.findIndex((m) => m.id === overIdStr);
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
         return;
       }
 
-      const reorderedFiltered = arrayMove(
-        filteredItems.map((m) => m.id),
-        oldIndex,
-        newIndex
+      const filteredIdsInOrder = filteredItems.map((m) => m.id);
+      const reorderedFiltered = arrayMove(filteredIdsInOrder, oldIndex, newIndex);
+
+      const newOrder = mergeFilteredReorder(
+        fullOrderedIds,
+        filteredIdsInOrder,
+        reorderedFiltered
       );
-      const filteredSet = new Set(reorderedFiltered);
 
-      // Build new global order: keep non-filtered ids in place; put reordered filtered ids into their original indices
-      const indicesOfFiltered = fullOrderedIds
-        .map((id, i) => (filteredSet.has(id) ? i : -1))
-        .filter((i) => i >= 0);
-      const newOrder = fullOrderedIds.slice();
-      reorderedFiltered.forEach((id, j) => {
-        newOrder[indicesOfFiltered[j]] = id;
-      });
+      const unchanged = newOrder.every((id, i) => id === fullOrderedIds[i]);
+      if (unchanged) {
+        return;
+      }
 
       optimisticReorder(newOrder);
       try {
@@ -154,19 +187,22 @@ export function SortableMediaList({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={sortableCollision}
+      onDragStart={handleDragStart}
+      onDragOver={({ over }) => {
+        if (over?.id != null) {
+          lastOverIdRef.current = String(over.id);
+        }
+      }}
+      onDragCancel={() => {
+        lastOverIdRef.current = null;
+      }}
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={itemIds} strategy={strategy}>
         <div className={containerClass}>
           {filteredItems.map((m) => (
-            <SortableItem
-              key={m.id}
-              id={m.id}
-              media={m}
-              isList={isList}
-              renderItem={renderItem}
-            />
+            <SortableItem key={m.id} id={m.id} media={m} renderItem={renderItem} />
           ))}
         </div>
       </SortableContext>
